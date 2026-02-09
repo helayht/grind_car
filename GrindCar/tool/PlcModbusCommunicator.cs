@@ -310,6 +310,32 @@ public class PlcModbusCommunicator : IDisposable
         }
     }
 
+    public int ReadInt32(ushort startAddress)
+    {
+        EnsureConnected();
+        try
+        {
+            ushort[] registers = _modbusMaster.ReadHoldingRegisters(_unitId, startAddress, 2);
+            if (registers != null && registers.Length == 2)
+            {
+                int value = UshortsToInt32(registers);
+                Debug.WriteLine($"Modbus: 成功读取整型 {value} 从 Holding Register 地址 {startAddress}");
+                return value;
+            }
+            else
+            {
+                Debug.WriteLine($"Modbus: 从 Holding Register 地址 {startAddress} 读取 Int32 失败，未返回足够数据。");
+                throw new Exception($"Failed to read 2 registers for Int32 from address {startAddress}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Modbus: 读取 Int32 从 Holding Register 地址 {startAddress} 发生错误: {ex.Message}");
+            HandleModbusError(ex);
+            throw;
+        }
+    }
+
 
     // --- 持续读取 D 寄存器 (Float) 的功能  ---
     public void StartContinuousDRegisterReading(ushort d1054ModbusAddress, ushort d1154ModbusAddress, int pollIntervalMs)
@@ -510,7 +536,15 @@ public class PlcModbusCommunicator : IDisposable
         // Buffer.BlockCopy(BitConverter.GetBytes(ushorts[0]), 0, bytes, 2, 2); // High word from ushorts[0]
         return BitConverter.ToSingle(bytes, 0); // 需要根据PLC实际情况调整或确认
     }
-    // Int32ToUshorts 和 UshortsToInt32 类似调整...
+    private int UshortsToInt32(ushort[] ushorts)
+    {
+        if (ushorts == null || ushorts.Length < 2) throw new ArgumentException("Ushorts array must contain at least 2 elements.");
+        byte[] bytes = new byte[4];
+        // 默认：低字在前
+        Buffer.BlockCopy(BitConverter.GetBytes(ushorts[0]), 0, bytes, 0, 2);
+        Buffer.BlockCopy(BitConverter.GetBytes(ushorts[1]), 0, bytes, 2, 2);
+        return BitConverter.ToInt32(bytes, 0); // 需要根据PLC实际情况调整或确认
+    }
 
 
     // --- 辅助方法 ---

@@ -1,17 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+﻿using System.Windows;
+using GrindCar.viewModel;
 
 namespace GrindCar
 {
@@ -20,9 +8,24 @@ namespace GrindCar
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly MotorViewModel _viewModel = new();
+
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = _viewModel;
+            Loaded += MainWindow_Loaded;
+            Unloaded += MainWindow_Unloaded;
+        }
+
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await _viewModel.StartPollingAsync("127.0.0.1", 502, 1, 1000);
+        }
+
+        private void MainWindow_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _viewModel.StopPolling();
         }
     }
 }

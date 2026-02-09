@@ -21,3 +21,4 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.genru
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\ref\GrindCar.dll
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\View\MainWindow.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\View\MainWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GeneratedInternalTypeHelper.g.cs

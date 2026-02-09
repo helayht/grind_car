@@ -11,8 +11,4 @@
       <PackageReference Include="NModbus4" Version="3.0.0-alpha1" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="viewModel\" />
-    </ItemGroup>
-
 </Project>
