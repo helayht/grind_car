@@ -9,7 +9,7 @@ using System.Windows;
 namespace GrindCar
 {
     /// <summary>
-    /// Interaction logic for App.xaml
+    /// 应用入口逻辑
     /// </summary>
     public partial class App : Application
     {

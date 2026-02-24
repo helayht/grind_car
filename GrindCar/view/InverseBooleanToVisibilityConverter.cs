@@ -5,6 +5,9 @@ using System.Windows.Data;
 
 namespace GrindCar.view;
 
+/// <summary>
+/// 反向布尔到可见性转换器（true->Collapsed, false->Visible）
+/// </summary>
 public class InverseBooleanToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

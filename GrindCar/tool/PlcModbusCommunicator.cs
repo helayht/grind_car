@@ -11,6 +11,9 @@ using Modbus.Device;
 
 namespace GrindCar.tool;
 
+/// <summary>
+/// PLC Modbus 通信封装（连接、读写、轮询）
+/// </summary>
 public class PlcModbusCommunicator : IDisposable
 {
     private TcpClient _tcpClient;
@@ -336,6 +339,43 @@ public class PlcModbusCommunicator : IDisposable
         }
     }
 
+    public void WriteInt32(ushort startAddress, int value)
+    {
+        EnsureConnected();
+        try
+        {
+            ushort[] dataToWrite = Int32ToUshorts(value);
+            _modbusMaster.WriteMultipleRegisters(_unitId, startAddress, dataToWrite);
+            Debug.WriteLine($"Modbus: 成功写入整型 {value} 到 Holding Register 地址 {startAddress}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Modbus: 写入 Int32 到 Holding Register 地址 {startAddress} 发生错误: {ex.Message}");
+            HandleModbusError(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 写入 16 位整型（单寄存器）
+    /// </summary>
+    public void WriteInt16(ushort address, short value)
+    {
+        EnsureConnected();
+        try
+        {
+            ushort raw = unchecked((ushort)value);
+            _modbusMaster.WriteSingleRegister(_unitId, address, raw);
+            Debug.WriteLine($"Modbus: 成功写入 Int16 {value} 到 Holding Register 地址 {address}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Modbus: 写入 Int16 到 Holding Register 地址 {address} 发生错误: {ex.Message}");
+            HandleModbusError(ex);
+            throw;
+        }
+    }
+
 
     // --- 持续读取 D 寄存器 (Float) 的功能  ---
     public void StartContinuousDRegisterReading(ushort d1054ModbusAddress, ushort d1154ModbusAddress, int pollIntervalMs)
@@ -544,6 +584,15 @@ public class PlcModbusCommunicator : IDisposable
         Buffer.BlockCopy(BitConverter.GetBytes(ushorts[0]), 0, bytes, 0, 2);
         Buffer.BlockCopy(BitConverter.GetBytes(ushorts[1]), 0, bytes, 2, 2);
         return BitConverter.ToInt32(bytes, 0); // 需要根据PLC实际情况调整或确认
+    }
+
+    private ushort[] Int32ToUshorts(int value)
+    {
+        byte[] bytes = BitConverter.GetBytes(value);
+        ushort[] words = new ushort[2];
+        words[0] = BitConverter.ToUInt16(bytes, 0); // Low word
+        words[1] = BitConverter.ToUInt16(bytes, 2); // High word
+        return words;
     }
 
 

@@ -1,5 +1,8 @@
-﻿namespace GrindCar.Model;
+namespace GrindCar.Model;
 
+/// <summary>
+/// 电机参数模型（与 PLC 地址含义对应）
+/// </summary>
 public class Motor
 {
     // 小车当前位置
@@ -143,3 +146,4 @@ public class Motor
     // 砂轮质量控制
     public short WheelQualityControl { get; set; }
 }
+
