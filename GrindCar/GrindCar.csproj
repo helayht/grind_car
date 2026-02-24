@@ -11,4 +11,12 @@
       <PackageReference Include="NModbus4" Version="3.0.0-alpha1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="view\**\*.cs" />
+      <Compile Remove="viewModel\**\*.cs" />
+      <Compile Remove="model\**\*.cs" />
+      <Compile Remove="tool\**\*.cs" />
+      <Page Remove="view\**\*.xaml" />
+    </ItemGroup>
+
 </Project>
