@@ -8,14 +8,16 @@ public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
     private string _value;
     private string _inputValue;
 
-    public MotorParameterItemViewModel(string name, bool isReadOnly)
+    public MotorParameterItemViewModel(string name, bool isReadOnly, string unit)
     {
         Name = name;
         IsReadOnly = isReadOnly;
+        Unit = unit;
     }
 
     public string Name { get; }
     public bool IsReadOnly { get; }
+    public string Unit { get; }
 
     public string Value
     {

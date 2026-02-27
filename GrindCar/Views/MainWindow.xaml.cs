@@ -26,7 +26,7 @@ namespace GrindCar.Views
         {
             _viewModel.StopPolling();
         }
-
+ 
         private void OnConnectionFailed(string message)
         {
             if (string.IsNullOrWhiteSpace(message)) return;

@@ -4,6 +4,14 @@ namespace GrindCar.Definitions;
 
 public static class MotorParameterDefinitions
 {
+    public const string UnitMeter = "m";
+    public const string UnitMillimeter = "mm";
+    public const string UnitDegree = "°";
+    public const string UnitMeterPerMinute = "m/min";
+    public const string UnitMillimeterPerMinute = "mm/min";
+    public const string UnitDegreePerMinute = "°/min";
+    public const string UnitRadianPerMinute = "rad/min";
+
     // 参数名称
     public const string CarCurrentPositionName = "小车当前位置";
     public const string WheelLongitudinalCurrentPositionName = "砂轮纵向当前位置";
@@ -205,5 +213,67 @@ public static class MotorParameterDefinitions
 
         WheelRotationSpeedName,
         WheelQualityControlName
+    };
+
+    public static IReadOnlyDictionary<string, string> ParameterUnits { get; } = new Dictionary<string, string>
+    {
+        // 小车
+        [CarCurrentPositionName] = UnitMeter,
+        [CarJogSpeedName] = UnitMeterPerMinute,
+        [CarPositionTargetAddressName] = UnitMeter,
+        [CarPositionSpeedName] = UnitMeterPerMinute,
+        [CarPositionStartName] = string.Empty,
+        [CarJogForwardName] = string.Empty,
+        [CarJogBackwardName] = string.Empty,
+        [CarHomeName] = string.Empty,
+        [CarFaultResetName] = string.Empty,
+
+        // 砂轮纵向
+        [WheelLongitudinalCurrentPositionName] = UnitMillimeter,
+        [WheelLongitudinalJogSpeedName] = UnitMillimeterPerMinute,
+        [WheelLongitudinalPositionTargetAddressName] = UnitMillimeter,
+        [WheelLongitudinalPositionSpeedName] = UnitMillimeterPerMinute,
+        [WheelLongitudinalPositionStartName] = string.Empty,
+        [WheelLongitudinalJogDownName] = string.Empty,
+        [WheelLongitudinalJogUpName] = string.Empty,
+        [WheelLongitudinalHomeName] = string.Empty,
+        [WheelLongitudinalFaultResetName] = string.Empty,
+
+        // 砂轮横向
+        [WheelLateralCurrentPositionName] = UnitMillimeter,
+        [WheelLateralJogSpeedName] = UnitMillimeterPerMinute,
+        [WheelLateralPositionTargetAddressName] = UnitMillimeter,
+        [WheelLateralPositionSpeedName] = UnitMillimeterPerMinute,
+        [WheelLateralPositionStartName] = string.Empty,
+        [WheelLateralJogLeftName] = string.Empty,
+        [WheelLateralJogRightName] = string.Empty,
+        [WheelLateralHomeName] = string.Empty,
+        [WheelLateralFaultResetName] = string.Empty,
+
+        // 砂轮角度
+        [WheelAngleCurrentPositionName] = UnitDegree,
+        [WheelAngleJogSpeedName] = UnitDegreePerMinute,
+        [WheelAnglePositionTargetAddressName] = UnitDegree,
+        [WheelAnglePositionSpeedName] = UnitDegreePerMinute,
+        [WheelAnglePositionStartName] = string.Empty,
+        [WheelAngleJogReverseName] = string.Empty,
+        [WheelAngleJogForwardName] = string.Empty,
+        [WheelAngleHomeName] = string.Empty,
+        [WheelAngleFaultResetName] = string.Empty,
+
+        // 廓形仪
+        [ProfilerCurrentPositionName] = UnitMillimeter,
+        [ProfilerJogSpeedName] = UnitMillimeterPerMinute,
+        [ProfilerPositionTargetAddressName] = UnitMillimeter,
+        [ProfilerPositionSpeedName] = UnitMillimeterPerMinute,
+        [ProfilerPositionStartName] = string.Empty,
+        [ProfilerJogDownName] = string.Empty,
+        [ProfilerJogUpName] = string.Empty,
+        [ProfilerHomeName] = string.Empty,
+        [ProfilerFaultResetName] = string.Empty,
+
+        // 砂轮旋转速度 / 质量控制
+        [WheelRotationSpeedName] = UnitRadianPerMinute,
+        [WheelQualityControlName] = string.Empty
     };
 }

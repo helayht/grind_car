@@ -326,14 +326,21 @@ public class MotorViewModel : INotifyPropertyChanged
 
     private MotorParameterItemViewModel AddReadOnly(string name)
     {
-        var item = new MotorParameterItemViewModel(name, true);
+        var item = new MotorParameterItemViewModel(name, true, GetUnit(name));
         _items.Add(item);
         return item;
     }
 
     private void AddWriteOnly(string name)
     {
-        _items.Add(new MotorParameterItemViewModel(name, false));
+        _items.Add(new MotorParameterItemViewModel(name, false, GetUnit(name)));
+    }
+
+    private static string GetUnit(string name)
+    {
+        return MotorParameterDefinitions.ParameterUnits.TryGetValue(name, out string unit)
+            ? unit
+            : string.Empty;
     }
 
     /// <summary>

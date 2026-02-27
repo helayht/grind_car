@@ -120,9 +120,12 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="280" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="100" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="参数名称" FontWeight="Bold" />
                     <TextBlock Grid.Column="1" Text="参数值 / 输入" FontWeight="Bold" />
+                    <TextBlock Grid.Column="2" Text="单位" FontWeight="Bold" />
                 </Grid>
 
                 <!-- 可滚动参数列表 -->
@@ -135,6 +138,7 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="280" />
                                             <ColumnDefinition Width="220" />
+                                            <ColumnDefinition Width="80" />
                                             <ColumnDefinition Width="100" />
                                         </Grid.ColumnDefinitions>
 
@@ -157,8 +161,14 @@
                                                  VerticalAlignment="Center"
                                                  Visibility="{Binding IsReadOnly, Converter={StaticResource InverseBoolToVisibility}}" />
 
+                                        <!-- 单位 -->
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding Unit}"
+                                                   Style="{StaticResource SubHeaderText}"
+                                                   VerticalAlignment="Center" />
+
                                         <!-- 写入按钮 -->
-                                        <Button Grid.Column="2"
+                                        <Button Grid.Column="3"
                                                 Content="修改"
                                                 Width="72"
                                                 Height="28"
