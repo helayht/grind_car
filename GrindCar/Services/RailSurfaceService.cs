@@ -88,7 +88,7 @@ public class RailSurfaceService
         {
             double fx = RailSurfaceFun(x);
             if (double.IsNaN(fx)) continue;
-            double b = fx - k * x;
+            double b = fx - k * x;  
             if (b > bestB)
             { 
                 bestB = b;

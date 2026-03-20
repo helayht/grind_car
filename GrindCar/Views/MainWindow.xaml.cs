@@ -16,7 +16,6 @@ namespace GrindCar.Views
             InitializeComponent();
             DataContext = _viewModel;
             Unloaded += MainWindow_Unloaded;
-            _viewModel.ConnectionFailed += OnConnectionFailed;
         }
 
         /// <summary>
@@ -24,17 +23,16 @@ namespace GrindCar.Views
         /// </summary>
         private void MainWindow_Unloaded(object sender, RoutedEventArgs e)
         {
-            _viewModel.StopPolling();
+            _viewModel.Shutdown();
         }
- 
-        private void OnConnectionFailed(string message)
+
+        private void OpenMotorDebugWindow_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(message)) return;
-            Dispatcher.Invoke(() =>
+            var window = new MotorDebugWindow
             {
-                MessageBox.Show(this, message, "连接失败", MessageBoxButton.OK, MessageBoxImage.Error);
-            });
+                Owner = this
+            };
+            window.Show();
         }
     }
 }
-

@@ -1,34 +1,77 @@
 # GrindCar
 
 ## 项目简介
-GrindCar 是一套基于 WPF 的电机调试界面，用于通过 Modbus TCP 与 PLC 进行参数读写、状态轮询与操作控制。
+GrindCar 是一个基于 WPF 的轨面打磨设备上位机项目，当前包含两类主要界面：
+
+- 驾驶舱首页：用于展示设备状态、速度和电量等监控信息
+- 电机调试窗口：用于通过 Modbus TCP 与 PLC 进行参数读写、状态轮询和调试控制
+
+项目目前以桌面端本地运行方式为主，不依赖 Web 服务或环境变量配置。
 
 ## 技术栈
 - .NET 6
 - WPF
-- NModbus4（Modbus TCP 通信）
+- NModbus4
+
+## 工程结构
+```text
+GrindCar.sln
+├─ GrindCar/
+│  ├─ App.xaml
+│  ├─ Definitions/      # 参数名称、地址、比例、单位定义
+│  ├─ Infrastructure/   # 基础设施，例如 RelayCommand
+│  ├─ Models/           # 数据模型
+│  ├─ Services/         # PLC/Modbus 通信与业务服务
+│  ├─ ViewModels/       # 视图模型
+│  ├─ Views/            # WPF 窗口与界面
+│  └─ Doc/              # 项目文档
+```
 
 ## 安装说明
 1. 安装 .NET 6 SDK。
-2. 还原依赖：
+2. 在仓库根目录执行依赖还原：
 
 ```powershell
 dotnet restore GrindCar.sln
 ```
 
 ## 运行说明
+构建项目：
+
+```powershell
+dotnet build GrindCar.sln
+```
+
+启动应用：
+
 ```powershell
 dotnet run --project GrindCar/GrindCar.csproj
 ```
 
-## 使用说明
-1. 在界面顶部输入 PLC 的 `IP` 与 `Port`。
-2. 点击“连接”开始轮询读取只读参数。
-3. 对可写参数输入数值或布尔值并点击“修改”写入 PLC。
-4. 点击“断开”停止轮询并释放连接。
+清理构建产物：
 
-## API 示例
-以下示例展示了在业务层通过 `IPlcClient` 进行连接与写入的最小用法：
+```powershell
+dotnet clean GrindCar.sln
+```
+
+## 使用说明
+1. 启动后默认进入驾驶舱首页。
+2. 点击首页右上角“电机调试”按钮，打开参数调试窗口。
+3. 在调试窗口顶部输入 PLC 的 `IP` 和 `Port`。
+4. 点击“连接”后开始轮询读取只读参数。
+5. 对可写参数输入数值或布尔值后点击“修改”写入 PLC。
+6. 点击“断开”停止轮询并释放连接。
+
+## 核心模块说明
+- `Views/MainWindow.xaml`：驾驶舱首页
+- `Views/MotorDebugWindow.xaml`：电机调试窗口
+- `ViewModels/MotorViewModel.cs`：连接、轮询、写入和状态展示的主要逻辑
+- `Services/PlcModbusCommunicator.cs`：Modbus TCP 通信封装
+- `Definitions/MotorParameterDefinitions.cs`：参数地址、比例和单位定义中心
+- `Services/RailSurfaceService.cs`：轨面廓形相关计算逻辑
+
+## 代码示例
+以下示例演示如何通过 `IPlcClient` 建立连接并执行基本写入：
 
 ```csharp
 using GrindCar.Services;
@@ -41,4 +84,4 @@ plc.Disconnect();
 ```
 
 ## 环境变量
-当前项目不依赖环境变量配置。
+当前项目不依赖环境变量。

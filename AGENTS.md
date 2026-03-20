@@ -3,11 +3,13 @@
 ## Project Structure & Module Organization
 - `GrindCar.sln` is the solution entry point.
 - `GrindCar/` is the WPF application project.
-- UI: `GrindCar/view/` (XAML + code-behind).
-- ViewModels: `GrindCar/viewModel/`.
-- Models: `GrindCar/model/`.
-- PLC/Modbus tooling: `GrindCar/tool/`.
-- Docs: `GrindCar/doc/`.
+- UI: `GrindCar/Views/` (XAML + code-behind).
+- ViewModels: `GrindCar/ViewModels/`.
+- Models: `GrindCar/Models/`.
+- PLC/Modbus and business services: `GrindCar/Services/`.
+- Parameter/address definitions: `GrindCar/Definitions/`.
+- Infrastructure helpers: `GrindCar/Infrastructure/`.
+- Docs: `GrindCar/Doc/`.
 - Build artifacts: `GrindCar/bin/`, `GrindCar/obj/` (generated).
 
 ## Build, Test, and Development Commands
@@ -21,10 +23,11 @@
 ## Coding Style & Naming Conventions
 - Language: C# (.NET 6, WPF).
 - Indentation: 4 spaces in `.cs` and XAML.
-- Namespaces follow folder structure (e.g., `GrindCar.viewModel`).
+- Namespaces follow folder structure (e.g., `GrindCar.ViewModels`, `GrindCar.Services`).
 - Classes: `PascalCase`; private fields: `_camelCase`.
 - XAML resources and styles: `PascalCase` keys (e.g., `HeaderText`).
-- Keep Modbus address mapping centralized in `MotorViewModel.BuildWriteSpecs()`.
+- Keep parameter names, Modbus addresses, scales, and units centralized in `Definitions/MotorParameterDefinitions.cs`.
+- Keep write mapping logic centralized in `ViewModels/MotorViewModel.BuildWriteSpecs()`.
 
 ## Testing Guidelines
 - No automated tests are currently present.
@@ -42,4 +45,6 @@
 ## Configuration & Safety Notes
 - Connection defaults are editable in the UI; no automatic PLC connection on startup.
 - Validate IP/Port inputs before attempting Modbus connections.
+- The dashboard home page currently contains presentation/demo data; PLC parameter read/write is handled in the motor debug window.
+- Avoid scattering Modbus addresses across views or code-behind files.
 - Avoid committing build artifacts under `GrindCar/bin/` and `GrindCar/obj/`.

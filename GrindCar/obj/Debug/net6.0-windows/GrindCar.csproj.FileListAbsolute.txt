@@ -1,7 +1,6 @@
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.csproj.AssemblyReference.cache
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\App.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_MarkupCompile.cache
-D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_MarkupCompile.lref
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.exe
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.deps.json
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.runtimeconfig.json
@@ -22,3 +21,6 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\ref\GrindCar.d
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GeneratedInternalTypeHelper.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MainWindow.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MainWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MotorDebugWindow.g.cs
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_MarkupCompile.lref
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MotorDebugWindow.baml
