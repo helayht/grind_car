@@ -16,8 +16,8 @@ namespace GrindCar.Services;
 /// </summary>
 public class PlcModbusCommunicator : IPlcClient
 {
-    private TcpClient _tcpClient;
-    private IModbusMaster _modbusMaster;
+    private TcpClient? _tcpClient;
+    private IModbusMaster? _modbusMaster;
     private readonly string _plcIpAddress;
     private readonly int _plcPort;
     private readonly byte _unitId;
@@ -28,25 +28,25 @@ public class PlcModbusCommunicator : IPlcClient
     public List<object> RightValue = new List<object>();
 
     // --- 持续读取 D 寄存器 (Float) 的相关成员 ---
-    private CancellationTokenSource _continuousReadDRegistersCts;
-    private Task _continuousReadDRegistersTask;
-    public event EventHandler<(float D1054Value, float D1154Value)> OnDRegisterFloatReadingsReceived;
+    private CancellationTokenSource? _continuousReadDRegistersCts;
+    private Task? _continuousReadDRegistersTask;
+    public event EventHandler<(float D1054Value, float D1154Value)>? OnDRegisterFloatReadingsReceived;
     private ushort _d1054ModbusAddress;
     private ushort _d1154ModbusAddress;
     private int _dRegisterPollIntervalMs;
 
     // --- 持续读取 Coil (Bool) 的相关成员 - 任务 1 ---
-    private CancellationTokenSource _continuousReadCoilsCts;
-    private Task _continuousReadCoilsTask;
-    public event EventHandler<(ushort startAddress, bool[] values)> OnCoilReadingsReceived; // 事件给任务1
+    private CancellationTokenSource? _continuousReadCoilsCts;
+    private Task? _continuousReadCoilsTask;
+    public event EventHandler<(ushort startAddress, bool[] values)>? OnCoilReadingsReceived; // 事件给任务1
     private ushort _coilStartAddress;
     private ushort _numberOfCoilsToRead;
     private int _coilPollIntervalMs;
 
     // --- 持续读取 Coil (Bool) 的相关成员 - 任务 2 ---
-    private CancellationTokenSource _continuousReadCoilsCts2; // 为任务2准备的Cts
-    private Task _continuousReadCoilsTask2;                  // 为任务2准备的Task
-    public event EventHandler<(ushort startAddress, bool[] values)> OnCoilReadingsReceived2; // 事件给任务2
+    private CancellationTokenSource? _continuousReadCoilsCts2; // 为任务2准备的Cts
+    private Task? _continuousReadCoilsTask2;                  // 为任务2准备的Task
+    public event EventHandler<(ushort startAddress, bool[] values)>? OnCoilReadingsReceived2; // 事件给任务2
     private ushort _coilStartAddress2;                       // 任务2的起始地址
     private ushort _numberOfCoilsToRead2;                    // 任务2读取的数量
     private int _coilPollIntervalMs2;                       // 任务2的轮询间隔
@@ -268,9 +268,10 @@ public class PlcModbusCommunicator : IPlcClient
     public void WriteSingleCoil(ushort coilAddress, bool value) 
     { 
         EnsureConnected(); 
+        IModbusMaster modbusMaster = GetModbusMaster();
         try 
         { 
-            _modbusMaster.WriteSingleCoil(1, coilAddress, value); 
+            modbusMaster.WriteSingleCoil(1, coilAddress, value); 
             Debug.WriteLine($"Modbus: Wrote Coil {coilAddress}={value}"); 
         } catch (Exception ex) 
         {
@@ -281,9 +282,10 @@ public class PlcModbusCommunicator : IPlcClient
     public bool ReadSingleCoil(ushort coilAddress) 
     { 
         EnsureConnected(); 
+        IModbusMaster modbusMaster = GetModbusMaster();
         try 
         { 
-            bool[] r = _modbusMaster.ReadCoils(1, coilAddress, 1); 
+            bool[] r = modbusMaster.ReadCoils(1, coilAddress, 1); 
             if (r != null && r.Length > 0) 
                 return r[0]; 
             throw new Modbus.SlaveException(); 
@@ -302,9 +304,10 @@ public class PlcModbusCommunicator : IPlcClient
     public async Task WriteSingleCoilAsync(ushort coilAddress, bool value)
     {
         EnsureConnected();
+        IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
-            await _modbusMaster.WriteSingleCoilAsync(_unitId, coilAddress, value).ConfigureAwait(false);
+            await modbusMaster.WriteSingleCoilAsync(_unitId, coilAddress, value).ConfigureAwait(false);
             Debug.WriteLine($"Modbus: 成功写入布尔值 {value} 到 Coil 地址 {coilAddress}");
         }
         catch (Exception ex)
@@ -318,10 +321,11 @@ public class PlcModbusCommunicator : IPlcClient
     public void WriteFloat(ushort startAddress, float value)
     {
         EnsureConnected();
+        IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
             ushort[] dataToWrite = FloatToUshorts(value);
-            _modbusMaster.WriteMultipleRegisters(_unitId, startAddress, dataToWrite);
+            modbusMaster.WriteMultipleRegisters(_unitId, startAddress, dataToWrite);
             Debug.WriteLine($"Modbus: 成功写入浮点数 {value} 到 Holding Register 地址 {startAddress}");
         }
         catch (Exception ex)
@@ -334,9 +338,10 @@ public class PlcModbusCommunicator : IPlcClient
     public float ReadFloat(ushort startAddress)
     {
         EnsureConnected();
+        IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
-            ushort[] registers = _modbusMaster.ReadHoldingRegisters(_unitId, startAddress, 2);
+            ushort[] registers = modbusMaster.ReadHoldingRegisters(_unitId, startAddress, 2);
             if (registers != null && registers.Length == 2)
             {
                 float value = UshortsToFloat(registers);
@@ -353,16 +358,17 @@ public class PlcModbusCommunicator : IPlcClient
         {
             Debug.WriteLine($"Modbus: 读取 Float 从 Holding Register 地址 {startAddress} 发生错误: {ex.Message}");
             HandleModbusError(ex);
-            throw ex;
+            throw;
         }
     }
 
     public int ReadInt32(ushort startAddress)
     {
         EnsureConnected();
+        IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
-            ushort[] registers = _modbusMaster.ReadHoldingRegisters(_unitId, startAddress, 2);
+            ushort[] registers = modbusMaster.ReadHoldingRegisters(_unitId, startAddress, 2);
             if (registers != null && registers.Length == 2)
             {
                 int value = UshortsToInt32(registers);
@@ -386,10 +392,11 @@ public class PlcModbusCommunicator : IPlcClient
     public void WriteInt32(ushort startAddress, int value)
     {
         EnsureConnected();
+        IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
             ushort[] dataToWrite = Int32ToUshorts(value);
-            _modbusMaster.WriteMultipleRegisters(_unitId, startAddress, dataToWrite);
+            modbusMaster.WriteMultipleRegisters(_unitId, startAddress, dataToWrite);
             Debug.WriteLine($"Modbus: 成功写入整型 {value} 到 Holding Register 地址 {startAddress}");
         }
         catch (Exception ex)
@@ -406,10 +413,11 @@ public class PlcModbusCommunicator : IPlcClient
     public void WriteInt16(ushort address, short value)
     {
         EnsureConnected();
+        IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
             ushort raw = unchecked((ushort)value);
-            _modbusMaster.WriteSingleRegister(_unitId, address, raw);
+            modbusMaster.WriteSingleRegister(_unitId, address, raw);
             Debug.WriteLine($"Modbus: 成功写入 Int16 {value} 到 Holding Register 地址 {address}");
         }
         catch (Exception ex)
@@ -436,14 +444,15 @@ public class PlcModbusCommunicator : IPlcClient
 
     private async Task MonitorDRegistersLoopAsync(CancellationToken cancellationToken)
     {
+        IModbusMaster modbusMaster = GetModbusMaster();
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                ushort[] registers1 = await _modbusMaster.ReadHoldingRegistersAsync(_unitId, _d1054ModbusAddress, 2).ConfigureAwait(false);
+                ushort[] registers1 = await modbusMaster.ReadHoldingRegistersAsync(_unitId, _d1054ModbusAddress, 2).ConfigureAwait(false);
                 float value1 = (registers1 != null && registers1.Length == 2) ? UshortsToFloat(registers1) : float.NaN; // 使用 NaN 表示无效
 
-                ushort[] registers2 = await _modbusMaster.ReadHoldingRegistersAsync(_unitId, _d1154ModbusAddress, 2).ConfigureAwait(false);
+                ushort[] registers2 = await modbusMaster.ReadHoldingRegistersAsync(_unitId, _d1154ModbusAddress, 2).ConfigureAwait(false);
                 float value2 = (registers2 != null && registers2.Length == 2) ? UshortsToFloat(registers2) : float.NaN;
 
                 OnDRegisterFloatReadingsReceived?.Invoke(this, (value1, value2));
@@ -482,11 +491,12 @@ public class PlcModbusCommunicator : IPlcClient
 
     private async Task MonitorCoilsLoopAsync(CancellationToken cancellationToken, ushort startAddress)
     {
+        IModbusMaster modbusMaster = GetModbusMaster();
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                bool[] coils = await _modbusMaster.ReadCoilsAsync(_unitId, _coilStartAddress, _numberOfCoilsToRead).ConfigureAwait(false);
+                bool[] coils = await modbusMaster.ReadCoilsAsync(_unitId, _coilStartAddress, _numberOfCoilsToRead).ConfigureAwait(false);
 
                 if (coils != null && coils.Length == _numberOfCoilsToRead)
                 {
@@ -545,11 +555,12 @@ public class PlcModbusCommunicator : IPlcClient
 
     private async Task MonitorCoilsLoop2Async(CancellationToken cancellationToken, ushort startAddress)
     {
+        IModbusMaster modbusMaster = GetModbusMaster();
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                bool[] coils = await _modbusMaster.ReadCoilsAsync(_unitId, _coilStartAddress2, _numberOfCoilsToRead2).ConfigureAwait(false);
+                bool[] coils = await modbusMaster.ReadCoilsAsync(_unitId, _coilStartAddress2, _numberOfCoilsToRead2).ConfigureAwait(false);
 
                 if (coils != null && coils.Length == _numberOfCoilsToRead2)
                 {
@@ -645,6 +656,12 @@ public class PlcModbusCommunicator : IPlcClient
     {
         if (!IsConnected) throw new InvalidOperationException("PLC未连接");
         if (_modbusMaster == null) throw new InvalidOperationException("Modbus master is not initialized.");
+    }
+
+    private IModbusMaster GetModbusMaster()
+    {
+        EnsureConnected();
+        return _modbusMaster!;
     }
 
     private void HandleModbusError(Exception ex)

@@ -5,8 +5,8 @@ namespace GrindCar.ViewModels;
 
 public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
 {
-    private string _value;
-    private string _inputValue;
+    private string _value = string.Empty;
+    private string _inputValue = string.Empty;
 
     public MotorParameterItemViewModel(string name, bool isReadOnly, string unit)
     {
@@ -41,8 +41,8 @@ public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
         }
     }
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
-    private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

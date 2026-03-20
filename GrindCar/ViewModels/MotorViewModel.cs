@@ -47,9 +47,9 @@ public class MotorViewModel : INotifyPropertyChanged
     private readonly MotorParameterItemViewModel _profilerCurrentPosition;
 
     // 轮询任务与通信对象
-    private CancellationTokenSource _pollingCts;
-    private Task _pollingTask;
-    private IPlcClient _plc;
+    private CancellationTokenSource? _pollingCts;
+    private Task? _pollingTask;
+    private IPlcClient? _plc;
     // UI 线程上下文
     private readonly SynchronizationContext _uiContext;
     // 连接状态展示
@@ -147,7 +147,7 @@ public class MotorViewModel : INotifyPropertyChanged
     public ICommand ConnectCommand { get; }
     public ICommand DisconnectCommand { get; }
 
-    public event Action<string> ConnectionFailed;
+    public event Action<string>? ConnectionFailed;
 
     public string IpAddress
     {
@@ -375,7 +375,7 @@ public class MotorViewModel : INotifyPropertyChanged
     {
         if (IsConnected || IsConnecting) return;
 
-        string ip = IpAddress?.Trim();
+        string ip = IpAddress.Trim();
         if (string.IsNullOrWhiteSpace(ip))
         {
             ConnectionStatus = "IP 不能为空";
@@ -383,7 +383,7 @@ public class MotorViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (!int.TryParse(Port?.Trim(), out int port) || port < MinPort || port > MaxPort)
+        if (!int.TryParse(Port.Trim(), out int port) || port < MinPort || port > MaxPort)
         {
             ConnectionStatus = "端口无效";
             ConnectionFailed?.Invoke($"端口无效，请输入 {MinPort}-{MaxPort} 的整数。");
@@ -512,8 +512,8 @@ public class MotorViewModel : INotifyPropertyChanged
 
     private static string GetUnit(string name)
     {
-        return MotorParameterDefinitions.ParameterUnits.TryGetValue(name, out string unit)
-            ? unit
+        return MotorParameterDefinitions.ParameterUnits.TryGetValue(name, out string? unit)
+            ? unit ?? string.Empty
             : string.Empty;
     }
 
@@ -720,7 +720,7 @@ public class MotorViewModel : INotifyPropertyChanged
             return;
         }
 
-        string input = item.InputValue?.Trim();
+        string input = item.InputValue.Trim();
         if (string.IsNullOrWhiteSpace(input))
         {
             PostStatus("请输入有效数值/开关");
@@ -840,12 +840,12 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 属性变化通知
     /// </summary>
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
     /// 触发属性变化通知
     /// </summary>
-    protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
