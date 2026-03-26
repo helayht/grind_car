@@ -12,6 +12,7 @@ GrindCar 是一个基于 WPF 的轨面打磨设备上位机项目，当前包含
 - .NET 6
 - WPF
 - NModbus4
+- 轨面拟合：分段平滑样条
 
 ## 工程结构
 ```text
@@ -21,7 +22,9 @@ GrindCar.sln
 │  ├─ Definitions/      # 参数名称、地址、比例、单位定义
 │  ├─ Infrastructure/   # 基础设施，例如 RelayCommand
 │  ├─ Models/           # 数据模型
+│  │  └─ Rail/          # 轨面截面点与拟合结果模型
 │  ├─ Services/         # PLC/Modbus 通信与业务服务
+│  │  └─ Rail/          # 轨面拟合服务
 │  ├─ ViewModels/       # 视图模型
 │  ├─ Views/            # WPF 窗口与界面
 │  └─ Doc/              # 项目文档
@@ -29,7 +32,8 @@ GrindCar.sln
 
 ## 安装说明
 1. 安装 .NET 6 SDK。
-2. 在仓库根目录执行依赖还原：
+2. 确认仓库根目录 [global.json](D:\工作\轨面打磨\GrindCar\global.json) 可解析到本机已安装的 .NET 6 SDK。
+3. 在仓库根目录执行依赖还原：
 
 ```powershell
 dotnet restore GrindCar.sln
@@ -69,6 +73,9 @@ dotnet clean GrindCar.sln
 - `Services/PlcModbusCommunicator.cs`：Modbus TCP 通信封装
 - `Definitions/MotorParameterDefinitions.cs`：参数地址、比例和单位定义中心
 - `Services/RailSurfaceService.cs`：轨面廓形相关计算逻辑
+- `Models/Rail/RailProfilePoint.cs`：轨面截面二维点模型
+- `Models/Rail/RailProfileFitResult.cs`：拟合函数与有效定义域结果模型
+- `Services/Rail/RailProfileFittingService.cs`：分段平滑样条拟合服务
 
 ## 代码示例
 以下示例演示如何通过 `IPlcClient` 建立连接并执行基本写入：
@@ -82,6 +89,41 @@ plc.WriteInt32(1000, 1500);
 await plc.WriteSingleCoilAsync(104, true);
 plc.Disconnect();
 ```
+
+以下示例演示如何对一组二维截面点执行轨面拟合：
+
+```csharp
+using GrindCar.Models.Rail;
+using GrindCar.Services.Rail;
+
+var points = new[]
+{
+    new RailProfilePoint(-30.0, 165.2),
+    new RailProfilePoint(-20.0, 171.8),
+    new RailProfilePoint(-10.0, 175.4),
+    new RailProfilePoint(0.0, 176.1),
+    new RailProfilePoint(10.0, 175.0),
+    new RailProfilePoint(20.0, 171.5),
+    new RailProfilePoint(30.0, 164.7)
+};
+
+IRailProfileFittingService fittingService = new RailProfileFittingService();
+RailProfileFitResult fitResult = fittingService.Fit(points);
+
+double y = fitResult.Evaluate(5.0);
+```
+
+## 当前实现说明
+- 轨面拟合当前为纯计算能力，尚未接入 UI。
+- 拟合输入为一组可按 `x` 排序的二维散点。
+- 拟合输出为函数 `f(x)` 与有效定义域 `[MinX, MaxX]`。
+- 不做外推，超出定义域调用会抛出异常。
+
+## 构建说明
+- 当前命令行构建已验证通过：`dotnet build GrindCar.sln`
+- 当前剩余主要构建警告为 `NU1701`
+- 原因是 `NModbus4 3.0.0-alpha1` 不是针对 `net6.0-windows` 原生发布的包
+- 如需继续清理警告，优先评估替换 `NModbus4`
 
 ## 环境变量
 当前项目不依赖环境变量。

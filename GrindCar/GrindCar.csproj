@@ -5,6 +5,7 @@
         <TargetFramework>net6.0-windows</TargetFramework>
         <Nullable>enable</Nullable>
         <UseWPF>true</UseWPF>
+        <PlatformTarget>x64</PlatformTarget>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,11 +13,28 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Reference Include="Mv3dLpNet">
+        <HintPath>lib\Mv3dLpNet.dll</HintPath>
+        <Private>true</Private>
+      </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
       <Compile Remove="view\**\*.cs" />
       <Compile Remove="viewModel\**\*.cs" />
       <Compile Remove="model\**\*.cs" />
       <Compile Remove="tool\**\*.cs" />
+      <Compile Remove="tmp_obj\**\*" />
+      <Compile Remove="tmp_bin\**\*" />
       <Page Remove="view\**\*.xaml" />
+      <Page Remove="tmp_obj\**\*" />
+      <Page Remove="tmp_bin\**\*" />
+      <ApplicationDefinition Remove="tmp_obj\**\*" />
+      <ApplicationDefinition Remove="tmp_bin\**\*" />
+      <EmbeddedResource Remove="tmp_obj\**\*" />
+      <EmbeddedResource Remove="tmp_bin\**\*" />
+      <None Remove="tmp_obj\**\*" />
+      <None Remove="tmp_bin\**\*" />
     </ItemGroup>
 
 </Project>

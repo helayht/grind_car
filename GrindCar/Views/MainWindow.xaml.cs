@@ -34,5 +34,14 @@ namespace GrindCar.Views
             };
             window.Show();
         }
+
+        private void OpenPointCloudExportWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new PointCloudExportWindow
+            {
+                Owner = this
+            };
+            window.ShowDialog();
+        }
     }
 }

@@ -24,3 +24,7 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MainWind
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MotorDebugWindow.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_MarkupCompile.lref
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MotorDebugWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PointCloudExportWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PointCloudExportWindow.g.cs
+D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\Mv3dLpNet.dll
+D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\Mv3dLpNet.xml
