@@ -8,7 +8,7 @@ namespace GrindCar.Services.PointCloud;
 public sealed class PointCloudExportService
 {
     private const uint DefaultGetImageTimeoutMs = 3000;
-    private const uint RangeImageModeValue = 4;
+    private const uint RangeImageModeValue = 7;
 
     public IReadOnlyList<PointCloudDeviceInfo> GetDevices()
     {
