@@ -1,5 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
 using GrindCar.Services.Rail;
@@ -37,9 +39,10 @@ public class RailSurfaceService
         public double XMin, XMax;
         public bool LeftClosed, RightClosed;
         public double R, C, D; // f(x)=sqrt(R^2-(x-C)^2)+D
+
         public bool Contains(double x)
         {
-            bool leftOk  = LeftClosed  ? x >= XMin : x > XMin;
+            bool leftOk = LeftClosed ? x >= XMin : x > XMin;
             bool rightOk = RightClosed ? x <= XMax : x < XMax;
             return leftOk && rightOk;
         }
@@ -50,23 +53,61 @@ public class RailSurfaceService
      */
     public static double GetB(double k)
     {
-        IPointCloudMedianSectionCaptureService _medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
-        PointCloudExportService _pointCloudExportService = new PointCloudExportService();
-        var pointCloudDeviceInfos = _pointCloudExportService.GetDevices();
+        if (double.IsNaN(k) || double.IsInfinity(k))
+        {
+            throw new ArgumentException("参数 k 必须为有限数值。", nameof(k));
+        }
+
+        IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
+        PointCloudExportService pointCloudExportService = new PointCloudExportService();
+        IReadOnlyList<PointCloudDeviceInfo> pointCloudDeviceInfos = pointCloudExportService.GetDevices();
         if (pointCloudDeviceInfos.Count == 0)
         {
             throw new PointCloudSdkException("未找到任何点云设备。");
         }
-        PointCloudMedianSectionCaptureResult result = _medianSectionCaptureService.CaptureMedianSectionProfile("");
-        var points = result.ExtractionResult.ProfilePoints;
-        double b = -0x3f3f3f;
-        for (var i = 0; i < points.Count; i++)
+
+        var mergedPoints = new List<RailProfilePoint>();
+        foreach (PointCloudDeviceInfo pointCloudDeviceInfo in pointCloudDeviceInfos)
         {
-            b = Math.Max(b, points[i].Y - k * points[i].X);
+            PointCloudMedianSectionCaptureResult result =
+                medianSectionCaptureService.CaptureMedianSectionProfile(pointCloudDeviceInfo.SerialNumber);
+
+            if (result.ExtractionResult.ProfilePoints.Count == 0)
+            {
+                continue;
+            }
+
+            mergedPoints.AddRange(result.ExtractionResult.ProfilePoints);
         }
+
+        if (mergedPoints.Count == 0)
+        {
+            throw new InvalidOperationException("未能从任何点云设备提取到有效的中位截面点。");
+        }
+        mergedPoints.Sort((a, b) => a.X.CompareTo(b.X));
+        
+        double xMid = (mergedPoints[0].X + mergedPoints[mergedPoints.Count - 1].X) / 2.0;
+        double yMid = (mergedPoints[0].Y + mergedPoints[mergedPoints.Count - 1].Y) / 2.0;
+        
+        double b = double.NegativeInfinity;
+        foreach (RailProfilePoint point in mergedPoints)
+        {
+            double candidate = (point.Y-yMid) - k * (point.X - xMid);
+            if (candidate > b)
+            {
+                b = candidate;
+            }
+        }
+
+        if (double.IsNegativeInfinity(b))
+        {
+            throw new InvalidOperationException(
+                $"未能基于 {mergedPoints.Count.ToString(CultureInfo.InvariantCulture)} 个代表点计算有效的 b。");
+        }
+
         return b;
     }
-    
+
     /// <summary>
     /// 给定斜率 k，返回第一次接触时的最小 b，使得 y=kx+b 在轨面上方且刚好相切/接触
     /// </summary>
@@ -95,7 +136,7 @@ public class RailSurfaceService
 
         // 内部切点：x_t = C - (kR)/sqrt(1+k^2)
         double s = Math.Sqrt(1.0 + k * k);
-        foreach (var a in Arcs) 
+        foreach (var a in Arcs)
         {
             double xt = a.C - (k * a.R) / s;
             if (a.Contains(xt))
@@ -103,19 +144,19 @@ public class RailSurfaceService
                 double fx = RailSurfaceFun(xt);
                 if (!double.IsNaN(fx)) candidates.Add(xt);
             }
-
         }
+
         // 在候选点上取最大 b = f(x) - kx
-        double bestB = double.NegativeInfinity;         
+        double bestB = double.NegativeInfinity;
         double bestX = double.NaN;
 
         foreach (double x in candidates)
         {
             double fx = RailSurfaceFun(x);
             if (double.IsNaN(fx)) continue;
-            double b = fx - k * x;  
+            double b = fx - k * x;
             if (b > bestB)
-            { 
+            {
                 bestB = b;
                 bestX = x;
             }
@@ -128,6 +169,4 @@ public class RailSurfaceService
 
         return (bestB, bestX);
     }
-    
-    
 }
