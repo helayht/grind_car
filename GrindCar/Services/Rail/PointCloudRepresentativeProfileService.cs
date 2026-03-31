@@ -16,7 +16,7 @@ namespace GrindCar.Services.Rail;
 public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresentativeProfileService
 {
     private readonly IRailProfileFittingService _railProfileFittingService;
-
+    const double tolerance = 1e-6;
     public PointCloudRepresentativeProfileService()
         : this(new RailProfileFittingService())
     {
@@ -28,6 +28,57 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     public PointCloudRepresentativeProfileService(IRailProfileFittingService railProfileFittingService)
     {
         _railProfileFittingService = railProfileFittingService ?? throw new ArgumentNullException(nameof(railProfileFittingService));
+    }
+
+    /// <summary>
+    /// 从点云 CSV 文件中提取中位 X 截面的二维 Y/Z 点集。
+    /// </summary>
+    public MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath)
+    {
+        try
+        {
+            List<PointCloudPoint3D> points = ReadPointsFromCsv(csvPath);
+            if (points.Count == 0)
+            {
+                throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效坐标点。");
+            }
+
+            var uniqueXSet = new HashSet<double>();
+            foreach (PointCloudPoint3D point in points)
+            {
+                uniqueXSet.Add(point.X);
+            }
+
+            double[] uniqueXValues = uniqueXSet.ToArray();
+
+            if (uniqueXValues.Length == 0)
+            {
+                throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效的 X 坐标。");
+            }
+
+            int medianIndex = (uniqueXValues.Length - 1) / 2;
+            double medianX = SelectKthSmallest(uniqueXValues, medianIndex);
+
+            List<RailProfilePoint> sectionPoints = points
+                .Where(point => Math.Abs(point.X - medianX) < 1e-6)
+                .Select(point => new RailProfilePoint(point.Y, point.Z))
+                .ToList();
+
+            if (sectionPoints.Count == 0)
+            {
+                throw new RepresentativeProfileExtractionException("未找到中位 X 截面的有效 Y/Z 点。");
+            }
+
+            return new MedianSectionExtractionResult(medianX, sectionPoints);
+        }
+        catch (RepresentativeProfileExtractionException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new RepresentativeProfileExtractionException("从 CSV 提取中位 X 截面时发生未处理异常。", ex);
+        }
     }
 
     /// <summary>
@@ -337,4 +388,174 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
 
         return double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out result);
     }
+
+    private static List<PointCloudPoint3D> ReadPointsFromCsv(string csvPath)
+    {
+        if (string.IsNullOrWhiteSpace(csvPath))
+        {
+            throw new RepresentativeProfileExtractionException("点云 CSV 路径不能为空。");
+        }
+
+        if (!File.Exists(csvPath))
+        {
+            throw new RepresentativeProfileExtractionException($"点云 CSV 文件不存在: {csvPath}");
+        }
+
+        if (!string.Equals(Path.GetExtension(csvPath), ".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new RepresentativeProfileExtractionException("当前仅支持 .csv 点云文件。");
+        }
+
+        using var reader = new StreamReader(csvPath);
+        string? firstNonEmptyLine = ReadFirstNonEmptyLine(reader);
+        if (firstNonEmptyLine == null)
+        {
+            throw new RepresentativeProfileExtractionException("点云 CSV 文件为空。");
+        }
+
+        char delimiter = DetectDelimiter(firstNonEmptyLine);
+        string[] firstParts = SplitLine(firstNonEmptyLine, delimiter);
+        bool hasHeader = LooksLikeHeader(firstParts);
+        (int xIndex, int yIndex, int zIndex) = hasHeader
+            ? ResolveColumnIndexes(firstParts)
+            : (0, 1, 2);
+
+        var points = new List<PointCloudPoint3D>();
+        if (!hasHeader && TryReadPoint(firstParts, xIndex, yIndex, zIndex, out PointCloudPoint3D firstPoint))
+        {
+            points.Add(firstPoint);
+        }
+
+        while (!reader.EndOfStream)
+        {
+            string? line = reader.ReadLine();
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            string[] parts = SplitLine(line, delimiter);
+            if (TryReadPoint(parts, xIndex, yIndex, zIndex, out PointCloudPoint3D point))
+            {
+                points.Add(point);
+            }
+        }
+
+        return points;
+    }
+
+    private static bool TryReadPoint(string[] parts, int xIndex, int yIndex, int zIndex, out PointCloudPoint3D point)
+    {
+        point = default;
+
+        if (parts.Length <= Math.Max(xIndex, Math.Max(yIndex, zIndex)))
+        {
+            return false;
+        }
+
+        if (!TryParseDouble(parts[xIndex], out double x) ||
+            !TryParseDouble(parts[yIndex], out double y) ||
+            !TryParseDouble(parts[zIndex], out double z))
+        {
+            return false;
+        }
+
+        if (double.IsNaN(x) || double.IsInfinity(x) ||
+            double.IsNaN(y) || double.IsInfinity(y) ||
+            double.IsNaN(z) || double.IsInfinity(z))
+        {
+            return false;
+        }
+
+        point = new PointCloudPoint3D(x, y, z);
+        return true;
+    }
+
+    private static double SelectKthSmallest(double[] values, int k)
+    {
+        if (values == null)
+        {
+            throw new ArgumentNullException(nameof(values));
+        }
+
+        if (values.Length == 0)
+        {
+            throw new ArgumentException("待选择数组不能为空。", nameof(values));
+        }
+
+        if (k < 0 || k >= values.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(k));
+        }
+
+        int left = 0;
+        int right = values.Length - 1;
+
+        while (true)
+        {
+            if (left == right)
+            {
+                return values[left];
+            }
+
+            int pivotIndex = left + (right - left) / 2;
+            (int equalStart, int equalEnd) = Partition(values, left, right, pivotIndex);
+            if (k < equalStart)
+            {
+                right = equalStart - 1;
+                continue;
+            }
+
+            if (k > equalEnd)
+            {
+                left = equalEnd + 1;
+                continue;
+            }
+
+            return values[k];
+        }
+    }
+
+    private static (int equalStart, int equalEnd) Partition(double[] values, int left, int right, int pivotIndex)
+    {
+        double pivotValue = values[pivotIndex];
+        Swap(values, pivotIndex, right);
+
+        int less = left;
+        int current = left;
+        int greater = right;
+
+        while (current <= greater)
+        {
+            if (values[current] < pivotValue)
+            {
+                Swap(values, less, current);
+                less++;
+                current++;
+            }
+            else if (values[current] > pivotValue)
+            {
+                Swap(values, current, greater);
+                greater--;
+            }
+            else
+            {
+                current++;
+            }
+        }
+
+        return (less, greater);
+    }
+
+    private static void Swap(double[] values, int left, int right)
+    {
+        if (left == right)
+        {
+            return;
+        }
+
+        (values[left], values[right]) = (values[right], values[left]);
+    }
+
+    private readonly record struct PointCloudPoint3D(double X, double Y, double Z);
 }

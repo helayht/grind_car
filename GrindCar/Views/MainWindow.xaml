@@ -79,6 +79,14 @@
                             Foreground="{StaticResource PrimaryText}"
                             Click="OpenPointCloudExportWindow_Click" />
 
+                    <Button Content="中位截面调试"
+                            Margin="0,0,12,0"
+                            Padding="18,10"
+                            Background="#17304A"
+                            BorderBrush="#285377"
+                            Foreground="{StaticResource PrimaryText}"
+                            Click="OpenMedianSectionDebugWindow_Click" />
+
                     <Button Content="电机调试"
                             Margin="0,0,12,0"
                             Padding="18,10"

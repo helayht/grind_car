@@ -43,5 +43,14 @@ namespace GrindCar.Views
             };
             window.ShowDialog();
         }
+
+        private void OpenMedianSectionDebugWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new MedianSectionDebugWindow
+            {
+                Owner = this
+            };
+            window.Show();
+        }
     }
 }
