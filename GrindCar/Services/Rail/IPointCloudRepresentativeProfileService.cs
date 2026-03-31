@@ -20,11 +20,4 @@ public interface IPointCloudRepresentativeProfileService
     IReadOnlyList<RailProfilePoint> ExtractRepresentativeProfile(
         string csvPath,
         RepresentativeProfileExtractionOptions? options = null);
-
-    /// <summary>
-    /// 从点云 CSV 中提取代表廓形，并直接执行二维拟合。
-    /// </summary>
-    RailProfileFitResult FitRepresentativeProfile(
-        string csvPath,
-        RepresentativeProfileExtractionOptions? options = null);
 }

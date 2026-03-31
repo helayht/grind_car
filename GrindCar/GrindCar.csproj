@@ -37,4 +37,8 @@
       <None Remove="tmp_bin\**\*" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Log\" />
+    </ItemGroup>
+
 </Project>

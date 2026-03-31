@@ -8,26 +8,17 @@ using GrindCar.Models.Rail;
 namespace GrindCar.Services.Rail;
 
 /// <summary>
-/// 从点云 CSV 中提取代表廓形二维点集，并与二维拟合服务衔接。
+/// 从点云 CSV 中提取代表廓形二维点集。
 /// 输出的 RailProfilePoint 语义为：
 /// X -> 轨面横向 Y
 /// Y -> 高度 Z
 /// </summary>
 public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresentativeProfileService
 {
-    private readonly IRailProfileFittingService _railProfileFittingService;
-    const double tolerance = 1e-6;
-    public PointCloudRepresentativeProfileService()
-        : this(new RailProfileFittingService())
-    {
-    }
+    private const double Tolerance = 1e-6;
 
-    /// <summary>
-    /// 使用外部传入的二维拟合服务构造代表廓形提取服务。
-    /// </summary>
-    public PointCloudRepresentativeProfileService(IRailProfileFittingService railProfileFittingService)
+    public PointCloudRepresentativeProfileService()
     {
-        _railProfileFittingService = railProfileFittingService ?? throw new ArgumentNullException(nameof(railProfileFittingService));
     }
 
     /// <summary>
@@ -60,7 +51,7 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
             double medianX = SelectKthSmallest(uniqueXValues, medianIndex);
 
             List<RailProfilePoint> sectionPoints = points
-                .Where(point => Math.Abs(point.X - medianX) < 1e-6)
+                .Where(point => Math.Abs(point.X - medianX) < Tolerance)
                 .Select(point => new RailProfilePoint(point.Y, point.Z))
                 .ToList();
 
@@ -95,7 +86,7 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
             IReadOnlyList<RailProfilePoint> profile = BuildRepresentativeProfileFromCsv(csvPath, effectiveOptions);
             if (profile.Count < 4)
             {
-                throw new RepresentativeProfileExtractionException("代表廓形有效点不足 4 个，无法用于后续拟合。");
+                throw new RepresentativeProfileExtractionException("代表廓形有效点不足 4 个。");
             }
 
             return profile;
@@ -108,17 +99,6 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         {
             throw new RepresentativeProfileExtractionException("提取代表廓形时发生未处理异常。", ex);
         }
-    }
-
-    /// <summary>
-    /// 基于提取出的代表廓形二维点集执行拟合，返回拟合结果。
-    /// </summary>
-    public RailProfileFitResult FitRepresentativeProfile(
-        string csvPath,
-        RepresentativeProfileExtractionOptions? options = null)
-    {
-        IReadOnlyList<RailProfilePoint> profile = ExtractRepresentativeProfile(csvPath, options);
-        return _railProfileFittingService.Fit(profile);
     }
 
     /// <summary>

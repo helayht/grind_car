@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using GrindCar.Models.Rail;
+using GrindCar.Services.PointCloud;
+using GrindCar.Services.Rail;
 
 namespace GrindCar.Services;
 
@@ -42,6 +45,28 @@ public class RailSurfaceService
         }
     }
 
+    /**
+     * 获取代表截面的切点
+     */
+    public static double GetB(double k)
+    {
+        IPointCloudMedianSectionCaptureService _medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
+        PointCloudExportService _pointCloudExportService = new PointCloudExportService();
+        var pointCloudDeviceInfos = _pointCloudExportService.GetDevices();
+        if (pointCloudDeviceInfos.Count == 0)
+        {
+            throw new PointCloudSdkException("未找到任何点云设备。");
+        }
+        PointCloudMedianSectionCaptureResult result = _medianSectionCaptureService.CaptureMedianSectionProfile("");
+        var points = result.ExtractionResult.ProfilePoints;
+        double b = -0x3f3f3f;
+        for (var i = 0; i < points.Count; i++)
+        {
+            b = Math.Max(b, points[i].Y - k * points[i].X);
+        }
+        return b;
+    }
+    
     /// <summary>
     /// 给定斜率 k，返回第一次接触时的最小 b，使得 y=kx+b 在轨面上方且刚好相切/接触
     /// </summary>
