@@ -5,6 +5,7 @@ using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
 using GrindCar.Services.Rail;
+using Modbus.Message;
 
 namespace GrindCar.Services;
 
@@ -48,6 +49,11 @@ public class RailSurfaceService
         }
     }
 
+    public static double GetGrindDepth(int x)
+    {
+        double k = Math.Tan(180 + x);
+        return Math.Abs(RailSurfaceService.GetB(k) - RailSurfaceService.SolveB(k));
+    }
     /**
      * 获取代表截面的切点
      */

@@ -14,10 +14,4 @@ public interface IPointCloudRepresentativeProfileService
     /// </summary>
     MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath);
 
-    /// <summary>
-    /// 从点云 CSV 中提取能够代表该区段轨面廓形的二维点集。
-    /// </summary>
-    IReadOnlyList<RailProfilePoint> ExtractRepresentativeProfile(
-        string csvPath,
-        RepresentativeProfileExtractionOptions? options = null);
 }
