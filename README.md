@@ -75,15 +75,14 @@ dotnet clean GrindCar.sln
 - `Services/RailSurfaceService.cs`：轨面廓形相关计算逻辑
 - `Models/Rail/RailProfilePoint.cs`：轨面截面二维点模型
 - `Services/Rail/PointCloudRepresentativeProfileService.cs`：从点云 CSV 提取中位截面与代表廓形二维点集
-- `Services/Rail/PointCloudMedianSectionCaptureService.cs`：从 SDK 采集单帧点云、落盘 `Log/CSV`、并提取中位 X 截面二维点集
+- `Services/Rail/PointCloudMedianSectionCaptureService.cs`：从 SDK 采集单帧点云、落盘 `Log/CSV`、并提取中位 Y 截面二维点集
 
 ## 点云代表廓形
 - 当前点云处理链路采用离线验证方式：先由 `PointCloudExportService` 导出 `CSV`，再由 `PointCloudRepresentativeProfileService` 读取并提取代表廓形。
-- 当前新增一条单帧直连链路：`SDK 单帧点云 -> Log 目录 CSV -> 中位 X 截面二维点集 (Y, Z)`。
-- 当前坐标约定为：`X` 表示前进方向，`Y` 表示轨面横向，`Z` 表示高度。
-- 当前“代表截面”定义为：对单帧点云全部 `X` 去重后，按偏左中位规则选出中位 `X`，再从原始点集中筛出该 `X` 上的全部点，输出 `(Y, Z)`。
-- 当前简化版代表廓形提取流程为：直接忽略前进方向 `X`，将整段点云按 `Y` 固定步长分箱，并对每个分箱内的 `Z` 取中位数，生成一组代表性 `(Y, Z)` 点。
-- `RailProfilePoint` 在该流程中承载的是 `(横向 Y, 高度 Z)` 二维坐标。
+- 当前新增一条单帧直连链路：`SDK 单帧点云 -> Log 目录 CSV -> 中位 Y 截面二维点集 (X, Z)`。
+- 当前坐标约定为：`Y` 表示前进方向，`X` 表示轨面横向，`Z` 表示高度。
+- 当前“代表截面”定义为：对单帧点云全部 `Y` 去重后，按偏左中位规则选出中位 `Y`，再从原始点集中筛出该 `Y` 上的全部点，输出 `(X, Z)`。
+- `RailProfilePoint` 在该流程中承载的是 `(横向 X, 高度 Z)` 二维坐标。
 - 第一版默认参数：
   - `GridStepY = 0.2 mm`
 - 当前实现会在读取 `CSV` 时直接完成分箱聚合，不再把整份点云加载为中间三维点列表。
@@ -114,7 +113,7 @@ IReadOnlyList<RailProfilePoint> profilePoints =
     profileService.ExtractRepresentativeProfile(@"D:\data\point-cloud.csv");
 ```
 
-以下示例演示如何从设备采集单帧点云，自动写入 `Log/CSV`，并提取中位 `X` 截面的二维点集：
+以下示例演示如何从设备采集单帧点云，自动写入 `Log/CSV`，并提取中位 `Y` 截面的二维点集：
 
 ```csharp
 using GrindCar.Models.Rail;
@@ -126,15 +125,14 @@ PointCloudMedianSectionCaptureResult captureResult =
     captureService.CaptureMedianSectionProfile("DEVICE_SERIAL_NUMBER");
 
 string csvPath = captureResult.CsvPath;
-double medianX = captureResult.ExtractionResult.MedianX;
+double medianY = captureResult.ExtractionResult.MedianY;
 IReadOnlyList<RailProfilePoint> sectionPoints = captureResult.ExtractionResult.ProfilePoints;
 ```
 
 ## 当前实现说明
 - 代表廓形提取当前聚焦于算法验证阶段，先支持点云 `CSV` 输入，不直接解析 SDK 点云内存。
 - 当前已提供一个工程化折中方案：从 SDK 获取单帧点云后先导出为 `Log/CSV`，再复用现有 `CSV` 提取逻辑获取中位截面点集。
-- 当前单帧直连链路只负责“拿到点云数据并选出中位 X 截面代表点”，尚未接入 UI 自动触发。
-- 当前简化版代表廓形提取逻辑会忽略前进方向 `X`，仅按横向 `Y` 聚合统计 `Z` 中位数。
+- 当前单帧直连链路只负责“拿到点云数据并选出中位 Y 截面代表点”，尚未接入 UI 自动触发。
 - 当前未将标准轨面对齐、残差分析、稳定性指标纳入代表廓形提取服务。
 
 ## 构建说明

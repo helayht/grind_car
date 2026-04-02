@@ -51,15 +51,22 @@
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource Ink}"
-                               Text="中位 X 截面调试" />
+                               Text="中位 Y 截面调试" />
                     <TextBlock Margin="0,6,0,0"
                                Foreground="{StaticResource Muted}"
-                               Text="导入 .csv 点云文件，提取去重后中位 X 截面的代表点集 (Y, Z)。" />
+                               Text="导入 .csv 点云文件，提取去重后中位 Y 截面的代表点集 (X, Z)。" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
+                    <Button x:Name="ExportButton"
+                            Width="136"
+                            Height="34"
+                            Margin="0,0,10,0"
+                            Content="导出代表截面"
+                            Click="ExportProfile_Click"
+                            IsEnabled="False" />
                     <Button Width="120"
                             Height="34"
                             Margin="0,0,10,0"
@@ -102,12 +109,12 @@
                     Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Foreground="{StaticResource Muted}"
-                               Text="中位 X" />
+                               Text="中位 Y" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="18"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource Ink}"
-                               Text="{Binding MedianXText}" />
+                               Text="{Binding MedianYText}" />
                 </StackPanel>
             </Border>
 
@@ -131,12 +138,12 @@
                     Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Foreground="{StaticResource Muted}"
-                               Text="Y 范围" />
+                               Text="X 范围" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="18"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource Ink}"
-                               Text="{Binding YRangeText}" />
+                               Text="{Binding XRangeText}" />
                 </StackPanel>
             </Border>
 
@@ -155,14 +162,7 @@
         </Grid>
 
         <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="420" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0"
-                    Style="{StaticResource CardBorderStyle}">
+            <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -176,7 +176,7 @@
                                    Text="代表点表" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{StaticResource Muted}"
-                                   Text="这里显示中位 X 截面上全部 (Y, Z) 点。" />
+                                   Text="这里显示中位 Y 截面上全部 (X, Z) 点。" />
                     </StackPanel>
 
                     <DataGrid Grid.Row="1"
@@ -191,58 +191,13 @@
                                                 Header="#"
                                                 Binding="{Binding Index}" />
                             <DataGridTextColumn Width="*"
-                                                Header="Y"
-                                                Binding="{Binding Y, StringFormat=F6}" />
+                                                Header="X"
+                                                Binding="{Binding X, StringFormat=F6}" />
                             <DataGridTextColumn Width="*"
                                                 Header="Z"
                                                 Binding="{Binding Z, StringFormat=F6}" />
                         </DataGrid.Columns>
                     </DataGrid>
-                </Grid>
-            </Border>
-
-            <Border Grid.Column="2"
-                    Style="{StaticResource CardBorderStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <StackPanel>
-                        <TextBlock FontSize="20"
-                                   FontWeight="SemiBold"
-                                   Foreground="{StaticResource Ink}"
-                                   Text="Y-Z 视图" />
-                        <TextBlock Margin="0,6,0,0"
-                                   Foreground="{StaticResource Muted}"
-                                   Text="按 Y 递增绘制中位 X 截面的代表点，便于快速核对截面形态。" />
-                    </StackPanel>
-
-                    <Border Grid.Row="1"
-                            x:Name="PlotHost"
-                            Margin="0,14,0,0"
-                            Background="{StaticResource PlotBackground}"
-                            BorderBrush="{StaticResource CardBorder}"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            SizeChanged="PlotHost_SizeChanged">
-                        <Grid>
-                            <Canvas x:Name="PlotCanvas"
-                                    Margin="14"
-                                    ClipToBounds="True">
-                                <Line x:Name="XAxis"
-                                      Stroke="{StaticResource PlotAxis}"
-                                      StrokeThickness="1" />
-                                <Line x:Name="YAxis"
-                                      Stroke="{StaticResource PlotAxis}"
-                                      StrokeThickness="1" />
-                                <Polyline Stroke="{StaticResource PlotStroke}"
-                                          StrokeThickness="2"
-                                          Points="{Binding PlotPoints}" />
-                            </Canvas>
-                        </Grid>
-                    </Border>
                 </Grid>
             </Border>
         </Grid>

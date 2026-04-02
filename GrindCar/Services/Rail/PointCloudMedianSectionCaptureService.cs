@@ -8,7 +8,7 @@ using GrindCar.Services.PointCloud;
 namespace GrindCar.Services.Rail;
 
 /// <summary>
-/// 将 SDK 点云采集与中位 X 截面提取串联起来。
+/// 将 SDK 点云采集与中位 Y 截面提取串联起来。
 /// 当前采用“先导出 CSV 到 Log 目录，再读取 CSV 提取截面”的方式。
 /// </summary>
 public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSectionCaptureService

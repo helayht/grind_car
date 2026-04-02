@@ -1,7 +1,7 @@
 namespace GrindCar.Models.Rail;
 
 /// <summary>
-/// 单帧点云采集并提取中位 X 截面的结果。
+/// 单帧点云采集并提取中位 Y 截面的结果。
 /// </summary>
 public sealed class PointCloudMedianSectionCaptureResult
 {

@@ -3,17 +3,17 @@ using System.Collections.Generic;
 namespace GrindCar.Models.Rail;
 
 /// <summary>
-/// 中位 X 截面提取结果。
+/// 中位 Y 截面提取结果。
 /// </summary>
 public sealed class MedianSectionExtractionResult
 {
-    public MedianSectionExtractionResult(double medianX, IReadOnlyList<RailProfilePoint> profilePoints)
+    public MedianSectionExtractionResult(double medianY, IReadOnlyList<RailProfilePoint> profilePoints)
     {
-        MedianX = medianX;
+        MedianY = medianY;
         ProfilePoints = profilePoints;
     }
 
-    public double MedianX { get; }
+    public double MedianY { get; }
 
     public IReadOnlyList<RailProfilePoint> ProfilePoints { get; }
 }

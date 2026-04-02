@@ -10,7 +10,7 @@ namespace GrindCar.Services.Rail;
 /// <summary>
 /// 从点云 CSV 中提取代表廓形二维点集。
 /// 输出的 RailProfilePoint 语义为：
-/// X -> 轨面横向 Y
+/// X -> 轨面横向 X
 /// Y -> 高度 Z
 /// </summary>
 public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresentativeProfileService
@@ -18,7 +18,7 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     private const double Tolerance = 1e-7;
 
     /// <summary>
-    /// 从点云 CSV 文件中提取中位 X 截面的二维 Y/Z 点集。
+    /// 从点云 CSV 文件中提取中位 Y 截面的二维 X/Z 点集。
     /// </summary>
     public MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath)
     {
@@ -30,33 +30,33 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
                 throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效坐标点。");
             }
 
-            var uniqueXSet = new HashSet<double>();
+            var uniqueYSet = new HashSet<double>();
             foreach (PointCloudPoint3D point in points)
             {
-                uniqueXSet.Add(point.X);
+                uniqueYSet.Add(point.Y);
             }
 
-            double[] uniqueXValues = uniqueXSet.ToArray();
+            double[] uniqueYValues = uniqueYSet.ToArray();
 
-            if (uniqueXValues.Length == 0)
+            if (uniqueYValues.Length == 0)
             {
-                throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效的 X 坐标。");
+                throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效的 Y 坐标。");
             }
 
-            int medianIndex = (uniqueXValues.Length - 1) / 2;
-            double medianX = SelectKthSmallest(uniqueXValues, medianIndex);
+            int medianIndex = (uniqueYValues.Length - 1) / 2;
+            double medianY = SelectKthSmallest(uniqueYValues, medianIndex);
 
             List<RailProfilePoint> sectionPoints = points
-                .Where(point => Math.Abs(point.X - medianX) < Tolerance)
-                .Select(point => new RailProfilePoint(point.Y, point.Z))
+                .Where(point => Math.Abs(point.Y - medianY) < Tolerance)
+                .Select(point => new RailProfilePoint(point.X, point.Z))
                 .ToList();
 
             if (sectionPoints.Count == 0)
             {
-                throw new RepresentativeProfileExtractionException("未找到中位 X 截面的有效 Y/Z 点。");
+                throw new RepresentativeProfileExtractionException("未找到中位 Y 截面的有效 X/Z 点。");
             }
 
-            return new MedianSectionExtractionResult(medianX, sectionPoints);
+            return new MedianSectionExtractionResult(medianY, sectionPoints);
         }
         catch (RepresentativeProfileExtractionException)
         {
@@ -64,7 +64,7 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         }
         catch (Exception ex)
         {
-            throw new RepresentativeProfileExtractionException("从 CSV 提取中位 X 截面时发生未处理异常。", ex);
+            throw new RepresentativeProfileExtractionException("从 CSV 提取中位 Y 截面时发生未处理异常。", ex);
         }
     }
 
