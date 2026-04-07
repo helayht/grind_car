@@ -52,5 +52,14 @@ namespace GrindCar.Views
             };
             window.Show();
         }
+
+        private void OpenGrindDepthDebugWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new GrindDepthDebugWindow
+            {
+                Owner = this
+            };
+            window.Show();
+        }
     }
 }

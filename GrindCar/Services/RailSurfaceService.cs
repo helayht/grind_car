@@ -5,12 +5,14 @@ using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
 using GrindCar.Services.Rail;
-using Modbus.Message;
 
 namespace GrindCar.Services;
 
 public class RailSurfaceService
 {
+    private const double StraightAngleDegrees = 180.0;
+    private const double DegreesToRadiansFactor = Math.PI / 180.0;
+
     private static readonly Arc[] Arcs =
     {
         new Arc{ XMin=-35.4, XMax=-25.3, LeftClosed=true,  RightClosed=false, R=13,  C=-22.42, D=161.15 },
@@ -51,19 +53,60 @@ public class RailSurfaceService
 
     public static double GetGrindDepth(int x)
     {
-        double k = Math.Tan(180 + x);
-        return Math.Abs(RailSurfaceService.GetB(k) - RailSurfaceService.SolveB(k));
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
+        return GetGrindDepth(x, representativeSectionPoints);
     }
+
+    public static IReadOnlyList<GrindDepthResult> GetGrindDepths(IReadOnlyList<int> angles)
+    {
+        if (angles == null)
+        {
+            throw new ArgumentNullException(nameof(angles));
+        }
+
+        if (angles.Count == 0)
+        {
+            return Array.Empty<GrindDepthResult>();
+        }
+
+        // 批量计算时只采集一次代表截面点集，避免每个角度都重复触发点云采集。
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
+        var results = new List<GrindDepthResult>(angles.Count);
+
+        for (int index = 0; index < angles.Count; index++)
+        {
+            int angle = angles[index];
+            double grindDepth = GetGrindDepth(angle, representativeSectionPoints);
+            results.Add(new GrindDepthResult(angle, grindDepth));
+        }
+
+        return results;
+    }
+
+    private static double GetGrindDepth(int angle, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
+    {
+        double k = CalculateSlopeFromAngle(angle);
+        return Math.Abs(GetB(k, representativeSectionPoints) - SolveB(k));
+    }
+
+    private static double CalculateSlopeFromAngle(int angle)
+    {
+        // Math.Tan 接收弧度，因此需要先将角度转换为弧度。
+        double radians = (StraightAngleDegrees + angle) * DegreesToRadiansFactor;
+        return Math.Tan(radians);
+    }
+
     /**
      * 获取代表截面的切点
      */
     public static double GetB(double k)
     {
-        if (double.IsNaN(k) || double.IsInfinity(k))
-        {
-            throw new ArgumentException("参数 k 必须为有限数值。", nameof(k));
-        }
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
+        return GetB(k, representativeSectionPoints);
+    }
 
+    private static IReadOnlyList<RailProfilePoint> GetRepresentativeSectionPoints()
+    {
         IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
         PointCloudExportService pointCloudExportService = new PointCloudExportService();
         IReadOnlyList<PointCloudDeviceInfo> pointCloudDeviceInfos = pointCloudExportService.GetDevices();
@@ -90,15 +133,38 @@ public class RailSurfaceService
         {
             throw new InvalidOperationException("未能从任何点云设备提取到有效的中位截面点。");
         }
+
+        return mergedPoints;
+    }
+
+    private static double GetB(double k, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
+    {
+        if (double.IsNaN(k) || double.IsInfinity(k))
+        {
+            throw new ArgumentException("参数 k 必须为有限数值。", nameof(k));
+        }
+
+        if (representativeSectionPoints == null)
+        {
+            throw new ArgumentNullException(nameof(representativeSectionPoints));
+        }
+
+        if (representativeSectionPoints.Count == 0)
+        {
+            throw new InvalidOperationException("代表截面点集不能为空。");
+        }
+
+        // 复制后再排序，避免修改调用方传入的点集顺序。
+        var mergedPoints = new List<RailProfilePoint>(representativeSectionPoints);
         mergedPoints.Sort((a, b) => a.X.CompareTo(b.X));
-        
+
         double xMid = (mergedPoints[0].X + mergedPoints[mergedPoints.Count - 1].X) / 2.0;
         double yMid = (mergedPoints[0].Y + mergedPoints[mergedPoints.Count - 1].Y) / 2.0;
-        
+
         double b = double.NegativeInfinity;
         foreach (RailProfilePoint point in mergedPoints)
         {
-            double candidate = (point.Y-yMid) - k * (point.X - xMid);
+            double candidate = (point.Y - yMid) - k * (point.X - xMid);
             if (candidate > b)
             {
                 b = candidate;

@@ -30,3 +30,5 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MedianSe
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MedianSectionDebugWindow.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_MarkupCompile.cache
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_MarkupCompile.lref
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDepthDebugWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDepthDebugWindow.g.cs
