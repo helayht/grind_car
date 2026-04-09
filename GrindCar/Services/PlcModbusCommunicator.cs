@@ -99,6 +99,9 @@ public class PlcModbusCommunicator : IPlcClient
     /// <summary>
     /// 构造函数
     /// </summary>
+    /// <param name="ipAddress">PLC 的 IP 地址。</param>
+    /// <param name="port">PLC 的通信端口。</param>
+    /// <param name="unitId">Modbus 单元标识。</param>
     public PlcModbusCommunicator(string ipAddress, int port, byte unitId)
     {
         _plcIpAddress = ipAddress;
@@ -109,6 +112,7 @@ public class PlcModbusCommunicator : IPlcClient
     /// <summary>
     /// 建立与 PLC 的 Modbus TCP 连接 (异步)
     /// </summary>
+    /// <returns>表示异步连接过程的任务。</returns>
     public async Task ConnectAsync()
     {
         if (_isConnected)
@@ -165,6 +169,9 @@ public class PlcModbusCommunicator : IPlcClient
         }
     }
 
+    /// <summary>
+    /// 以同步方式建立与 PLC 的 Modbus TCP 连接。
+    /// </summary>
     public void Connect() 
     {
         if (_isConnected)
@@ -227,9 +234,9 @@ public class PlcModbusCommunicator : IPlcClient
         }
     }
 
-  
-
-
+    /// <summary>
+    /// 安全释放 TcpClient 和 Modbus 主站对象。
+    /// </summary>
     private void SafeDisposeTcpClientAndMaster()
     {
         _modbusMaster?.Dispose();
@@ -265,6 +272,11 @@ public class PlcModbusCommunicator : IPlcClient
     // WriteSingleCoilAsync, ReadCoilAsync, WriteSingleRegisterAsync, ReadHoldingRegisterAsync
     // WriteFloatAsync, ReadFloat, WriteFloat (sync), ReadInt32Async
     // ... (这里假设这些方法已存在且 WriteSingleCoilAsync 返回 Task)
+    /// <summary>
+    /// 向指定 Coil 地址写入一个布尔值。
+    /// </summary>
+    /// <param name="coilAddress">目标 Coil 地址。</param>
+    /// <param name="value">要写入的布尔值。</param>
     public void WriteSingleCoil(ushort coilAddress, bool value) 
     { 
         EnsureConnected(); 
@@ -279,6 +291,11 @@ public class PlcModbusCommunicator : IPlcClient
             HandleModbusError(ex); throw; 
         }
     }
+    /// <summary>
+    /// 读取指定 Coil 地址的布尔值。
+    /// </summary>
+    /// <param name="coilAddress">目标 Coil 地址。</param>
+    /// <returns>读取到的布尔值。</returns>
     public bool ReadSingleCoil(ushort coilAddress) 
     { 
         EnsureConnected(); 
@@ -301,6 +318,9 @@ public class PlcModbusCommunicator : IPlcClient
     /// <summary>
     /// 写入单个 Modbus Coil (异步, 返回 Task)
     /// </summary>
+    /// <param name="coilAddress">目标 Coil 地址。</param>
+    /// <param name="value">要写入的布尔值。</param>
+    /// <returns>表示异步写入操作的任务。</returns>
     public async Task WriteSingleCoilAsync(ushort coilAddress, bool value)
     {
         EnsureConnected();
@@ -318,6 +338,11 @@ public class PlcModbusCommunicator : IPlcClient
         }
     }
     
+    /// <summary>
+    /// 将浮点值写入两个连续 Holding Register。
+    /// </summary>
+    /// <param name="startAddress">起始寄存器地址。</param>
+    /// <param name="value">要写入的浮点值。</param>
     public void WriteFloat(ushort startAddress, float value)
     {
         EnsureConnected();
@@ -335,6 +360,11 @@ public class PlcModbusCommunicator : IPlcClient
             throw;
         }
     }
+    /// <summary>
+    /// 从两个连续 Holding Register 读取一个浮点值。
+    /// </summary>
+    /// <param name="startAddress">起始寄存器地址。</param>
+    /// <returns>读取到的浮点值。</returns>
     public float ReadFloat(ushort startAddress)
     {
         EnsureConnected();
@@ -362,6 +392,11 @@ public class PlcModbusCommunicator : IPlcClient
         }
     }
 
+    /// <summary>
+    /// 从两个连续 Holding Register 读取一个 32 位整型值。
+    /// </summary>
+    /// <param name="startAddress">起始寄存器地址。</param>
+    /// <returns>读取到的整型值。</returns>
     public int ReadInt32(ushort startAddress)
     {
         EnsureConnected();
@@ -389,6 +424,11 @@ public class PlcModbusCommunicator : IPlcClient
         }
     }
 
+    /// <summary>
+    /// 将一个 32 位整型值写入两个连续 Holding Register。
+    /// </summary>
+    /// <param name="startAddress">起始寄存器地址。</param>
+    /// <param name="value">要写入的整型值。</param>
     public void WriteInt32(ushort startAddress, int value)
     {
         EnsureConnected();
@@ -410,6 +450,8 @@ public class PlcModbusCommunicator : IPlcClient
     /// <summary>
     /// 写入 16 位整型（单寄存器）
     /// </summary>
+    /// <param name="address">目标寄存器地址。</param>
+    /// <param name="value">要写入的 16 位整型值。</param>
     public void WriteInt16(ushort address, short value)
     {
         EnsureConnected();
@@ -430,6 +472,12 @@ public class PlcModbusCommunicator : IPlcClient
 
 
     // --- 持续读取 D 寄存器 (Float) 的功能  ---
+    /// <summary>
+    /// 启动持续读取两个 D 寄存器浮点值的后台任务。
+    /// </summary>
+    /// <param name="d1054ModbusAddress">第一个寄存器起始地址。</param>
+    /// <param name="d1154ModbusAddress">第二个寄存器起始地址。</param>
+    /// <param name="pollIntervalMs">轮询间隔，单位毫秒。</param>
     public void StartContinuousDRegisterReading(ushort d1054ModbusAddress, ushort d1154ModbusAddress, int pollIntervalMs)
     {
         if (_continuousReadDRegistersTask != null && !_continuousReadDRegistersTask.IsCompleted) { Debug.WriteLine("Modbus: 持续读取 D 寄存器任务已经在运行。"); return; }
@@ -442,6 +490,11 @@ public class PlcModbusCommunicator : IPlcClient
         Debug.WriteLine($"Modbus: 开始持续读取 D 寄存器 (Modbus 地址 {_d1054ModbusAddress} 和 {_d1154ModbusAddress})...");
     }
 
+    /// <summary>
+    /// 后台循环读取两个 D 寄存器并通过事件发布结果。
+    /// </summary>
+    /// <param name="cancellationToken">用于取消轮询任务的令牌。</param>
+    /// <returns>表示监控循环生命周期的任务。</returns>
     private async Task MonitorDRegistersLoopAsync(CancellationToken cancellationToken)
     {
         IModbusMaster modbusMaster = GetModbusMaster();
@@ -466,6 +519,9 @@ public class PlcModbusCommunicator : IPlcClient
         Debug.WriteLine("Modbus: 持续读取 D 寄存器任务结束。");
     }
 
+    /// <summary>
+    /// 停止持续读取 D 寄存器的后台任务。
+    /// </summary>
     public void StopContinuousDRegisterReading()
     {
         _continuousReadDRegistersCts?.Cancel();
@@ -476,6 +532,12 @@ public class PlcModbusCommunicator : IPlcClient
 
 
     // --- 持续读取 Coil (Bool) 的功能 - 任务 1 ---
+    /// <summary>
+    /// 启动第一组 Coil 的持续读取任务。
+    /// </summary>
+    /// <param name="startAddress">起始 Coil 地址。</param>
+    /// <param name="numberOfCoils">读取的 Coil 数量。</param>
+    /// <param name="pollIntervalMs">轮询间隔，单位毫秒。</param>
     public void StartContinuousCoilReading(ushort startAddress, ushort numberOfCoils, int pollIntervalMs)
     {
         if (_continuousReadCoilsTask != null && !_continuousReadCoilsTask.IsCompleted) { Debug.WriteLine("Modbus: 持续读取 Coil 任务 1 已经在运行。"); return; }
@@ -489,6 +551,12 @@ public class PlcModbusCommunicator : IPlcClient
         Debug.WriteLine($"Modbus: 开始持续读取 Coil 任务 1 (Modbus 地址 {_coilStartAddress}, 数量 {_numberOfCoilsToRead}) ...");
     }
 
+    /// <summary>
+    /// 后台轮询第一组 Coil，并在满足条件时执行联动写入。
+    /// </summary>
+    /// <param name="cancellationToken">用于取消轮询任务的令牌。</param>
+    /// <param name="startAddress">监控起始地址。</param>
+    /// <returns>表示监控循环生命周期的任务。</returns>
     private async Task MonitorCoilsLoopAsync(CancellationToken cancellationToken, ushort startAddress)
     {
         IModbusMaster modbusMaster = GetModbusMaster();
@@ -532,6 +600,9 @@ public class PlcModbusCommunicator : IPlcClient
         Debug.WriteLine("Modbus: 持续读取 Coil 任务 1 结束。");
     }
 
+    /// <summary>
+    /// 停止第一组 Coil 的持续读取任务。
+    /// </summary>
     public void StopContinuousCoilReading()
     {
         _continuousReadCoilsCts?.Cancel();
@@ -540,6 +611,12 @@ public class PlcModbusCommunicator : IPlcClient
     }
 
     // --- 持续读取 Coil (Bool) 的功能 - 任务 2 ---
+    /// <summary>
+    /// 启动第二组 Coil 的持续读取任务。
+    /// </summary>
+    /// <param name="startAddress">起始 Coil 地址。</param>
+    /// <param name="numberOfCoils">读取的 Coil 数量。</param>
+    /// <param name="pollIntervalMs">轮询间隔，单位毫秒。</param>
     public void StartContinuousCoilReading2(ushort startAddress, ushort numberOfCoils, int pollIntervalMs)
     {
         if (_continuousReadCoilsTask2 != null && !_continuousReadCoilsTask2.IsCompleted) { Debug.WriteLine("Modbus: 持续读取 Coil 任务 2 已经在运行。"); return; }
@@ -553,6 +630,12 @@ public class PlcModbusCommunicator : IPlcClient
         Debug.WriteLine($"Modbus: 开始持续读取 Coil 任务 2 (Modbus 地址 {_coilStartAddress2}, 数量 {_numberOfCoilsToRead2}) ...");
     }
 
+    /// <summary>
+    /// 后台轮询第二组 Coil，并在满足条件时执行联动写入。
+    /// </summary>
+    /// <param name="cancellationToken">用于取消轮询任务的令牌。</param>
+    /// <param name="startAddress">监控起始地址。</param>
+    /// <returns>表示监控循环生命周期的任务。</returns>
     private async Task MonitorCoilsLoop2Async(CancellationToken cancellationToken, ushort startAddress)
     {
         IModbusMaster modbusMaster = GetModbusMaster();
@@ -596,6 +679,9 @@ public class PlcModbusCommunicator : IPlcClient
         Debug.WriteLine("Modbus: 持续读取 Coil 任务 2 结束。");
     }
 
+    /// <summary>
+    /// 停止第二组 Coil 的持续读取任务。
+    /// </summary>
     public void StopContinuousCoilReading2()
     {
         _continuousReadCoilsCts2?.Cancel();
@@ -605,6 +691,11 @@ public class PlcModbusCommunicator : IPlcClient
 
 
     // --- 数据类型转换帮助方法  ---
+    /// <summary>
+    /// 将浮点值转换为两个 16 位寄存器值。
+    /// </summary>
+    /// <param name="value">待转换的浮点值。</param>
+    /// <returns>转换后的寄存器数组。</returns>
     private ushort[] FloatToUshorts(float value)
     {
         byte[] bytes = BitConverter.GetBytes(value);
@@ -619,6 +710,11 @@ public class PlcModbusCommunicator : IPlcClient
         words[1] = BitConverter.ToUInt16(bytes, 2); // High word
         return words; // 需要根据PLC实际情况调整或确认
     }
+    /// <summary>
+    /// 将两个 16 位寄存器值还原为浮点数。
+    /// </summary>
+    /// <param name="ushorts">寄存器数组。</param>
+    /// <returns>还原得到的浮点值。</returns>
     private float UshortsToFloat(ushort[] ushorts)
     {
         if (ushorts == null || ushorts.Length < 2) throw new ArgumentException("Ushorts array must contain at least 2 elements.");
@@ -631,6 +727,11 @@ public class PlcModbusCommunicator : IPlcClient
         // Buffer.BlockCopy(BitConverter.GetBytes(ushorts[0]), 0, bytes, 2, 2); // High word from ushorts[0]
         return BitConverter.ToSingle(bytes, 0); // 需要根据PLC实际情况调整或确认
     }
+    /// <summary>
+    /// 将两个 16 位寄存器值还原为 32 位整型。
+    /// </summary>
+    /// <param name="ushorts">寄存器数组。</param>
+    /// <returns>还原得到的整型值。</returns>
     private int UshortsToInt32(ushort[] ushorts)
     {
         if (ushorts == null || ushorts.Length < 2) throw new ArgumentException("Ushorts array must contain at least 2 elements.");
@@ -641,6 +742,11 @@ public class PlcModbusCommunicator : IPlcClient
         return BitConverter.ToInt32(bytes, 0); // 需要根据PLC实际情况调整或确认
     }
 
+    /// <summary>
+    /// 将 32 位整型拆分为两个 16 位寄存器值。
+    /// </summary>
+    /// <param name="value">待转换的整型值。</param>
+    /// <returns>转换后的寄存器数组。</returns>
     private ushort[] Int32ToUshorts(int value)
     {
         byte[] bytes = BitConverter.GetBytes(value);
@@ -652,18 +758,29 @@ public class PlcModbusCommunicator : IPlcClient
 
 
     // --- 辅助方法 ---
+    /// <summary>
+    /// 校验当前连接和 Modbus 主站是否可用。
+    /// </summary>
     private void EnsureConnected()
     {
         if (!IsConnected) throw new InvalidOperationException("PLC未连接");
         if (_modbusMaster == null) throw new InvalidOperationException("Modbus master is not initialized.");
     }
 
+    /// <summary>
+    /// 获取当前可用的 Modbus 主站实例。
+    /// </summary>
+    /// <returns>当前连接对应的 Modbus 主站对象。</returns>
     private IModbusMaster GetModbusMaster()
     {
         EnsureConnected();
         return _modbusMaster!;
     }
 
+    /// <summary>
+    /// 统一记录 Modbus 调用异常信息。
+    /// </summary>
+    /// <param name="ex">捕获到的异常对象。</param>
     private void HandleModbusError(Exception ex)
     {
         // 可在此处添加更复杂的错误处理，如日志记录或重连尝试
@@ -671,12 +788,19 @@ public class PlcModbusCommunicator : IPlcClient
     }
 
     // --- IDisposable 实现 ---
+    /// <summary>
+    /// 释放连接、后台任务和相关资源。
+    /// </summary>
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// 执行资源释放逻辑。
+    /// </summary>
+    /// <param name="disposing">为 <c>true</c> 时释放托管资源。</param>
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
@@ -691,6 +815,12 @@ public class PlcModbusCommunicator : IPlcClient
     }
 
     // remove 方法，现在改为 async Task
+    /// <summary>
+    /// 写入 X、Y 轴目标位置和速度，并启动完成状态监控。
+    /// </summary>
+    /// <param name="xTarget">X 轴目标位置。</param>
+    /// <param name="yTarget">Y 轴目标位置。</param>
+    /// <returns>表示移动启动流程的异步任务。</returns>
     public async Task MoveAndMonitorAsync(float xTarget, float yTarget)
     {
         if (!IsConnected)
@@ -757,8 +887,9 @@ public class PlcModbusCommunicator : IPlcClient
             StopContinuousCoilReading2();
         }
     }
-
-
+    /// <summary>
+    /// 读取预定义左右两组地址的数据并缓存在公开列表中。
+    /// </summary>
     public void GetData()
     {
         EnsureConnected();
@@ -788,6 +919,9 @@ public class PlcModbusCommunicator : IPlcClient
         }
     }
 
+    /// <summary>
+    /// 兼容旧调用入口，等价于 <see cref="GetData"/>。
+    /// </summary>
     public void getdata()
     {
         GetData();

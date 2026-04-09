@@ -5,6 +5,11 @@ namespace GrindCar.Models.Rail;
 /// </summary>
 public sealed class PointCloudMedianSectionCaptureResult
 {
+    /// <summary>
+    /// 初始化单帧点云采集与截面提取结果。
+    /// </summary>
+    /// <param name="csvPath">导出的点云 CSV 路径。</param>
+    /// <param name="extractionResult">中位截面提取结果。</param>
     public PointCloudMedianSectionCaptureResult(string csvPath, MedianSectionExtractionResult extractionResult)
     {
         CsvPath = csvPath;

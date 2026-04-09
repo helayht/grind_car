@@ -82,6 +82,12 @@ public class MotorViewModel : INotifyPropertyChanged
     // 写入参数规格
     private readonly struct ParameterWriteSpec
     {
+        /// <summary>
+        /// 初始化参数写入规格。
+        /// </summary>
+        /// <param name="address">写入目标地址。</param>
+        /// <param name="kind">写入数据类型。</param>
+        /// <param name="scale">写入比例。</param>
         public ParameterWriteSpec(ushort address, DataKind kind, double scale)
         {
             Address = address;
@@ -94,6 +100,9 @@ public class MotorViewModel : INotifyPropertyChanged
         public double Scale { get; }
     }
 
+    /// <summary>
+    /// 初始化电机调试视图模型，构建参数集合、命令和首页演示数据。
+    /// </summary>
     public MotorViewModel()
     {
         _uiContext = SynchronizationContext.Current ?? new SynchronizationContext();
@@ -329,11 +338,18 @@ public class MotorViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// 将连接状态消息投递到 UI 线程进行更新。
+    /// </summary>
+    /// <param name="message">要显示的状态消息。</param>
     private void PostStatus(string message)
     {
         _uiContext.Post(_ => ConnectionStatus = message, null);
     }
 
+    /// <summary>
+    /// 初始化首页驾驶舱的默认演示数据。
+    /// </summary>
     private void InitializeDashboardData()
     {
         BatteryLevel = 78.0;
@@ -343,6 +359,11 @@ public class MotorViewModel : INotifyPropertyChanged
         DashboardTimestamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
     }
 
+    /// <summary>
+    /// 定时刷新首页演示数据。
+    /// </summary>
+    /// <param name="sender">定时器发送方。</param>
+    /// <param name="e">事件参数。</param>
     private void DashboardTimer_Tick(object? sender, EventArgs e)
     {
         _dashboardTickIndex++;
@@ -362,6 +383,11 @@ public class MotorViewModel : INotifyPropertyChanged
         DashboardTimestamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
     }
 
+    /// <summary>
+    /// 统一处理异常日志与状态消息更新。
+    /// </summary>
+    /// <param name="userMessage">面向界面的提示消息。</param>
+    /// <param name="ex">原始异常对象。</param>
     private void HandleException(string userMessage, Exception ex)
     {
         if (ex != null)
@@ -371,6 +397,10 @@ public class MotorViewModel : INotifyPropertyChanged
         PostStatus(userMessage);
     }
 
+    /// <summary>
+    /// 校验连接参数并启动 PLC 轮询连接流程。
+    /// </summary>
+    /// <returns>表示连接流程的异步任务。</returns>
     private async Task ConnectAsync()
     {
         if (IsConnected || IsConnecting) return;
@@ -407,6 +437,9 @@ public class MotorViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// 断开当前 PLC 连接并停止轮询。
+    /// </summary>
     private void Disconnect()
     {
         StopPolling();
@@ -415,6 +448,11 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 启动 PLC 连接并开始轮询读取
     /// </summary>
+    /// <param name="ipAddress">PLC IP 地址。</param>
+    /// <param name="port">PLC 端口。</param>
+    /// <param name="unitId">Modbus 单元标识。</param>
+    /// <param name="pollIntervalMs">轮询间隔，单位毫秒。</param>
+    /// <returns>连接成功返回 <c>true</c>，否则返回 <c>false</c>。</returns>
     public async Task<bool> StartPollingAsync(string ipAddress, int port, byte unitId, int pollIntervalMs)
     {
         if (_pollingTask != null && !_pollingTask.IsCompleted) return true;
@@ -453,6 +491,9 @@ public class MotorViewModel : INotifyPropertyChanged
         IsConnecting = false;
     }
 
+    /// <summary>
+    /// 在视图模型销毁前停止首页定时器并释放 PLC 资源。
+    /// </summary>
     public void Shutdown()
     {
         _dashboardTimer.Stop();
@@ -462,6 +503,11 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 轮询读取只读参数，并更新到界面3
     /// </summary>
+    /// <param name="plc">PLC 客户端实例。</param>
+    /// <param name="parameters">用于缓存读取结果的参数模型。</param>
+    /// <param name="pollIntervalMs">轮询间隔，单位毫秒。</param>
+    /// <param name="cancellationToken">用于取消轮询的令牌。</param>
+    /// <returns>表示轮询生命周期的异步任务。</returns>
     public async Task PollReadableParametersAsync(
         IPlcClient plc,
         Motor parameters,
@@ -498,6 +544,11 @@ public class MotorViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// 创建一个只读参数项并加入参数集合。
+    /// </summary>
+    /// <param name="name">参数名称。</param>
+    /// <returns>创建后的参数项视图模型。</returns>
     private MotorParameterItemViewModel AddReadOnly(string name)
     {
         var item = new MotorParameterItemViewModel(name, true, GetUnit(name));
@@ -505,11 +556,20 @@ public class MotorViewModel : INotifyPropertyChanged
         return item;
     }
 
+    /// <summary>
+    /// 创建一个可写参数项并加入参数集合。
+    /// </summary>
+    /// <param name="name">参数名称。</param>
     private void AddWriteOnly(string name)
     {
         _items.Add(new MotorParameterItemViewModel(name, false, GetUnit(name)));
     }
 
+    /// <summary>
+    /// 获取指定参数名称对应的显示单位。
+    /// </summary>
+    /// <param name="name">参数名称。</param>
+    /// <returns>参数单位；未配置时返回空字符串。</returns>
     private static string GetUnit(string name)
     {
         return MotorParameterDefinitions.ParameterUnits.TryGetValue(name, out string? unit)
@@ -532,6 +592,9 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 将原始值按比例换算为显示值
     /// </summary>
+    /// <param name="rawValue">PLC 读取到的原始值。</param>
+    /// <param name="name">参数名称。</param>
+    /// <returns>换算后的显示文本。</returns>
     private string FormatScaled(int rawValue, string name)
     {
         if (_readScales.TryGetValue(name, out double scale) && scale != 0)
@@ -706,6 +769,8 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 执行“修改”：解析输入、换算、写入 PLC
     /// </summary>
+    /// <param name="item">待写入的参数项。</param>
+    /// <returns>表示写入流程的异步任务。</returns>
     private async Task ExecuteModifyAsync(MotorParameterItemViewModel item)
     {
         if (!_writeSpecs.TryGetValue(item.Name, out var spec))
@@ -798,6 +863,9 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 解析数值（兼容本地文化与 InvariantCulture）
     /// </summary>
+    /// <param name="input">待解析的输入文本。</param>
+    /// <param name="value">解析成功后的数值。</param>
+    /// <returns>若解析成功则返回 <c>true</c>，否则返回 <c>false</c>。</returns>
     private static bool TryParseNumber(string input, out double value)
     {
         if (double.TryParse(input, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
@@ -810,6 +878,9 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 解析布尔值（支持 1/0、true/false、是/否 等）
     /// </summary>
+    /// <param name="input">待解析的输入文本。</param>
+    /// <param name="value">解析成功后的布尔值。</param>
+    /// <returns>若解析成功则返回 <c>true</c>，否则返回 <c>false</c>。</returns>
     private static bool TryParseBool(string input, out bool value)
     {
         string normalized = input.Trim().ToLowerInvariant();
@@ -845,6 +916,7 @@ public class MotorViewModel : INotifyPropertyChanged
     /// <summary>
     /// 触发属性变化通知
     /// </summary>
+    /// <param name="propertyName">发生变化的属性名称。</param>
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

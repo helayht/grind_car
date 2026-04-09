@@ -3,11 +3,20 @@ using System.Runtime.CompilerServices;
 
 namespace GrindCar.ViewModels;
 
+/// <summary>
+/// 表示单个电机参数项在界面中的显示与输入状态。
+/// </summary>
 public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
 {
     private string _value = string.Empty;
     private string _inputValue = string.Empty;
 
+    /// <summary>
+    /// 初始化参数项视图模型。
+    /// </summary>
+    /// <param name="name">参数名称。</param>
+    /// <param name="isReadOnly">是否为只读参数。</param>
+    /// <param name="unit">参数显示单位。</param>
     public MotorParameterItemViewModel(string name, bool isReadOnly, string unit)
     {
         Name = name;
@@ -43,6 +52,10 @@ public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>
+    /// 触发属性变更通知，驱动界面刷新。
+    /// </summary>
+    /// <param name="propertyName">发生变化的属性名称。</param>
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }

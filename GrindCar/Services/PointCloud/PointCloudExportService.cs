@@ -5,11 +5,18 @@ using GrindCar.Models.PointCloud;
 
 namespace GrindCar.Services.PointCloud;
 
+/// <summary>
+/// 封装点云设备 SDK 的设备枚举、单帧采集与导出能力。
+/// </summary>
 public sealed class PointCloudExportService
 {
     private const uint DefaultGetImageTimeoutMs = 3000;
     private const uint RangeImageModeValue = 7;
 
+    /// <summary>
+    /// 获取当前可用的点云设备列表。
+    /// </summary>
+    /// <returns>扫描到的设备信息集合；若未发现设备则返回空集合。</returns>
     public IReadOnlyList<PointCloudDeviceInfo> GetDevices()
     {
         return ExecuteWithSdkLifecycle<IReadOnlyList<PointCloudDeviceInfo>>(() =>
@@ -39,6 +46,12 @@ public sealed class PointCloudExportService
         });
     }
 
+    /// <summary>
+    /// 从指定设备采集单帧点云并导出为目标文件。
+    /// </summary>
+    /// <param name="serialNumber">目标设备序列号。</param>
+    /// <param name="outputPath">导出文件路径。</param>
+    /// <param name="exportFormat">导出文件格式。</param>
     public void ExportPointCloud(string serialNumber, string outputPath, PointCloudExportFormat exportFormat)
     {
         if (string.IsNullOrWhiteSpace(serialNumber))
@@ -101,6 +114,11 @@ public sealed class PointCloudExportService
         });
     }
 
+    /// <summary>
+    /// 创建指定容量的设备信息向量，供 SDK 写入设备列表。
+    /// </summary>
+    /// <param name="deviceCount">设备数量。</param>
+    /// <returns>初始化后的设备向量对象。</returns>
     private static MV3D_LP_DEVICE_INFO_VECTOR CreateDeviceVector(uint deviceCount)
     {
         var deviceVector = new MV3D_LP_DEVICE_INFO_VECTOR((int)deviceCount);
@@ -112,6 +130,11 @@ public sealed class PointCloudExportService
         return deviceVector;
     }
 
+    /// <summary>
+    /// 将内部导出格式转换为 SDK 对应的文件类型编码。
+    /// </summary>
+    /// <param name="exportFormat">内部点云导出格式。</param>
+    /// <returns>SDK 所需的文件类型编码。</returns>
     private static uint ToSdkFileType(PointCloudExportFormat exportFormat)
     {
         return exportFormat switch
@@ -123,6 +146,12 @@ public sealed class PointCloudExportService
         };
     }
 
+    /// <summary>
+    /// 在统一的 SDK 初始化和释放流程中执行指定操作。
+    /// </summary>
+    /// <typeparam name="T">返回值类型。</typeparam>
+    /// <param name="action">待执行的操作。</param>
+    /// <returns>操作执行结果。</returns>
     private static T ExecuteWithSdkLifecycle<T>(Func<T> action)
     {
         try
@@ -144,6 +173,11 @@ public sealed class PointCloudExportService
         }
     }
 
+    /// <summary>
+    /// 校验 SDK 返回码是否表示成功。
+    /// </summary>
+    /// <param name="sdkResult">SDK 返回码。</param>
+    /// <param name="message">失败时使用的错误消息。</param>
     private static void EnsureSuccess(int sdkResult, string message)
     {
         if (sdkResult == Mv3dLpSDK.MV3D_LP_OK)
@@ -154,6 +188,10 @@ public sealed class PointCloudExportService
         throw new PointCloudSdkException($"{message} SDK 返回码: {sdkResult}");
     }
 
+    /// <summary>
+    /// 尝试执行清理动作，并忽略清理异常。
+    /// </summary>
+    /// <param name="action">待执行的清理动作。</param>
     private static void TryExecute(Func<int> action)
     {
         try

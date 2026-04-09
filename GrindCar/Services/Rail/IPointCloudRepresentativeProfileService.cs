@@ -12,6 +12,7 @@ public interface IPointCloudRepresentativeProfileService
     /// 2. 再按偏左中位定义找到唯一 Y 集合中的中位值；
     /// 3. 最后从原始点集中严格筛选 Y 等于该中位值的点，并输出 (X, Z)。
     /// </summary>
+    /// <param name="csvPath">点云 CSV 文件路径。</param>
+    /// <returns>包含中位 Y 值和截面点集的提取结果。</returns>
     MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath);
-
 }

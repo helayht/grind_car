@@ -8,6 +8,9 @@ using GrindCar.Services.Rail;
 
 namespace GrindCar.Services;
 
+/// <summary>
+/// 提供标准轨面函数、代表截面采集与打磨深度计算能力。
+/// </summary>
 public class RailSurfaceService
 {
     private const double StraightAngleDegrees = 180.0;
@@ -22,9 +25,11 @@ public class RailSurfaceService
         new Arc{ XMin=25.35, XMax=35.4,  LeftClosed=false, RightClosed=true,  R=13,  C=22.42,  D=161.15 }
     };
 
-    /**
-     * 轨面廓形标准计算函数
-     */
+    /// <summary>
+    /// 根据给定横向坐标计算标准轨面函数值。
+    /// </summary>
+    /// <param name="x">轨面横向坐标。</param>
+    /// <returns>标准轨面在该横向位置上的高度；若超出定义域则返回 <see cref="double.NaN"/>。</returns>
     public static double RailSurfaceFun(double x)
     {
         foreach (var a in Arcs)
@@ -43,6 +48,11 @@ public class RailSurfaceService
         public bool LeftClosed, RightClosed;
         public double R, C, D; // f(x)=sqrt(R^2-(x-C)^2)+D
 
+        /// <summary>
+        /// 判断给定横向坐标是否落在当前圆弧定义区间内。
+        /// </summary>
+        /// <param name="x">待判断的横向坐标。</param>
+        /// <returns>若坐标落在圆弧有效区间内则返回 <c>true</c>。</returns>
         public bool Contains(double x)
         {
             bool leftOk = LeftClosed ? x >= XMin : x > XMin;
@@ -51,13 +61,33 @@ public class RailSurfaceService
         }
     }
 
+    /// <summary>
+    /// 计算单个打磨角度对应的打磨深度。
+    /// </summary>
+    /// <param name="x">打磨角度，单位为度。</param>
+    /// <returns>该角度对应的打磨深度。</returns>
     public static double GetGrindDepth(int x)
     {
         IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
         return GetGrindDepth(x, representativeSectionPoints);
     }
 
+    /// <summary>
+    /// 批量计算多个打磨角度对应的打磨深度。
+    /// </summary>
+    /// <param name="angles">待计算的角度集合。</param>
+    /// <returns>每个角度对应的打磨深度结果列表。</returns>
     public static IReadOnlyList<GrindDepthResult> GetGrindDepths(IReadOnlyList<int> angles)
+    {
+        return CalculateGrindDepths(angles).Results;
+    }
+
+    /// <summary>
+    /// 批量计算打磨深度，并返回过程中使用的代表截面点集。
+    /// </summary>
+    /// <param name="angles">待计算的角度集合。</param>
+    /// <returns>包含计算结果和代表截面点集的对象。</returns>
+    public static GrindDepthCalculationResult CalculateGrindDepths(IReadOnlyList<int> angles)
     {
         if (angles == null)
         {
@@ -66,7 +96,7 @@ public class RailSurfaceService
 
         if (angles.Count == 0)
         {
-            return Array.Empty<GrindDepthResult>();
+            return new GrindDepthCalculationResult(Array.Empty<GrindDepthResult>(), Array.Empty<RailProfilePoint>());
         }
 
         // 批量计算时只采集一次代表截面点集，避免每个角度都重复触发点云采集。
@@ -80,15 +110,26 @@ public class RailSurfaceService
             results.Add(new GrindDepthResult(angle, grindDepth));
         }
 
-        return results;
+        return new GrindDepthCalculationResult(results, representativeSectionPoints);
     }
 
+    /// <summary>
+    /// 基于已获取的代表截面点集计算指定角度的打磨深度。
+    /// </summary>
+    /// <param name="angle">打磨角度，单位为度。</param>
+    /// <param name="representativeSectionPoints">代表截面点集。</param>
+    /// <returns>对应的打磨深度。</returns>
     private static double GetGrindDepth(int angle, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
     {
         double k = CalculateSlopeFromAngle(angle);
         return Math.Abs(GetB(k, representativeSectionPoints) - SolveB(k));
     }
 
+    /// <summary>
+    /// 将打磨角度转换为直线斜率。
+    /// </summary>
+    /// <param name="angle">打磨角度，单位为度。</param>
+    /// <returns>对应的斜率值。</returns>
     private static double CalculateSlopeFromAngle(int angle)
     {
         // Math.Tan 接收弧度，因此需要先将角度转换为弧度。
@@ -96,15 +137,21 @@ public class RailSurfaceService
         return Math.Tan(radians);
     }
 
-    /**
-     * 获取代表截面的切点
-     */
+    /// <summary>
+    /// 获取代表截面在给定斜率下的支撑直线截距。
+    /// </summary>
+    /// <param name="k">目标直线斜率。</param>
+    /// <returns>代表截面对应的截距值。</returns>
     public static double GetB(double k)
     {
         IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
         return GetB(k, representativeSectionPoints);
     }
 
+    /// <summary>
+    /// 从所有可用点云设备采集并合并代表截面点集。
+    /// </summary>
+    /// <returns>合并后的代表截面点集合。</returns>
     private static IReadOnlyList<RailProfilePoint> GetRepresentativeSectionPoints()
     {
         IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
@@ -137,6 +184,12 @@ public class RailSurfaceService
         return mergedPoints;
     }
 
+    /// <summary>
+    /// 基于给定代表截面点集计算支撑直线截距。
+    /// </summary>
+    /// <param name="k">目标直线斜率。</param>
+    /// <param name="representativeSectionPoints">代表截面点集。</param>
+    /// <returns>支撑直线截距值。</returns>
     private static double GetB(double k, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
     {
         if (double.IsNaN(k) || double.IsInfinity(k))
@@ -183,6 +236,8 @@ public class RailSurfaceService
     /// <summary>
     /// 给定斜率 k，返回第一次接触时的最小 b，使得 y=kx+b 在轨面上方且刚好相切/接触
     /// </summary>
+    /// <param name="k">目标直线斜率。</param>
+    /// <returns>与标准轨面第一次接触时的截距值。</returns>
     public static double SolveB(double k)
     {
         return SolveBAndTouchPoint(k).b;
@@ -191,6 +246,8 @@ public class RailSurfaceService
     /// <summary>
     /// 返回 b 以及第一次接触点 x（方便你调试/验证）
     /// </summary>
+    /// <param name="k">目标直线斜率。</param>
+    /// <returns>包含截距值和接触点横向坐标的元组。</returns>
     public static (double b, double xTouch) SolveBAndTouchPoint(double k)
     {
         if (double.IsNaN(k) || double.IsInfinity(k))

@@ -19,6 +19,9 @@ public partial class PointCloudExportWindow : Window
     private readonly ObservableCollection<PointCloudDeviceInfo> _devices = new();
     private readonly PointCloudExportService _pointCloudExportService = new();
 
+    /// <summary>
+    /// 初始化点云导出窗口并绑定设备列表。
+    /// </summary>
     public PointCloudExportWindow()
     {
         InitializeComponent();
@@ -26,16 +29,31 @@ public partial class PointCloudExportWindow : Window
         Loaded += PointCloudExportWindow_Loaded;
     }
 
+    /// <summary>
+    /// 窗口加载后自动刷新设备列表。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">窗口加载事件参数。</param>
     private async void PointCloudExportWindow_Loaded(object sender, RoutedEventArgs e)
     {
         await RefreshDevicesAsync();
     }
 
+    /// <summary>
+    /// 手动刷新可用点云设备列表。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private async void RefreshDevices_Click(object sender, RoutedEventArgs e)
     {
         await RefreshDevicesAsync();
     }
 
+    /// <summary>
+    /// 打开文件选择对话框，设置点云导出路径。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private void ChooseOutputPath_Click(object sender, RoutedEventArgs e)
     {
         PointCloudExportFormat exportFormat = GetSelectedExportFormat();
@@ -55,6 +73,11 @@ public partial class PointCloudExportWindow : Window
         }
     }
 
+    /// <summary>
+    /// 导出当前选中设备的单帧点云文件。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private async void Export_Click(object sender, RoutedEventArgs e)
     {
         if (DeviceComboBox.SelectedItem is not PointCloudDeviceInfo selectedDevice)
@@ -102,11 +125,20 @@ public partial class PointCloudExportWindow : Window
         }
     }
 
+    /// <summary>
+    /// 关闭当前窗口。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         Close();
     }
 
+    /// <summary>
+    /// 异步刷新当前可用点云设备列表。
+    /// </summary>
+    /// <returns>表示刷新操作的任务。</returns>
     private async Task RefreshDevicesAsync()
     {
         ToggleBusyState(true);
@@ -136,6 +168,10 @@ public partial class PointCloudExportWindow : Window
         }
     }
 
+    /// <summary>
+    /// 根据界面选择项解析当前导出格式。
+    /// </summary>
+    /// <returns>选中的点云导出格式；若未选择则默认返回 <see cref="PointCloudExportFormat.Ply"/>。</returns>
     private PointCloudExportFormat GetSelectedExportFormat()
     {
         if (FormatComboBox.SelectedItem is not ComboBoxItem selectedItem)
@@ -151,6 +187,11 @@ public partial class PointCloudExportWindow : Window
         };
     }
 
+    /// <summary>
+    /// 生成保存文件对话框使用的过滤器文本。
+    /// </summary>
+    /// <param name="exportFormat">目标导出格式。</param>
+    /// <returns>与导出格式匹配的过滤器字符串。</returns>
     private static string GetDialogFilter(PointCloudExportFormat exportFormat)
     {
         return exportFormat switch
@@ -161,6 +202,11 @@ public partial class PointCloudExportWindow : Window
         };
     }
 
+    /// <summary>
+    /// 获取指定导出格式对应的默认文件扩展名。
+    /// </summary>
+    /// <param name="exportFormat">目标导出格式。</param>
+    /// <returns>对应的默认扩展名。</returns>
     private static string GetDefaultExtension(PointCloudExportFormat exportFormat)
     {
         return exportFormat switch
@@ -171,6 +217,10 @@ public partial class PointCloudExportWindow : Window
         };
     }
 
+    /// <summary>
+    /// 统一切换窗口中与导出相关控件的忙碌状态。
+    /// </summary>
+    /// <param name="isBusy">是否处于忙碌状态。</param>
     private void ToggleBusyState(bool isBusy)
     {
         DeviceComboBox.IsEnabled = !isBusy;
@@ -179,6 +229,10 @@ public partial class PointCloudExportWindow : Window
         OutputPathTextBox.IsEnabled = !isBusy;
     }
 
+    /// <summary>
+    /// 更新窗口底部状态提示文本。
+    /// </summary>
+    /// <param name="message">要显示的状态消息。</param>
     private void SetStatus(string message)
     {
         StatusTextBlock.Text = message;

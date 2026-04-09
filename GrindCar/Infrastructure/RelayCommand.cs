@@ -25,11 +25,14 @@ public sealed class RelayCommand : ICommand
     /// <summary>
     /// 判断是否可执行
     /// </summary>
+    /// <param name="parameter">命令参数。</param>
+    /// <returns>若未提供判断委托则始终返回 <c>true</c>；否则返回委托计算结果。</returns>
     public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
 
     /// <summary>
     /// 执行命令
     /// </summary>
+    /// <param name="parameter">命令参数。</param>
     public void Execute(object? parameter) => _execute(parameter);
 
     public event EventHandler? CanExecuteChanged

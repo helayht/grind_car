@@ -19,6 +19,9 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     private readonly IPointCloudRepresentativeProfileService _representativeProfileService;
     private readonly string _logDirectoryPath;
 
+    /// <summary>
+    /// 使用默认日志目录和默认服务依赖初始化实例。
+    /// </summary>
     public PointCloudMedianSectionCaptureService()
         : this(
             new PointCloudExportService(),
@@ -27,6 +30,12 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     {
     }
 
+    /// <summary>
+    /// 使用指定依赖和日志目录初始化实例。
+    /// </summary>
+    /// <param name="pointCloudExportService">点云导出服务。</param>
+    /// <param name="representativeProfileService">中位截面提取服务。</param>
+    /// <param name="logDirectoryPath">CSV 落盘目录。</param>
     public PointCloudMedianSectionCaptureService(
         PointCloudExportService pointCloudExportService,
         IPointCloudRepresentativeProfileService representativeProfileService,
@@ -39,6 +48,11 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
             : logDirectoryPath;
     }
 
+    /// <summary>
+    /// 采集指定设备的单帧点云并提取中位截面点集。
+    /// </summary>
+    /// <param name="serialNumber">目标设备序列号。</param>
+    /// <returns>包含落盘 CSV 路径和提取结果的对象。</returns>
     public PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(string serialNumber)
     {
         if (string.IsNullOrWhiteSpace(serialNumber))
@@ -57,6 +71,10 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
         return new PointCloudMedianSectionCaptureResult(csvPath, extractionResult);
     }
 
+    /// <summary>
+    /// 根据当前时间生成唯一的 CSV 输出路径。
+    /// </summary>
+    /// <returns>生成后的 CSV 文件完整路径。</returns>
     private string BuildCsvPath()
     {
         string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);

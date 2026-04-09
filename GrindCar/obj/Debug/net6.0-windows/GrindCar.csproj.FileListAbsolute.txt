@@ -32,3 +32,5 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_Marku
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar_MarkupCompile.lref
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDepthDebugWindow.baml
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDepthDebugWindow.g.cs
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\RepresentativeProfileComparisonWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\RepresentativeProfileComparisonWindow.g.cs

@@ -32,6 +32,9 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
     private string _zRangeText = "-";
     private string _statusText = "请选择一个 .csv 点云文件。";
 
+    /// <summary>
+    /// 初始化中位截面调试窗口并绑定当前窗口为数据上下文。
+    /// </summary>
     public MedianSectionDebugWindow()
     {
         InitializeComponent();
@@ -132,6 +135,11 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// 选择 CSV 文件并异步提取中位截面点集。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private async void ImportFile_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -174,6 +182,11 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// 将当前提取到的代表截面点导出为 CSV 文件。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private void ExportProfile_Click(object sender, RoutedEventArgs e)
     {
         if (_currentPoints.Count == 0 || _currentMedianY is null)
@@ -211,11 +224,20 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// 关闭当前窗口。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         Close();
     }
 
+    /// <summary>
+    /// 将提取结果应用到界面状态和表格数据中。
+    /// </summary>
+    /// <param name="extractionResult">中位截面提取结果。</param>
     private void ApplyProfilePoints(MedianSectionExtractionResult extractionResult)
     {
         _currentMedianY = extractionResult.MedianY;
@@ -254,6 +276,9 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
         ExportButton.IsEnabled = _currentPoints.Count > 0;
     }
 
+    /// <summary>
+    /// 清空当前已加载的截面点、统计信息和导出状态。
+    /// </summary>
     private void ClearCurrentPoints()
     {
         _currentMedianY = null;
@@ -266,6 +291,10 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
         ExportButton.IsEnabled = false;
     }
 
+    /// <summary>
+    /// 根据当前导入文件和中位 Y 值生成默认导出文件名。
+    /// </summary>
+    /// <returns>建议使用的导出文件名。</returns>
     private string BuildDefaultExportFileName()
     {
         string sourceFileName = string.IsNullOrWhiteSpace(ImportedFilePath) || ImportedFilePath == "未导入文件"
@@ -277,6 +306,10 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
         return $"{sourceFileName}_median_section_{safeMedianYText}.csv";
     }
 
+    /// <summary>
+    /// 将当前代表截面点导出为指定 CSV 文件。
+    /// </summary>
+    /// <param name="outputPath">目标导出文件路径。</param>
     private void ExportProfileToCsv(string outputPath)
     {
         if (string.IsNullOrWhiteSpace(outputPath))
@@ -312,6 +345,10 @@ public partial class MedianSectionDebugWindow : Window, INotifyPropertyChanged
         File.WriteAllText(outputPath, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
+    /// <summary>
+    /// 触发属性变更通知，更新界面绑定。
+    /// </summary>
+    /// <param name="propertyName">发生变化的属性名称。</param>
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

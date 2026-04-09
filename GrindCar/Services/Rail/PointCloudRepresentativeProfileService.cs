@@ -20,6 +20,8 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 从点云 CSV 文件中提取中位 Y 截面的二维 X/Z 点集。
     /// </summary>
+    /// <param name="csvPath">点云 CSV 文件路径。</param>
+    /// <returns>包含中位 Y 值和对应二维点集的提取结果。</returns>
     public MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath)
     {
         try
@@ -71,6 +73,8 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 根据首行内容推断 CSV 使用的分隔符。
     /// </summary>
+    /// <param name="line">CSV 的首个非空行。</param>
+    /// <returns>推断得到的分隔符字符。</returns>
     private static char DetectDelimiter(string line)
     {
         if (line.Contains('\t'))
@@ -89,6 +93,9 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 按指定分隔符拆分一行 CSV 文本，并移除首尾空白。
     /// </summary>
+    /// <param name="line">待拆分的文本行。</param>
+    /// <param name="delimiter">分隔符。</param>
+    /// <returns>拆分后的字段数组。</returns>
     private static string[] SplitLine(string line, char delimiter)
     {
         return line.Split(delimiter, StringSplitOptions.TrimEntries);
@@ -97,6 +104,8 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 读取首个非空行，用于识别分隔符和判断是否存在表头。
     /// </summary>
+    /// <param name="reader">用于读取文件内容的流读取器。</param>
+    /// <returns>首个非空行；若文件中没有有效内容则返回 <c>null</c>。</returns>
     private static string? ReadFirstNonEmptyLine(StreamReader reader)
     {
         while (!reader.EndOfStream)
@@ -114,6 +123,8 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 判断 CSV 首行是否更像表头而不是数据行。
     /// </summary>
+    /// <param name="values">首行拆分后的字段集合。</param>
+    /// <returns>若包含字母字符则认为是表头。</returns>
     private static bool LooksLikeHeader(IReadOnlyCollection<string> values)
     {
         return values.Any(value => value.Any(char.IsLetter));
@@ -122,6 +133,8 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 从表头中解析出 X、Y、Z 三列对应的列索引。
     /// </summary>
+    /// <param name="headers">CSV 表头字段集合。</param>
+    /// <returns>X、Y、Z 三列对应的索引元组。</returns>
     private static (int xIndex, int yIndex, int zIndex) ResolveColumnIndexes(IReadOnlyList<string> headers)
     {
         int xIndex = FindAxisIndex(headers, "x");
@@ -139,6 +152,9 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 在表头集合中查找指定坐标轴对应的列位置。
     /// </summary>
+    /// <param name="headers">CSV 表头字段集合。</param>
+    /// <param name="axisName">目标坐标轴名称。</param>
+    /// <returns>匹配列的索引；未找到时返回 <c>-1</c>。</returns>
     private static int FindAxisIndex(IReadOnlyList<string> headers, string axisName)
     {
         for (int index = 0; index < headers.Count; index++)
@@ -156,6 +172,9 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
     /// <summary>
     /// 兼容 InvariantCulture 和当前区域设置解析浮点数。
     /// </summary>
+    /// <param name="value">待解析的文本值。</param>
+    /// <param name="result">解析成功后的浮点值。</param>
+    /// <returns>若解析成功则返回 <c>true</c>，否则返回 <c>false</c>。</returns>
     private static bool TryParseDouble(string value, out double result)
     {
         if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out result))
@@ -166,6 +185,11 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         return double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out result);
     }
 
+    /// <summary>
+    /// 从点云 CSV 文件中读取有效三维点集合。
+    /// </summary>
+    /// <param name="csvPath">点云 CSV 文件路径。</param>
+    /// <returns>解析成功的三维点列表。</returns>
     private static List<PointCloudPoint3D> ReadPointsFromCsv(string csvPath)
     {
         if (string.IsNullOrWhiteSpace(csvPath))
@@ -221,6 +245,15 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         return points;
     }
 
+    /// <summary>
+    /// 尝试从一行 CSV 字段中读取一个有效三维点。
+    /// </summary>
+    /// <param name="parts">一行 CSV 拆分后的字段数组。</param>
+    /// <param name="xIndex">X 列索引。</param>
+    /// <param name="yIndex">Y 列索引。</param>
+    /// <param name="zIndex">Z 列索引。</param>
+    /// <param name="point">读取成功后的三维点。</param>
+    /// <returns>若成功读取则返回 <c>true</c>，否则返回 <c>false</c>。</returns>
     private static bool TryReadPoint(string[] parts, int xIndex, int yIndex, int zIndex, out PointCloudPoint3D point)
     {
         point = default;
@@ -248,6 +281,12 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         return true;
     }
 
+    /// <summary>
+    /// 使用快速选择算法返回数组中第 k 小的值。
+    /// </summary>
+    /// <param name="values">待选择的数组。</param>
+    /// <param name="k">目标次序位置，从 0 开始。</param>
+    /// <returns>第 k 小的值。</returns>
     private static double SelectKthSmallest(double[] values, int k)
     {
         if (values == null)
@@ -293,6 +332,14 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         }
     }
 
+    /// <summary>
+    /// 对数组指定区间执行三路分区。
+    /// </summary>
+    /// <param name="values">待分区数组。</param>
+    /// <param name="left">区间左边界。</param>
+    /// <param name="right">区间右边界。</param>
+    /// <param name="pivotIndex">枢轴索引。</param>
+    /// <returns>等于枢轴值区间的起止索引。</returns>
     private static (int equalStart, int equalEnd) Partition(double[] values, int left, int right, int pivotIndex)
     {
         double pivotValue = values[pivotIndex];
@@ -324,6 +371,12 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         return (less, greater);
     }
 
+    /// <summary>
+    /// 交换数组中两个位置的元素。
+    /// </summary>
+    /// <param name="values">目标数组。</param>
+    /// <param name="left">左侧索引。</param>
+    /// <param name="right">右侧索引。</param>
     private static void Swap(double[] values, int left, int right)
     {
         if (left == right)
@@ -334,5 +387,11 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         (values[left], values[right]) = (values[right], values[left]);
     }
 
+    /// <summary>
+    /// 表示从点云 CSV 中读取出的三维点。
+    /// </summary>
+    /// <param name="X">横向坐标。</param>
+    /// <param name="Y">前进方向坐标。</param>
+    /// <param name="Z">高度坐标。</param>
     private readonly record struct PointCloudPoint3D(double X, double Y, double Z);
 }

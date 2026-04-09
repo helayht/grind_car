@@ -1,45 +1,106 @@
 # GrindCar
 
 ## 项目简介
-GrindCar 是一个基于 WPF 的轨面打磨设备上位机项目，当前包含多类主要界面：
+GrindCar 是一个基于 `.NET 6 + WPF` 的轨面打磨设备上位机项目，面向本地桌面场景，当前主要覆盖以下能力：
 
-- 驾驶舱首页：用于展示设备状态、速度和电量等监控信息
-- 电机调试窗口：用于通过 Modbus TCP 与 PLC 进行参数读写、状态轮询和调试控制
-- 点云与轨面调试窗口：用于点云导出、中位截面查看以及打磨深度计算调试
+- 驾驶舱首页展示电量、速度、连接状态等运行信息
+- 电机调试窗口通过 `Modbus TCP` 与 PLC 建立连接，完成参数轮询、写入和调试
+- 点云调试链路支持设备枚举、单帧点云导出、CSV 中位截面提取与打磨深度计算
+- 轨面服务层提供标准轨面函数、代表截面提取和多角度打磨深度计算能力
 
-项目目前以桌面端本地运行方式为主，不依赖 Web 服务或环境变量配置。
+该项目当前不依赖 Web 服务，也不依赖环境变量配置，主要作为本地运行的 HMI/调试工具使用。
 
 ## 技术栈
-- .NET 6
-- WPF
-- NModbus4
+- `.NET 6`
+- `WPF`
+- `C# 10`
+- `NModbus4 3.0.0-alpha1`
+- `Mv3dLpNet.dll` 点云设备 SDK
 
-## 工程结构
+## 项目结构
 ```text
 GrindCar.sln
 ├─ GrindCar/
 │  ├─ App.xaml
-│  ├─ Definitions/      # 参数名称、地址、比例、单位定义
-│  ├─ Infrastructure/   # 基础设施，例如 RelayCommand
-│  ├─ Models/           # 数据模型
-│  │  └─ Rail/          # 轨面截面点与点云处理结果模型
-│  ├─ Services/         # PLC/Modbus 通信与业务服务
-│  │  └─ Rail/          # 轨面点云处理服务
-│  ├─ ViewModels/       # 视图模型
-│  ├─ Views/            # WPF 窗口与界面
-│  └─ Doc/              # 项目文档
+│  ├─ Definitions/        # 参数名称、地址、比例、单位定义
+│  ├─ Infrastructure/     # 基础设施，例如 RelayCommand
+│  ├─ Models/             # 业务模型
+│  │  ├─ PointCloud/      # 点云设备、导出格式模型
+│  │  └─ Rail/            # 轨面截面、计算结果模型
+│  ├─ Services/           # PLC、轨面、点云业务服务
+│  │  ├─ PointCloud/      # 点云设备 SDK 封装与导出
+│  │  └─ Rail/            # 中位截面与代表廓形提取
+│  ├─ ViewModels/         # ViewModel
+│  ├─ Views/              # WPF 窗口
+│  ├─ Converters/         # XAML 转换器
+│  ├─ lib/                # 第三方本地 DLL
+│  └─ Doc/                # 项目文档
+├─ global.json
+└─ README.md
 ```
 
-## 安装说明
-1. 安装 .NET 6 SDK。
-2. 确认仓库根目录 [global.json](D:\工作\轨面打磨\GrindCar\global.json) 可解析到本机已安装的 .NET 6 SDK。
-3. 在仓库根目录执行依赖还原：
+## 核心功能
+### 1. 驾驶舱首页
+- 启动后默认进入首页
+- 展示电量、速度、连接状态和当前时间
+- 首页中的电量和速度当前为演示数据，由 `MotorViewModel` 定时刷新
+- 可从首页进入点云导出、中位截面调试、打磨深度调试和电机调试窗口
+
+### 2. 电机调试
+- 通过 `IP + Port` 连接 PLC
+- 支持只读参数轮询
+- 支持整型、短整型、布尔型参数写入
+- 参数地址、比例和单位统一定义在 `Definitions/MotorParameterDefinitions.cs`
+- 写入映射逻辑集中在 `ViewModels/MotorViewModel.BuildWriteSpecs()`
+
+### 3. 点云导出与截面提取
+- `PointCloudExportService` 用于枚举设备并导出单帧点云
+- 支持点云导出格式：`CSV`、`PLY`、`OBJ`
+- `PointCloudRepresentativeProfileService` 支持从点云 `CSV` 中提取中位 `Y` 截面二维点集
+- `PointCloudMedianSectionCaptureService` 提供一条串联流程：
+  `SDK 单帧采集 -> 落盘到 Log 目录 -> 从 CSV 提取中位截面`
+
+### 4. 打磨深度计算
+- `RailSurfaceService.RailSurfaceFun(double x)` 提供标准轨面函数
+- `RailSurfaceService.GetGrindDepth(int angle)` 计算单个角度的打磨深度
+- `RailSurfaceService.GetGrindDepths(IReadOnlyList<int> angles)` 支持多角度批量计算
+- 批量计算时只采集一次代表截面点集，避免重复调用点云设备
+
+## 环境要求
+### 软件要求
+- Windows 系统
+- `.NET 6 SDK`
+- 可用的 `net6.0-windows` 开发环境
+
+### 硬件与运行依赖
+- 如需使用 PLC 调试能力，需要可访问的 `Modbus TCP` 设备
+- 如需使用点云采集能力，需要本机可加载 `GrindCar/lib/Mv3dLpNet.dll`，并连接兼容的点云设备
+- 若仅查看界面或进行部分离线逻辑调试，可在无 PLC、无点云设备的情况下运行
+
+### SDK 版本约束
+仓库根目录 `global.json` 指定：
+
+```json
+{
+  "sdk": {
+    "version": "6.0.0",
+    "rollForward": "latestMinor",
+    "allowPrerelease": false
+  }
+}
+```
+
+建议安装兼容的 .NET 6 SDK 后再执行构建。
+
+## 安装与运行
+在仓库根目录执行以下命令。
+
+还原依赖：
 
 ```powershell
 dotnet restore GrindCar.sln
 ```
 
-## 运行说明
 构建项目：
 
 ```powershell
@@ -59,51 +120,70 @@ dotnet clean GrindCar.sln
 ```
 
 ## 使用说明
-1. 启动后默认进入驾驶舱首页。
-2. 点击首页右上角“电机调试”按钮，打开参数调试窗口。
-3. 点击首页右上角“点云导出”“中位截面调试”或“打磨深度调试”按钮，可进入对应的点云与轨面调试界面。
-4. 在电机调试窗口顶部输入 PLC 的 `IP` 和 `Port`。
-5. 点击“连接”后开始轮询读取只读参数。
-6. 对可写参数输入数值或布尔值后点击“修改”写入 PLC。
-7. 在打磨深度调试窗口中输入一个或多个打磨角度，点击“开始计算”后查看每个角度对应的打磨深度。
-8. 点击“断开”停止轮询并释放连接。
+### 首页入口
+1. 启动应用后进入“轨面打磨驾驶舱”首页。
+2. 通过右上角按钮可打开对应功能窗口。
+3. 当前可进入的窗口包括：`点云导出`、`中位截面调试`、`打磨深度调试`、`电机调试`。
 
-## 核心模块说明
-- `Views/MainWindow.xaml`：驾驶舱首页
-- `Views/MotorDebugWindow.xaml`：电机调试窗口
-- `Views/PointCloudExportWindow.xaml`：点云导出窗口
-- `Views/MedianSectionDebugWindow.xaml`：中位截面调试窗口
-- `Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
-- `ViewModels/MotorViewModel.cs`：连接、轮询、写入和状态展示的主要逻辑
-- `Services/PlcModbusCommunicator.cs`：Modbus TCP 通信封装
-- `Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、单帧采集与文件导出
-- `Definitions/MotorParameterDefinitions.cs`：参数地址、比例和单位定义中心
-- `Services/RailSurfaceService.cs`：轨面廓形相关计算逻辑
-- `Models/Rail/RailProfilePoint.cs`：轨面截面二维点模型
-- `Models/Rail/GrindDepthResult.cs`：打磨角度与打磨深度结果模型
-- `Services/Rail/PointCloudRepresentativeProfileService.cs`：从点云 CSV 提取中位截面与代表廓形二维点集
-- `Services/Rail/PointCloudMedianSectionCaptureService.cs`：从 SDK 采集单帧点云、落盘 `Log/CSV`、并提取中位 Y 截面二维点集
+### 电机调试流程
+1. 打开“电机调试”窗口。
+2. 输入 PLC 的 `IP` 和 `Port`。
+3. 点击“连接”后开始轮询只读参数。
+4. 对可写参数输入值后点击“修改”执行写入。
+5. 点击“断开”后停止轮询并释放连接。
 
-## 打磨深度计算
-- `RailSurfaceService.GetGrindDepth(int angle)`：计算单个打磨角度对应的打磨深度。
-- `RailSurfaceService.GetGrindDepths(IReadOnlyList<int> angles)`：批量计算多个打磨角度，并返回 `(Angle, GrindDepth)` 结果集合。
-- 输入角度按“角度”语义处理，内部会先转换为弧度后再参与斜率计算。
-- 批量计算时只采集一次代表截面点集，再复用该点集完成全部角度的深度计算。
+布尔输入当前支持以下格式：
 
-## 点云代表廓形
-- 当前点云处理链路采用离线验证方式：先由 `PointCloudExportService` 导出 `CSV`，再由 `PointCloudRepresentativeProfileService` 读取并提取代表廓形。
-- 当前新增一条单帧直连链路：`SDK 单帧点云 -> Log 目录 CSV -> 中位 Y 截面二维点集 (X, Z)`。
-- 当前坐标约定为：`Y` 表示前进方向，`X` 表示轨面横向，`Z` 表示高度。
-- 当前“代表截面”定义为：对单帧点云全部 `Y` 去重后，按偏左中位规则选出中位 `Y`，再从原始点集中筛出该 `Y` 上的全部点，输出 `(X, Z)`。
-- `RailProfilePoint` 在该流程中承载的是 `(横向 X, 高度 Z)` 二维坐标。
-- 第一版默认参数：
-  - `GridStepY = 0.2 mm`
-- 当前实现会在读取 `CSV` 时直接完成分箱聚合，不再把整份点云加载为中间三维点列表。
-- 单帧采集链路默认将原始点云 `CSV` 落到运行目录下的 `Log/` 目录，文件名格式为 `point-cloud-yyyyMMdd-HHmmss-fff.csv`。
+- `true` / `false`
+- `1` / `0`
+- `on` / `off`
+- `yes` / `no`
+- `是` / `否`
+
+### 点云调试流程
+1. 打开“点云导出”窗口，选择设备并导出单帧点云文件。
+2. 打开“中位截面调试”窗口，验证从 `CSV` 中提取的中位截面点集。
+3. 打开“打磨深度调试”窗口，输入一个或多个角度并执行计算。
+
+## 关键模块说明
+- `GrindCar/Views/MainWindow.xaml`：驾驶舱首页
+- `GrindCar/Views/MotorDebugWindow.xaml`：电机调试窗口
+- `GrindCar/Views/PointCloudExportWindow.xaml`：点云导出窗口
+- `GrindCar/Views/MedianSectionDebugWindow.xaml`：中位截面调试窗口
+- `GrindCar/Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
+- `GrindCar/ViewModels/MotorViewModel.cs`：PLC 连接、轮询、写入、首页演示数据和状态文本管理
+- `GrindCar/Definitions/MotorParameterDefinitions.cs`：参数名称、地址、比例和单位定义中心
+- `GrindCar/Services/PlcModbusCommunicator.cs`：Modbus TCP 通信封装
+- `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、采集和文件导出
+- `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从 CSV 提取中位截面二维点集
+- `GrindCar/Services/Rail/PointCloudMedianSectionCaptureService.cs`：采集单帧点云并输出中位截面提取结果
+- `GrindCar/Services/RailSurfaceService.cs`：标准轨面函数与打磨深度计算逻辑
+
+## 坐标与算法说明
+### 点云坐标约定
+- `X` 表示轨面横向
+- `Y` 表示前进方向
+- `Z` 表示高度
+
+在 `RailProfilePoint` 中，当前语义为：
+
+- `X`：轨面横向
+- `Y`：高度 `Z`
+
+### 中位截面定义
+- 先从单帧点云中读取全部有效点
+- 对全部 `Y` 坐标去重
+- 选择排序后偏左的中位 `Y`
+- 筛出该 `Y` 对应的全部点
+- 输出二维 `(X, Z)` 点集用于后续轨面计算
+
+### 打磨深度计算说明
+- 输入角度以“度”为单位
+- 内部会先转为弧度，再换算斜率参与计算
+- 结果基于标准轨面函数与采集到的代表截面点集计算得出
 
 ## 代码示例
-以下示例演示如何通过 `IPlcClient` 建立连接并执行基本写入：
-
+### PLC 连接与写入
 ```csharp
 using GrindCar.Services;
 
@@ -114,20 +194,21 @@ await plc.WriteSingleCoilAsync(104, true);
 plc.Disconnect();
 ```
 
-以下示例演示如何从点云 `CSV` 提取代表廓形二维点集：
-
+### 从 CSV 提取中位截面
 ```csharp
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail;
 
 IPointCloudRepresentativeProfileService profileService = new PointCloudRepresentativeProfileService();
 
-IReadOnlyList<RailProfilePoint> profilePoints =
-    profileService.ExtractRepresentativeProfile(@"D:\data\point-cloud.csv");
+MedianSectionExtractionResult extractionResult =
+    profileService.ExtractMedianSectionProfileFromCsv(@"D:\data\point-cloud.csv");
+
+double medianY = extractionResult.MedianY;
+IReadOnlyList<RailProfilePoint> profilePoints = extractionResult.ProfilePoints;
 ```
 
-以下示例演示如何从设备采集单帧点云，自动写入 `Log/CSV`，并提取中位 `Y` 截面的二维点集：
-
+### 采集单帧点云并提取截面
 ```csharp
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail;
@@ -142,8 +223,7 @@ double medianY = captureResult.ExtractionResult.MedianY;
 IReadOnlyList<RailProfilePoint> sectionPoints = captureResult.ExtractionResult.ProfilePoints;
 ```
 
-以下示例演示如何批量计算多个打磨角度对应的打磨深度：
-
+### 计算多个打磨角度的打磨深度
 ```csharp
 using GrindCar.Models.Rail;
 using GrindCar.Services;
@@ -152,18 +232,28 @@ IReadOnlyList<GrindDepthResult> results =
     RailSurfaceService.GetGrindDepths(new[] { 0, 5, 10, 15 });
 ```
 
-## 当前实现说明
-- 代表廓形提取当前聚焦于算法验证阶段，先支持点云 `CSV` 输入，不直接解析 SDK 点云内存。
-- 当前已提供一个工程化折中方案：从 SDK 获取单帧点云后先导出为 `Log/CSV`，再复用现有 `CSV` 提取逻辑获取中位截面点集。
-- 当前单帧直连链路只负责“拿到点云数据并选出中位 Y 截面代表点”，尚未接入 UI 自动触发。
-- 当前已提供独立的打磨深度调试窗口，支持多角度输入并展示对应的打磨深度结果。
-- 当前未将标准轨面对齐、残差分析、稳定性指标纳入代表廓形提取服务。
+## API 示例
+本项目不是 Web API 项目，当前没有 HTTP 接口。
 
-## 构建说明
-- 当前命令行构建已验证通过：`dotnet build GrindCar.sln`
-- 当前剩余主要构建警告为 `NU1701`
-- 原因是 `NModbus4 3.0.0-alpha1` 不是针对 `net6.0-windows` 原生发布的包
-- 如需继续清理警告，优先评估替换 `NModbus4`
+如果从“对外调用方式”理解 API，则当前主要通过以下服务类对外提供能力：
+
+- `IPlcClient`：PLC 连接、读取、写入
+- `PointCloudExportService`：点云设备枚举与文件导出
+- `IPointCloudRepresentativeProfileService`：从 CSV 提取中位截面
+- `IPointCloudMedianSectionCaptureService`：采集点云并提取截面
+- `RailSurfaceService`：标准轨面和打磨深度计算
+
+## 构建与兼容性说明
+- 当前命令行构建命令为 `dotnet build GrindCar.sln`
+- 当前已知主要 NuGet 警告为 `NU1701`
+- 该警告主要来自 `NModbus4 3.0.0-alpha1` 对 `net6.0-windows` 的兼容性声明不完整
+- 如需进一步降低构建风险，优先评估替换或升级 Modbus 依赖
 
 ## 环境变量
 当前项目不依赖环境变量。
+
+## 注意事项
+- 不要将 Modbus 地址、比例和单位散落到界面层或 code-behind 中
+- 点云采集默认会在运行目录下创建 `Log/` 目录并落盘 `CSV`
+- `bin/`、`obj/`、`tmp_obj/` 等构建产物不应提交到版本库
+- 首页当前部分监控数据为演示数据，不等同于实时设备遥测

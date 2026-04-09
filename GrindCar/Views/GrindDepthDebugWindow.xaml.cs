@@ -20,6 +20,9 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
     private readonly ObservableCollection<GrindDepthResult> _results = new();
     private bool _isBusy;
 
+    /// <summary>
+    /// 初始化打磨深度调试窗口并绑定当前窗口为数据上下文。
+    /// </summary>
     public GrindDepthDebugWindow()
     {
         InitializeComponent();
@@ -30,6 +33,11 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
 
     public ObservableCollection<GrindDepthResult> Results => _results;
 
+    /// <summary>
+    /// 解析输入角度并执行打磨深度计算，同时展示结果窗口。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private async void Calculate_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -38,8 +46,10 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
             ToggleBusyState(true);
             SetStatus($"正在计算 {angles.Count.ToString(CultureInfo.InvariantCulture)} 个角度的打磨深度...");
 
-            IReadOnlyList<GrindDepthResult> results =
-                await Task.Run(() => RailSurfaceService.GetGrindDepths(angles));
+            GrindDepthCalculationResult calculationResult =
+                await Task.Run(() => RailSurfaceService.CalculateGrindDepths(angles));
+
+            IReadOnlyList<GrindDepthResult> results = calculationResult.Results;
 
             _results.Clear();
             for (int index = 0; index < results.Count; index++)
@@ -49,6 +59,12 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
 
             ResultCountTextBlock.Text = results.Count.ToString(CultureInfo.InvariantCulture);
             SetStatus($"计算完成，共得到 {results.Count.ToString(CultureInfo.InvariantCulture)} 条结果。");
+
+            var comparisonWindow = new RepresentativeProfileComparisonWindow(calculationResult.RepresentativePoints)
+            {
+                Owner = this
+            };
+            comparisonWindow.Show();
         }
         catch (Exception ex)
         {
@@ -63,11 +79,21 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// 关闭当前窗口。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         Close();
     }
 
+    /// <summary>
+    /// 将界面输入文本解析为角度整数列表。
+    /// </summary>
+    /// <param name="input">用户输入的角度文本。</param>
+    /// <returns>解析后的角度集合。</returns>
     private static IReadOnlyList<int> ParseAngles(string? input)
     {
         if (string.IsNullOrWhiteSpace(input))
@@ -105,6 +131,10 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
         return angles;
     }
 
+    /// <summary>
+    /// 切换窗口控件的忙碌状态，避免重复提交计算。
+    /// </summary>
+    /// <param name="isBusy">是否处于忙碌状态。</param>
     private void ToggleBusyState(bool isBusy)
     {
         _isBusy = isBusy;
@@ -112,11 +142,19 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
         AnglesTextBox.IsEnabled = !_isBusy;
     }
 
+    /// <summary>
+    /// 更新窗口状态提示文本。
+    /// </summary>
+    /// <param name="message">要显示的状态消息。</param>
     private void SetStatus(string message)
     {
         StatusTextBlock.Text = message;
     }
 
+    /// <summary>
+    /// 触发属性变更通知，更新界面绑定。
+    /// </summary>
+    /// <param name="propertyName">发生变化的属性名称。</param>
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
