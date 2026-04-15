@@ -34,3 +34,5 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDep
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDepthDebugWindow.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\RepresentativeProfileComparisonWindow.baml
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\RepresentativeProfileComparisonWindow.g.cs
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\CurveRotationDebugWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\CurveRotationDebugWindow.g.cs

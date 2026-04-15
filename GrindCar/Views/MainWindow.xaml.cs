@@ -74,6 +74,20 @@ namespace GrindCar.Views
         }
 
         /// <summary>
+        /// 打开曲线旋转调试窗口。
+        /// </summary>
+        /// <param name="sender">事件发送方。</param>
+        /// <param name="e">按钮点击事件参数。</param>
+        private void OpenCurveRotationDebugWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new CurveRotationDebugWindow
+            {
+                Owner = this
+            };
+            window.Show();
+        }
+
+        /// <summary>
         /// 打开打磨深度调试窗口。
         /// </summary>
         /// <param name="sender">事件发送方。</param>

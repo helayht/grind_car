@@ -17,7 +17,8 @@ namespace GrindCar.Views;
 /// </summary>
 public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
 {
-    private readonly ObservableCollection<GrindDepthResult> _results = new();
+    private readonly ObservableCollection<GrindDepthResult> _requiredResults = new();
+    private readonly ObservableCollection<DetectedGrindDepthResult> _detectedResults = new();
     private bool _isBusy;
 
     /// <summary>
@@ -31,7 +32,9 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableCollection<GrindDepthResult> Results => _results;
+    public ObservableCollection<GrindDepthResult> RequiredResults => _requiredResults;
+
+    public ObservableCollection<DetectedGrindDepthResult> DetectedResults => _detectedResults;
 
     /// <summary>
     /// 解析输入角度并执行打磨深度计算，同时展示结果窗口。
@@ -44,21 +47,24 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
         {
             IReadOnlyList<int> angles = ParseAngles(AnglesTextBox.Text);
             ToggleBusyState(true);
-            SetStatus($"正在计算 {angles.Count.ToString(CultureInfo.InvariantCulture)} 个角度的打磨深度...");
+            SetStatus($"正在计算 {angles.Count.ToString(CultureInfo.InvariantCulture)} 个角度的需要打磨深度，并保存检测基线...");
 
             GrindDepthCalculationResult calculationResult =
                 await Task.Run(() => RailSurfaceService.CalculateGrindDepths(angles));
+            GrindingDepthBaseline baseline =
+                RailSurfaceService.CreateGrindingDepthBaseline(angles, calculationResult.RepresentativePoints);
+            await Task.Run(() => RailSurfaceService.SaveGrindingDepthBaseline(baseline));
 
             IReadOnlyList<GrindDepthResult> results = calculationResult.Results;
 
-            _results.Clear();
+            _requiredResults.Clear();
             for (int index = 0; index < results.Count; index++)
             {
-                _results.Add(results[index]);
+                _requiredResults.Add(results[index]);
             }
 
             ResultCountTextBlock.Text = results.Count.ToString(CultureInfo.InvariantCulture);
-            SetStatus($"计算完成，共得到 {results.Count.ToString(CultureInfo.InvariantCulture)} 条结果。");
+            SetStatus($"计算完成，共得到 {results.Count.ToString(CultureInfo.InvariantCulture)} 条需要打磨深度结果，检测基线已更新。");
 
             var comparisonWindow = new RepresentativeProfileComparisonWindow(calculationResult.RepresentativePoints)
             {
@@ -68,10 +74,54 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            _results.Clear();
+            _requiredResults.Clear();
             ResultCountTextBlock.Text = "0";
             SetStatus(ex.Message);
             MessageBox.Show(this, ex.Message, "计算失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            ToggleBusyState(false);
+        }
+    }
+
+    /// <summary>
+    /// 加载基线并检测机器已打磨深度。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
+    private async void Detect_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            ToggleBusyState(true);
+            SetStatus("正在加载检测基线并检测已打磨深度...");
+
+            GrindingDepthBaseline? baseline = await Task.Run(() => RailSurfaceService.LoadLatestGrindingDepthBaseline());
+            if (baseline == null)
+            {
+                throw new InvalidOperationException("未找到检测基线，请先执行“计算需要打磨深度”。");
+            }
+
+            IReadOnlyList<DetectedGrindDepthResult> results =
+                await Task.Run(() => RailSurfaceService.DetectGrindingDepths(baseline));
+
+            _detectedResults.Clear();
+            for (int index = 0; index < results.Count; index++)
+            {
+                _detectedResults.Add(results[index]);
+            }
+
+            ResultCountTextBlock.Text = results.Count.ToString(CultureInfo.InvariantCulture);
+            SetStatus(
+                $"检测完成，基线时间 {baseline.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)}，共检测 {results.Count.ToString(CultureInfo.InvariantCulture)} 个角度。");
+        }
+        catch (Exception ex)
+        {
+            _detectedResults.Clear();
+            ResultCountTextBlock.Text = "0";
+            SetStatus(ex.Message);
+            MessageBox.Show(this, ex.Message, "检测失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -139,6 +189,7 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
     {
         _isBusy = isBusy;
         CalculateButton.IsEnabled = !_isBusy;
+        DetectButton.IsEnabled = !_isBusy;
         AnglesTextBox.IsEnabled = !_isBusy;
     }
 

@@ -70,6 +70,8 @@ public sealed class PointCloudExportService
             throw new PointCloudSdkException("导出路径无效。");
         }
 
+        string normalizedOutputPath = Path.GetFullPath(outputPath);
+        string sdkOutputPath = BuildSdkOutputPath(normalizedOutputPath, exportFormat);
         Directory.CreateDirectory(outputDirectory);
 
         _ = ExecuteWithSdkLifecycle(() =>
@@ -95,7 +97,7 @@ public sealed class PointCloudExportService
 
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, depthImage, DefaultGetImageTimeoutMs), "获取深度图失败。");
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_MapDepthToPointCloud(depthImage, pointCloudImage), "深度图转换点云失败。");
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_SaveImage(pointCloudImage, ToSdkFileType(exportFormat), outputPath), "导出点云文件失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_SaveImage(pointCloudImage, ToSdkFileType(exportFormat), sdkOutputPath), "导出点云文件失败。");
             }
             finally
             {
@@ -112,6 +114,8 @@ public sealed class PointCloudExportService
 
             return true;
         });
+
+        EnsureExportedFileAtExpectedPath(normalizedOutputPath, sdkOutputPath, exportFormat);
     }
 
     /// <summary>
@@ -142,6 +146,73 @@ public sealed class PointCloudExportService
             PointCloudExportFormat.Ply => Mv3dLpSDK.FileType_PLY,
             PointCloudExportFormat.Csv => Mv3dLpSDK.FileType_CSV,
             PointCloudExportFormat.Obj => Mv3dLpSDK.FileType_OBJ,
+            _ => throw new PointCloudSdkException($"不支持的导出格式: {exportFormat}")
+        };
+    }
+
+    /// <summary>
+    /// 生成传给 SDK 的导出路径。
+    /// 某些 SDK 文件类型会自动补扩展名，因此这里传入不带目标扩展名的基路径，避免出现 .csv.csv。
+    /// </summary>
+    /// <param name="outputPath">调用方期望的最终导出路径。</param>
+    /// <param name="exportFormat">导出格式。</param>
+    /// <returns>适合传给 SDK 的输出路径。</returns>
+    private static string BuildSdkOutputPath(string outputPath, PointCloudExportFormat exportFormat)
+    {
+        string expectedExtension = GetExpectedExtension(exportFormat);
+        return string.Equals(Path.GetExtension(outputPath), expectedExtension, StringComparison.OrdinalIgnoreCase)
+            ? Path.Combine(
+                Path.GetDirectoryName(outputPath) ?? string.Empty,
+                Path.GetFileNameWithoutExtension(outputPath))
+            : outputPath;
+    }
+
+    /// <summary>
+    /// 确保导出完成后，调用方期望的路径上存在最终文件。
+    /// </summary>
+    /// <param name="expectedOutputPath">调用方期望的最终路径。</param>
+    /// <param name="sdkOutputPath">传给 SDK 的输出路径。</param>
+    /// <param name="exportFormat">导出格式。</param>
+    private static void EnsureExportedFileAtExpectedPath(
+        string expectedOutputPath,
+        string sdkOutputPath,
+        PointCloudExportFormat exportFormat)
+    {
+        if (File.Exists(expectedOutputPath))
+        {
+            return;
+        }
+
+        string expectedExtension = GetExpectedExtension(exportFormat);
+        string sdkGeneratedPath = sdkOutputPath + expectedExtension;
+
+        if (File.Exists(sdkGeneratedPath))
+        {
+            File.Move(sdkGeneratedPath, expectedOutputPath, true);
+            return;
+        }
+
+        if (File.Exists(sdkOutputPath))
+        {
+            File.Move(sdkOutputPath, expectedOutputPath, true);
+            return;
+        }
+
+        throw new PointCloudSdkException($"点云导出完成后未找到文件: {expectedOutputPath}");
+    }
+
+    /// <summary>
+    /// 获取指定导出格式的标准文件扩展名。
+    /// </summary>
+    /// <param name="exportFormat">导出格式。</param>
+    /// <returns>对应的小写扩展名。</returns>
+    private static string GetExpectedExtension(PointCloudExportFormat exportFormat)
+    {
+        return exportFormat switch
+        {
+            PointCloudExportFormat.Ply => ".ply",
+            PointCloudExportFormat.Csv => ".csv",
+            PointCloudExportFormat.Obj => ".obj",
             _ => throw new PointCloudSdkException($"不支持的导出格式: {exportFormat}")
         };
     }

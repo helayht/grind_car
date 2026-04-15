@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
@@ -15,6 +18,13 @@ public class RailSurfaceService
 {
     private const double StraightAngleDegrees = 180.0;
     private const double DegreesToRadiansFactor = Math.PI / 180.0;
+    private const string DefaultLogDirectoryName = "Log";
+    private const string DefaultBaselineFileName = "grind-depth-baseline.json";
+
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        WriteIndented = true
+    };
 
     private static readonly Arc[] Arcs =
     {
@@ -60,28 +70,7 @@ public class RailSurfaceService
             return leftOk && rightOk;
         }
     }
-
-    /// <summary>
-    /// 计算单个打磨角度对应的打磨深度。
-    /// </summary>
-    /// <param name="x">打磨角度，单位为度。</param>
-    /// <returns>该角度对应的打磨深度。</returns>
-    public static double GetGrindDepth(int x)
-    {
-        IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
-        return GetGrindDepth(x, representativeSectionPoints);
-    }
-
-    /// <summary>
-    /// 批量计算多个打磨角度对应的打磨深度。
-    /// </summary>
-    /// <param name="angles">待计算的角度集合。</param>
-    /// <returns>每个角度对应的打磨深度结果列表。</returns>
-    public static IReadOnlyList<GrindDepthResult> GetGrindDepths(IReadOnlyList<int> angles)
-    {
-        return CalculateGrindDepths(angles).Results;
-    }
-
+    
     /// <summary>
     /// 批量计算打磨深度，并返回过程中使用的代表截面点集。
     /// </summary>
@@ -100,7 +89,7 @@ public class RailSurfaceService
         }
 
         // 批量计算时只采集一次代表截面点集，避免每个角度都重复触发点云采集。
-        IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints = CaptureRepresentativeSectionPoints();
         var results = new List<GrindDepthResult>(angles.Count);
 
         for (int index = 0; index < angles.Count; index++)
@@ -114,8 +103,164 @@ public class RailSurfaceService
     }
 
     /// <summary>
-    /// 基于已获取的代表截面点集计算指定角度的打磨深度。
+    /// 基于给定代表截面点集批量计算各角度对应的 b 值。
     /// </summary>
+    /// <param name="angles">待计算的角度集合。</param>
+    /// <param name="representativeSectionPoints">代表截面点集。</param>
+    /// <returns>每个角度对应的 b 值结果集合。</returns>
+    public static IReadOnlyList<AngleBValue> CalculateBValues(
+        IReadOnlyList<int> angles,
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints)
+    {
+        if (angles == null)
+        {
+            throw new ArgumentNullException(nameof(angles));
+        }
+
+        if (representativeSectionPoints == null)
+        {
+            throw new ArgumentNullException(nameof(representativeSectionPoints));
+        }
+
+        var results = new List<AngleBValue>(angles.Count);
+        for (int index = 0; index < angles.Count; index++)
+        {
+            int angle = angles[index];
+            double b = CalculateBByAngle(angle, representativeSectionPoints);
+            results.Add(new AngleBValue(angle, b));
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// 基于指定代表廓形点集生成检测基线。
+    /// </summary>
+    /// <param name="angles">待计算的角度集合。</param>
+    /// <param name="representativePoints">本次计算使用的代表廓形点集。</param>
+    /// <returns>检测基线对象。</returns>
+    public static GrindingDepthBaseline CreateGrindingDepthBaseline(
+        IReadOnlyList<int> angles,
+        IReadOnlyList<RailProfilePoint> representativePoints)
+    {
+        if (angles == null)
+        {
+            throw new ArgumentNullException(nameof(angles));
+        }
+
+        if (angles.Count == 0)
+        {
+            throw new InvalidOperationException("角度列表不能为空。");
+        }
+
+        if (representativePoints == null)
+        {
+            throw new ArgumentNullException(nameof(representativePoints));
+        }
+
+        IReadOnlyList<AngleBValue> baselineBValues = CalculateBValues(angles, representativePoints);
+        return new GrindingDepthBaseline(DateTime.Now, angles.ToArray(), baselineBValues);
+    }
+
+    /// <summary>
+    /// 保存最新检测基线数据。
+    /// </summary>
+    /// <param name="baseline">待保存的基线数据。</param>
+    /// <param name="baselineFilePath">可选的基线文件路径。</param>
+    public static void SaveGrindingDepthBaseline(GrindingDepthBaseline baseline, string? baselineFilePath = null)
+    {
+        if (baseline == null)
+        {
+            throw new ArgumentNullException(nameof(baseline));
+        }
+
+        string resolvedPath = ResolveBaselineFilePath(baselineFilePath);
+        string? directoryPath = Path.GetDirectoryName(resolvedPath);
+        if (string.IsNullOrWhiteSpace(directoryPath))
+        {
+            throw new InvalidOperationException("基线文件目录无效。");
+        }
+
+        Directory.CreateDirectory(directoryPath);
+        string json = JsonSerializer.Serialize(baseline, SerializerOptions);
+        File.WriteAllText(resolvedPath, json);
+    }
+
+    /// <summary>
+    /// 加载最新检测基线数据。
+    /// </summary>
+    /// <param name="baselineFilePath">可选的基线文件路径。</param>
+    /// <returns>若基线存在则返回对应对象，否则返回 <c>null</c>。</returns>
+    public static GrindingDepthBaseline? LoadLatestGrindingDepthBaseline(string? baselineFilePath = null)
+    {
+        string resolvedPath = ResolveBaselineFilePath(baselineFilePath);
+        if (!File.Exists(resolvedPath))
+        {
+            return null;
+        }
+
+        string json = File.ReadAllText(resolvedPath);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<GrindingDepthBaseline>(json, SerializerOptions);
+    }
+
+    /// <summary>
+    /// 基于已保存的检测基线重新采集代表廓形并检测已打磨深度。
+    /// </summary>
+    /// <param name="baseline">待比较的基线数据。</param>
+    /// <returns>每个角度对应的已打磨深度结果集合。</returns>
+    public static IReadOnlyList<DetectedGrindDepthResult> DetectGrindingDepths(GrindingDepthBaseline baseline)
+    {
+        if (baseline == null)
+        {
+            throw new ArgumentNullException(nameof(baseline));
+        }
+
+        if (baseline.Angles == null || baseline.Angles.Count == 0)
+        {
+            throw new InvalidOperationException("基线角度列表为空。");
+        }
+
+        IReadOnlyList<RailProfilePoint> representativePoints = CaptureRepresentativeSectionPoints();
+        IReadOnlyList<AngleBValue> currentBValues = CalculateBValues(baseline.Angles, representativePoints);
+
+        var baselineMap = baseline.BaselineBValues.ToDictionary(item => item.Angle, item => item.B);
+        var results = new List<DetectedGrindDepthResult>(currentBValues.Count);
+
+        for (int index = 0; index < currentBValues.Count; index++)
+        {
+            AngleBValue currentValue = currentBValues[index];
+            if (!baselineMap.TryGetValue(currentValue.Angle, out double baselineB))
+            {
+                throw new InvalidOperationException($"检测基线中缺少角度 {currentValue.Angle} 的 b 值。");
+            }
+
+            double detectedDepth = Math.Abs(currentValue.B - baselineB);
+            results.Add(new DetectedGrindDepthResult(currentValue.Angle, baselineB, currentValue.B, detectedDepth));
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// 基于给定代表截面点集计算指定角度对应的 b 值。
+    /// </summary>
+    /// <param name="angle">打磨角度，单位为度。</param>
+    /// <param name="representativeSectionPoints">代表截面点集。</param>
+    /// <returns>对应角度下的支撑直线截距。</returns>
+    public static double CalculateBByAngle(int angle, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
+    {
+        double k = CalculateSlopeFromAngle(angle);
+        return GetB(k, representativeSectionPoints);
+    }
+
+    /// <summary>
+    /// 基于已获取的代表截面点集计算指定角度的打磨深度。
+    /// </summary> 
     /// <param name="angle">打磨角度，单位为度。</param>
     /// <param name="representativeSectionPoints">代表截面点集。</param>
     /// <returns>对应的打磨深度。</returns>
@@ -136,23 +281,13 @@ public class RailSurfaceService
         double radians = (StraightAngleDegrees + angle) * DegreesToRadiansFactor;
         return Math.Tan(radians);
     }
-
-    /// <summary>
-    /// 获取代表截面在给定斜率下的支撑直线截距。
-    /// </summary>
-    /// <param name="k">目标直线斜率。</param>
-    /// <returns>代表截面对应的截距值。</returns>
-    public static double GetB(double k)
-    {
-        IReadOnlyList<RailProfilePoint> representativeSectionPoints = GetRepresentativeSectionPoints();
-        return GetB(k, representativeSectionPoints);
-    }
+    
 
     /// <summary>
     /// 从所有可用点云设备采集并合并代表截面点集。
     /// </summary>
     /// <returns>合并后的代表截面点集合。</returns>
-    private static IReadOnlyList<RailProfilePoint> GetRepresentativeSectionPoints()
+    public static IReadOnlyList<RailProfilePoint> CaptureRepresentativeSectionPoints()
     {
         IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
         PointCloudExportService pointCloudExportService = new PointCloudExportService();
@@ -174,6 +309,17 @@ public class RailSurfaceService
             }
 
             mergedPoints.AddRange(result.ExtractionResult.ProfilePoints);
+        }
+        
+        if (pointCloudDeviceInfos.Count == 1)
+        {
+            var result = new List<RailProfilePoint>();
+            for (int i = 0; i < mergedPoints.Count; i++)
+            {
+                result.Add(new RailProfilePoint(mergedPoints[i].X, mergedPoints[i].Y));
+                result.Add(new RailProfilePoint(-1 * mergedPoints[i].X,mergedPoints[i].Y));
+            }
+            return result;
         }
 
         if (mergedPoints.Count == 0)
@@ -214,7 +360,7 @@ public class RailSurfaceService
         double xMid = (mergedPoints[0].X + mergedPoints[mergedPoints.Count - 1].X) / 2.0;
         double yMid = (mergedPoints[0].Y + mergedPoints[mergedPoints.Count - 1].Y) / 2.0;
 
-        double b = double.NegativeInfinity;
+        double b = double.NegativeInfinity; 
         foreach (RailProfilePoint point in mergedPoints)
         {
             double candidate = (point.Y - yMid) - k * (point.X - xMid);
@@ -297,5 +443,17 @@ public class RailSurfaceService
         }
 
         return (bestB, bestX);
+    }
+
+    /// <summary>
+    /// 解析检测基线文件路径。
+    /// </summary>
+    /// <param name="baselineFilePath">外部指定的文件路径。</param>
+    /// <returns>最终使用的完整文件路径。</returns>
+    private static string ResolveBaselineFilePath(string? baselineFilePath)
+    {
+        return string.IsNullOrWhiteSpace(baselineFilePath)
+            ? Path.Combine(Environment.CurrentDirectory, DefaultLogDirectoryName, DefaultBaselineFileName)
+            : baselineFilePath;
     }
 }

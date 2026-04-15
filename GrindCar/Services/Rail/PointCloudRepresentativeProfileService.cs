@@ -16,6 +16,8 @@ namespace GrindCar.Services.Rail;
 public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresentativeProfileService
 {
     private const double Tolerance = 1e-7;
+    private const double RepresentativeRotationDegrees = 23.0;
+    private const double DegreesToRadiansFactor = Math.PI / 180.0;
 
     /// <summary>
     /// 从点云 CSV 文件中提取中位 Y 截面的二维 X/Z 点集。
@@ -58,7 +60,9 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
                 throw new RepresentativeProfileExtractionException("未找到中位 Y 截面的有效 X/Z 点。");
             }
 
-            return new MedianSectionExtractionResult(medianY, sectionPoints);
+            List<RailProfilePoint> rotatedSectionPoints =
+                RotateRepresentativePoints(sectionPoints, RepresentativeRotationDegrees);
+            return new MedianSectionExtractionResult(medianY, rotatedSectionPoints);
         }
         catch (RepresentativeProfileExtractionException)
         {
@@ -385,6 +389,37 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         }
 
         (values[left], values[right]) = (values[right], values[left]);
+    }
+
+    /// <summary>
+    /// 将代表截面点集按指定角度围绕原点进行逆时针旋转。
+    /// </summary>
+    /// <param name="points">待旋转的代表点集。</param>
+    /// <param name="angleDegrees">旋转角度（度）。</param>
+    /// <returns>旋转后的点集。</returns>
+    private static List<RailProfilePoint> RotateRepresentativePoints(
+        IReadOnlyList<RailProfilePoint> points,
+        double angleDegrees)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        double radians = angleDegrees * DegreesToRadiansFactor;
+        double cosValue = Math.Cos(radians);
+        double sinValue = Math.Sin(radians);
+        var rotatedPoints = new List<RailProfilePoint>(points.Count);
+
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            double rotatedX = point.X * cosValue - point.Y * sinValue;
+            double rotatedY = point.X * sinValue + point.Y * cosValue;
+            rotatedPoints.Add(new RailProfilePoint(rotatedX, rotatedY));
+        }
+
+        return rotatedPoints;
     }
 
     /// <summary>
