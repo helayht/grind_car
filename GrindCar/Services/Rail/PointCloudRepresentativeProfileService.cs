@@ -16,8 +16,14 @@ namespace GrindCar.Services.Rail;
 public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresentativeProfileService
 {
     private const double Tolerance = 1e-7;
-    private const double RepresentativeRotationDegrees = 23.0;
+    private const double RepresentativeRotationDegrees = 28.5;
     private const double DegreesToRadiansFactor = Math.PI / 180.0;
+    private const int OutlierFilterWindowSize = 15;
+    private const int OutlierFilterPassCount = 2;
+    private const int MinNeighborCount = 6;
+    private const double OutlierSigmaFactor = 2.2;
+    private const double MinResidualThreshold = 0.001;
+    private const double MinKeepRatio = 0.4;
 
     /// <summary>
     /// 从点云 CSV 文件中提取中位 Y 截面的二维 X/Z 点集。
@@ -60,9 +66,14 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
                 throw new RepresentativeProfileExtractionException("未找到中位 Y 截面的有效 X/Z 点。");
             }
 
+            List<RailProfilePoint> filteredSectionPoints = FilterOutlierRepresentativePoints(sectionPoints);
             List<RailProfilePoint> rotatedSectionPoints =
-                RotateRepresentativePoints(sectionPoints, RepresentativeRotationDegrees);
-            return new MedianSectionExtractionResult(medianY, rotatedSectionPoints);
+                RotateRepresentativePoints(filteredSectionPoints, RepresentativeRotationDegrees);
+            List<RailProfilePoint> symmetricSectionPoints =
+                AppendSymmetricPointsByMinX(rotatedSectionPoints);
+            List<RailProfilePoint> translatedSectionPoints =
+                TranslatePointsToBottomCenterAsOrigin(symmetricSectionPoints);
+            return new MedianSectionExtractionResult(medianY, translatedSectionPoints);
         }
         catch (RepresentativeProfileExtractionException)
         {
@@ -420,6 +431,264 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         }
 
         return rotatedPoints;
+    }
+
+    /// <summary>
+    /// 按固定参数剔除代表点中的离群点。
+    /// 基于局部线性拟合残差与 MAD 阈值，避免偏离曲线的噪点进入后续计算。
+    /// </summary>
+    /// <param name="points">原始代表点集。</param>
+    /// <returns>剔除离群点后的点集。</returns>
+    private static List<RailProfilePoint> FilterOutlierRepresentativePoints(IReadOnlyList<RailProfilePoint> points)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (points.Count < 5)
+        {
+            return new List<RailProfilePoint>(points);
+        }
+
+        List<RailProfilePoint> currentPoints = points
+            .OrderBy(point => point.X)
+            .ThenBy(point => point.Y)
+            .ToList();
+
+        for (int passIndex = 0; passIndex < OutlierFilterPassCount; passIndex++)
+        {
+            if (currentPoints.Count < MinNeighborCount + 2)
+            {
+                break;
+            }
+
+            currentPoints = FilterOutlierRepresentativePointsSinglePass(currentPoints);
+        }
+
+        return currentPoints;
+    }
+
+    /// <summary>
+    /// 执行一轮代表点离群值过滤。
+    /// </summary>
+    /// <param name="sortedPoints">按 X 排序后的代表点集。</param>
+    /// <returns>过滤后的点集。</returns>
+    private static List<RailProfilePoint> FilterOutlierRepresentativePointsSinglePass(IReadOnlyList<RailProfilePoint> sortedPoints)
+    {
+        int count = sortedPoints.Count;
+        int halfWindow = OutlierFilterWindowSize / 2;
+        var residuals = new double[count];
+
+        for (int index = 0; index < count; index++)
+        {
+            int left = Math.Max(0, index - halfWindow);
+            int right = Math.Min(count - 1, index + halfWindow);
+            while (right - left < MinNeighborCount && (left > 0 || right < count - 1))
+            {
+                if (left > 0)
+                {
+                    left--;
+                }
+
+                if (right < count - 1)
+                {
+                    right++;
+                }
+            }
+
+            (double slope, double intercept) = FitLineExcludingIndex(sortedPoints, left, right, index);
+
+            RailProfilePoint point = sortedPoints[index];
+            double predictedY = slope * point.X + intercept;
+            residuals[index] = point.Y - predictedY;
+        }
+
+        double residualMedian = Median(residuals);
+        var centeredAbsoluteResiduals = new double[count];
+        for (int index = 0; index < count; index++)
+        {
+            centeredAbsoluteResiduals[index] = Math.Abs(residuals[index] - residualMedian);
+        }
+
+        double mad = Median(centeredAbsoluteResiduals);
+        double robustSigma = 1.4826 * mad;
+        double threshold = Math.Max(MinResidualThreshold, OutlierSigmaFactor * robustSigma);
+
+        var kept = new List<RailProfilePoint>(count);
+        for (int index = 0; index < count; index++)
+        {
+            if (centeredAbsoluteResiduals[index] <= threshold)
+            {
+                kept.Add(sortedPoints[index]);
+            }
+        }
+
+        int minKeepCount = (int)Math.Ceiling(count * MinKeepRatio);
+        if (kept.Count < minKeepCount)
+        {
+            // 如果阈值过严导致保留点过少，则按残差从小到大回补到最小保留比例。
+            int[] orderedIndexes = Enumerable.Range(0, count)
+                .OrderBy(index => centeredAbsoluteResiduals[index])
+                .ToArray();
+            var fallback = new List<RailProfilePoint>(minKeepCount);
+            for (int orderIndex = 0; orderIndex < minKeepCount; orderIndex++)
+            {
+                fallback.Add(sortedPoints[orderedIndexes[orderIndex]]);
+            }
+
+            fallback.Sort((left, right) => left.X.CompareTo(right.X));
+            return fallback;
+        }
+
+        return kept;
+    }
+
+    /// <summary>
+    /// 以点集最大 X 为镜像轴，扩展对称点集。
+    /// 对每个点 (x, y) 追加镜像点 (2*xMax - x, y)。
+    /// </summary>
+    /// <param name="points">原始点集。</param>
+    /// <returns>原始点与镜像点合并后的点集。</returns>
+    private static List<RailProfilePoint> AppendSymmetricPointsByMinX(IReadOnlyList<RailProfilePoint> points)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (points.Count == 0)
+        {
+            return new List<RailProfilePoint>();
+        }
+
+        double xMax = points.Max(point => point.X);
+        var symmetricPoints = new List<RailProfilePoint>(points.Count * 2);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            symmetricPoints.Add(point);
+            symmetricPoints.Add(new RailProfilePoint(2.0 * xMax - point.X, point.Y));
+        }
+
+        return symmetricPoints;
+    }
+
+    /// <summary>
+    /// 将点集平移到“最下方中点”为原点。
+    /// 其中中点按 X 范围中心计算：xCenter = (xMin + xMax) / 2，底部取 yMin。
+    /// 平移后 (xCenter, yMin) -> (0, 0)。
+    /// </summary>
+    /// <param name="points">待平移点集。</param>
+    /// <returns>平移后的点集。</returns>
+    private static List<RailProfilePoint> TranslatePointsToBottomCenterAsOrigin(IReadOnlyList<RailProfilePoint> points)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (points.Count == 0)
+        {
+            return new List<RailProfilePoint>();
+        }
+
+        double xMin = points.Min(point => point.X);
+        double xMax = points.Max(point => point.X);
+        double yMin = points.Min(point => point.Y);
+
+        double xCenter = (xMin + xMax) / 2.0;
+        double offsetX = -xCenter;
+        double offsetY = -yMin;
+
+        var translatedPoints = new List<RailProfilePoint>(points.Count);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            translatedPoints.Add(new RailProfilePoint(point.X + offsetX, point.Y + offsetY));
+        }
+
+        return translatedPoints;
+    }
+
+    /// <summary>
+    /// 对指定索引范围内（排除目标点）的点做一元线性最小二乘拟合，返回斜率和截距。
+    /// </summary>
+    /// <param name="points">点集。</param>
+    /// <param name="leftInclusive">左边界（包含）。</param>
+    /// <param name="rightInclusive">右边界（包含）。</param>
+    /// <param name="excludedIndex">排除的目标点索引。</param>
+    /// <returns>拟合直线参数。</returns>
+    private static (double slope, double intercept) FitLineExcludingIndex(
+        IReadOnlyList<RailProfilePoint> points,
+        int leftInclusive,
+        int rightInclusive,
+        int excludedIndex)
+    {
+        int n = 0;
+        double sumX = 0.0;
+        double sumY = 0.0;
+        double sumXX = 0.0;
+        double sumXY = 0.0;
+
+        for (int index = leftInclusive; index <= rightInclusive; index++)
+        {
+            if (index == excludedIndex)
+            {
+                continue;
+            }
+
+            RailProfilePoint point = points[index];
+            n++;
+            sumX += point.X;
+            sumY += point.Y;
+            sumXX += point.X * point.X;
+            sumXY += point.X * point.Y;
+        }
+
+        if (n <= 1)
+        {
+            RailProfilePoint point = points[excludedIndex];
+            return (0.0, point.Y);
+        }
+
+        double denominator = n * sumXX - sumX * sumX;
+        if (Math.Abs(denominator) < 1e-12)
+        {
+            double averageY = sumY / n;
+            return (0.0, averageY);
+        }
+
+        double slope = (n * sumXY - sumX * sumY) / denominator;
+        double intercept = (sumY - slope * sumX) / n;
+        return (slope, intercept);
+    }
+
+    /// <summary>
+    /// 计算数组中位数。
+    /// </summary>
+    /// <param name="values">输入数组。</param>
+    /// <returns>中位数。</returns>
+    private static double Median(IReadOnlyList<double> values)
+    {
+        if (values == null)
+        {
+            throw new ArgumentNullException(nameof(values));
+        }
+
+        if (values.Count == 0)
+        {
+            throw new ArgumentException("输入数组不能为空。", nameof(values));
+        }
+
+        double[] sorted = values.OrderBy(value => value).ToArray();
+        int mid = sorted.Length / 2;
+        if (sorted.Length % 2 == 0)
+        {
+            return (sorted[mid - 1] + sorted[mid]) / 2.0;
+        }
+
+        return sorted[mid];
     }
 
     /// <summary>

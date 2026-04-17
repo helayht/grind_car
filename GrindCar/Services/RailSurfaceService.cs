@@ -308,19 +308,19 @@ public class RailSurfaceService
                 continue;
             }
 
-            mergedPoints.AddRange(result.ExtractionResult.ProfilePoints);
+            mergedPoints.AddRange(result.ExtractionResult.ProfilePoints);   
         }
         
-        if (pointCloudDeviceInfos.Count == 1)
-        {
-            var result = new List<RailProfilePoint>();
-            for (int i = 0; i < mergedPoints.Count; i++)
-            {
-                result.Add(new RailProfilePoint(mergedPoints[i].X, mergedPoints[i].Y));
-                result.Add(new RailProfilePoint(-1 * mergedPoints[i].X,mergedPoints[i].Y));
-            }
-            return result;
-        }
+        // if (pointCloudDeviceInfos.Count == 1)
+        // {
+        //     var result = new List<RailProfilePoint>();
+        //     for (int i = 0; i < mergedPoints.Count; i++)
+        //     {
+        //         result.Add(new RailProfilePoint(mergedPoints[i].X, mergedPoints[i].Y));
+        //         result.Add(new RailProfilePoint(-1 * mergedPoints[i].X,mergedPoints[i].Y));
+        //     }
+        //     return result;
+        // }
 
         if (mergedPoints.Count == 0)
         {

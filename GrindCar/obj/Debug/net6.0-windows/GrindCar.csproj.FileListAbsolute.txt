@@ -1,6 +1,5 @@
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.csproj.AssemblyReference.cache
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\App.g.cs
-D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.exe
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.deps.json
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.runtimeconfig.json
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.dll
@@ -24,7 +23,6 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MotorDeb
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MotorDebugWindow.baml
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PointCloudExportWindow.baml
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PointCloudExportWindow.g.cs
-D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\Mv3dLpNet.dll
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\Mv3dLpNet.xml
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MedianSectionDebugWindow.baml
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MedianSectionDebugWindow.g.cs
@@ -36,3 +34,16 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\Represen
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\RepresentativeProfileComparisonWindow.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\CurveRotationDebugWindow.baml
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\CurveRotationDebugWindow.g.cs
+D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.exe
+D:\工作\轨面打磨\GrindCar\GrindCar\tmp_build\Debug\net6.0-windows\GrindCar.deps.json
+D:\工作\轨面打磨\GrindCar\GrindCar\tmp_build\Debug\net6.0-windows\GrindCar.runtimeconfig.json
+D:\工作\轨面打磨\GrindCar\GrindCar\tmp_build\Debug\net6.0-windows\GrindCar.dll
+D:\工作\轨面打磨\GrindCar\GrindCar\tmp_build\Debug\net6.0-windows\GrindCar.pdb
+D:\工作\轨面打磨\GrindCar\GrindCar\tmp_build\Debug\net6.0-windows\NModbus4.dll
+D:\工作\轨面打磨\GrindCar\GrindCar\tmp_build\Debug\net6.0-windows\Mv3dLpNet.dll
+D:\工作\轨面打磨\GrindCar\GrindCar\tmp_build\Debug\net6.0-windows\Mv3dLpNet.xml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MeasurementParameterSettingsWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\MeasurementParameterSettingsWindow.g.cs
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PlcConnectionSettingsWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PlcConnectionSettingsWindow.g.cs
+D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\Mv3dLpNet.dll

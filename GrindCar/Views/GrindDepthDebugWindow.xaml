@@ -66,6 +66,13 @@
                             Margin="0,0,10,0"
                             Content="检测已打磨深度"
                             Click="Detect_Click" />
+                    <Button x:Name="ExportRepresentativePointsButton"
+                            Width="120"
+                            Height="34"
+                            Margin="0,0,10,0"
+                            Content="导出代表点"
+                            Click="ExportRepresentativePoints_Click"
+                            IsEnabled="False" />
                     <Button Width="88"
                             Height="34"
                             Content="关闭"

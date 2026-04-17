@@ -66,6 +66,8 @@ public static class MotorParameterDefinitions
 
     public const string WheelRotationSpeedName = "砂轮旋转速度";
     public const string WheelQualityControlName = "砂轮质量控制";
+    public const string MeasurementStartPositionName = "测量起点位置";
+    public const string MeasurementEndPositionName = "测量终点位置";
 
     // 只读参数 Modbus 地址
     public const ushort CarCurrentPositionAddress = 100;
@@ -129,6 +131,9 @@ public static class MotorParameterDefinitions
 
     public const ushort WheelRotationSpeedAddress = 1150;
     public const ushort WheelQualityControlAddress = 1152;
+    public const ushort MeasurementStartPositionAddress = 1140;
+    public const ushort MeasurementEndPositionAddress = 1142;
+    public const ushort MeasurementMotionStartAddress = 31;
 
     // 写入参数比例
     public const double CarJogSpeedScale = 1000.0;
@@ -153,6 +158,8 @@ public static class MotorParameterDefinitions
 
     public const double WheelRotationSpeedScale = 1.0 / 0.3;
     public const double WheelQualityControlScale = 1.0;
+    public const double MeasurementStartPositionScale = 100000.0;
+    public const double MeasurementEndPositionScale = 100000.0;
     public const double BoolScale = 1.0;
 
     public static IReadOnlyList<string> ReadOnlyParameterNames { get; } = new List<string>

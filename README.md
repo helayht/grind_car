@@ -6,6 +6,8 @@ GrindCar 是一个基于 `.NET 6 + WPF` 的轨面打磨设备上位机项目，�
 - 驾驶舱首页展示电量、速度、连接状态等运行信息
 - 电机调试窗口通过 `Modbus TCP` 与 PLC 建立连接，完成参数轮询、写入和调试
 - 点云调试链路支持设备枚举、单帧点云导出、CSV 中位截面提取、需要打磨深度计算与已打磨深度检测
+- 提供曲线旋转调试窗口，可导入 `CSV(x,y)` 并按指定角度旋转后可视化散点
+- 主界面内置测量参数设置，可写入“测量起点位置/测量终点位置”，PLC 连接参数通过独立窗口维护
 - 轨面服务层提供标准轨面函数、代表截面提取、多角度打磨深度计算和按角度计算代表廓形 `b` 值的能力
 
 该项目当前不依赖 Web 服务，也不依赖环境变量配置，主要作为本地运行的 HMI/调试工具使用。
@@ -45,6 +47,9 @@ GrindCar.sln
 - 展示电量、速度、连接状态和当前时间
 - 首页中的电量和速度当前为演示数据，由 `MotorViewModel` 定时刷新
 - 可从首页进入点云导出、中位截面调试、打磨深度调试和电机调试窗口
+- 可从首页进入曲线旋转调试窗口进行角度校准可视化
+- 首页参数区可直接设置“测量起点位置/测量终点位置”并写入 PLC
+- 测量参数写入使用独立的“PLC连接设置”窗口维护 IP/Port
 
 ### 2. 电机调试
 - 通过 `IP + Port` 连接 PLC
@@ -57,6 +62,7 @@ GrindCar.sln
 - `PointCloudExportService` 用于枚举设备并导出单帧点云
 - 支持点云导出格式：`CSV`、`PLY`、`OBJ`
 - `PointCloudRepresentativeProfileService` 支持从点云 `CSV` 中提取中位 `Y` 截面二维点集
+- 代表点提取后会执行固定流程：离群点过滤 -> 逆时针旋转 -> 对称扩展 -> 平移到“最下方中点”为原点
 - `PointCloudMedianSectionCaptureService` 提供一条串联流程：
   `SDK 单帧采集 -> 落盘到 Log 目录 -> 从 CSV 提取中位截面`
 
@@ -68,6 +74,7 @@ GrindCar.sln
 - “计算需要打磨深度”时会同步保存当前各角度的代表廓形 `b` 值作为检测基线
 - “检测已打磨深度”时会重新采集代表截面，并将当前 `b` 与基线 `b` 逐角度做差
 - 检测基线默认保存到运行目录下的 `Log/grind-depth-baseline.json`
+- “打磨深度调试”窗口支持导出最近一次计算使用的代表点坐标（CSV）
 
 ## 环境要求
 ### 软件要求
@@ -126,7 +133,9 @@ dotnet clean GrindCar.sln
 ### 首页入口
 1. 启动应用后进入“轨面打磨驾驶舱”首页。
 2. 通过右上角按钮可打开对应功能窗口。
-3. 当前可进入的窗口包括：`点云导出`、`中位截面调试`、`打磨深度调试`、`电机调试`。
+3. 当前可进入的窗口包括：`点云导出`、`中位截面调试`、`曲线旋转调试`、`打磨深度调试`、`电机调试`。
+4. 首页下方参数区可直接设置并写入：`测量起点位置`、`测量终点位置`。
+5. 点击“设置PLC连接”可打开独立窗口维护测量参数写入用的 `IP/Port`。
 
 ### 电机调试流程
 1. 打开“电机调试”窗口。
@@ -150,12 +159,25 @@ dotnet clean GrindCar.sln
 4. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
 5. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
 
+### 主界面参数设置流程
+1. 在首页参数区点击“设置PLC连接”，配置写入测量参数使用的 PLC `IP/Port`。
+2. 在首页参数区输入“测量起点位置(m)”和“测量终点位置(m)”。
+3. 点击“写入测量起止点”，系统将工程量按 `/100000` 比例换算后写入 PLC。
+4. 对应地址：`D1140`（测量起点位置）、`D1142`（测量终点位置）。
+
+### 曲线旋转调试流程
+1. 打开“曲线旋转调试”窗口。
+2. 导入包含 `x,y` 坐标列的 CSV 文件（支持有/无表头）。
+3. 输入旋转角度并点击“应用旋转”，窗口仅以散点方式展示旋转结果。
+
 ## 关键模块说明
 - `GrindCar/Views/MainWindow.xaml`：驾驶舱首页
 - `GrindCar/Views/MotorDebugWindow.xaml`：电机调试窗口
 - `GrindCar/Views/PointCloudExportWindow.xaml`：点云导出窗口
 - `GrindCar/Views/MedianSectionDebugWindow.xaml`：中位截面调试窗口
+- `GrindCar/Views/CurveRotationDebugWindow.xaml`：曲线旋转调试窗口
 - `GrindCar/Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
+- `GrindCar/Views/PlcConnectionSettingsWindow.xaml`：PLC连接设置窗口（供首页参数区写入测量参数使用）
 - `GrindCar/ViewModels/MotorViewModel.cs`：PLC 连接、轮询、写入、首页演示数据和状态文本管理
 - `GrindCar/Definitions/MotorParameterDefinitions.cs`：参数名称、地址、比例和单位定义中心
 - `GrindCar/Services/PlcModbusCommunicator.cs`：Modbus TCP 通信封装
@@ -181,6 +203,11 @@ dotnet clean GrindCar.sln
 - 选择排序后偏左的中位 `Y`
 - 筛出该 `Y` 对应的全部点
 - 输出二维 `(X, Z)` 点集用于后续轨面计算
+- 当前实现会在提取代表点后按固定流程处理：
+- 先执行离群点过滤（局部拟合残差 + MAD 阈值）
+- 再围绕原点执行固定角度逆时针旋转（角度由 `RepresentativeRotationDegrees` 常量控制）
+- 再按 `xMax` 扩展对称点（对每个点追加 `(2*xMax-x, y)`）
+- 最后平移到“最下方中点”为原点：`xCenter=(xMin+xMax)/2`，`yMin=minY`，平移后 `(xCenter,yMin) -> (0,0)`
 
 ### 打磨深度计算说明
 - 输入角度以“度”为单位
@@ -280,6 +307,8 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 ## 注意事项
 - 不要将 Modbus 地址、比例和单位散落到界面层或 code-behind 中
 - 点云采集默认会在运行目录下创建 `Log/` 目录并落盘 `CSV`
+- 代表点预处理逻辑（离群点过滤、固定旋转、按 `xMax` 对称扩展、底部中点对齐平移）位于 `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`
+- 测量参数写入使用地址 `D1140/D1142`，比例 `/100000`，写入入口位于主界面参数区
 - 打磨深度检测基线默认保存在 `Log/grind-depth-baseline.json`
 - `bin/`、`obj/`、`tmp_obj/` 等构建产物不应提交到版本库
 - 首页当前部分监控数据为演示数据，不等同于实时设备遥测

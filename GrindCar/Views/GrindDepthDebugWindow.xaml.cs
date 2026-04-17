@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using GrindCar.Models.Rail;
 using GrindCar.Services;
+using Microsoft.Win32;
 
 namespace GrindCar.Views;
 
@@ -17,8 +20,10 @@ namespace GrindCar.Views;
 /// </summary>
 public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
 {
+    private const string CsvFileFilter = "CSV 文件|*.csv";
     private readonly ObservableCollection<GrindDepthResult> _requiredResults = new();
     private readonly ObservableCollection<DetectedGrindDepthResult> _detectedResults = new();
+    private List<RailProfilePoint> _latestRepresentativePoints = new();
     private bool _isBusy;
 
     /// <summary>
@@ -51,6 +56,7 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
 
             GrindDepthCalculationResult calculationResult =
                 await Task.Run(() => RailSurfaceService.CalculateGrindDepths(angles));
+            _latestRepresentativePoints = calculationResult.RepresentativePoints.ToList();
             GrindingDepthBaseline baseline =
                 RailSurfaceService.CreateGrindingDepthBaseline(angles, calculationResult.RepresentativePoints);
             await Task.Run(() => RailSurfaceService.SaveGrindingDepthBaseline(baseline));
@@ -71,13 +77,16 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
                 Owner = this
             };
             comparisonWindow.Show();
+            UpdateExportButtonState();
         }
         catch (Exception ex)
         {
+            _latestRepresentativePoints = new List<RailProfilePoint>();
             _requiredResults.Clear();
             ResultCountTextBlock.Text = "0";
             SetStatus(ex.Message);
             MessageBox.Show(this, ex.Message, "计算失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            UpdateExportButtonState();
         }
         finally
         {
@@ -140,6 +149,47 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
     }
 
     /// <summary>
+    /// 导出最近一次打磨深度计算所使用的代表点坐标。
+    /// </summary>
+    /// <param name="sender">事件发送方。</param>
+    /// <param name="e">按钮点击事件参数。</param>
+    private void ExportRepresentativePoints_Click(object sender, RoutedEventArgs e)
+    {
+        if (_latestRepresentativePoints.Count == 0)
+        {
+            MessageBox.Show(this, "当前没有可导出的代表点，请先执行“计算需要打磨深度”。", "导出失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "导出代表点坐标",
+            Filter = CsvFileFilter,
+            DefaultExt = ".csv",
+            AddExtension = true,
+            OverwritePrompt = true,
+            FileName = $"representative-points-{DateTime.Now:yyyyMMdd-HHmmss}.csv"
+        };
+
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            ExportRepresentativePointsToCsv(dialog.FileName);
+            SetStatus($"代表点导出完成: {dialog.FileName}");
+            MessageBox.Show(this, "代表点导出完成。", "导出成功", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"导出代表点失败: {ex.Message}");
+            MessageBox.Show(this, ex.Message, "导出失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
     /// 将界面输入文本解析为角度整数列表。
     /// </summary>
     /// <param name="input">用户输入的角度文本。</param>
@@ -191,6 +241,47 @@ public partial class GrindDepthDebugWindow : Window, INotifyPropertyChanged
         CalculateButton.IsEnabled = !_isBusy;
         DetectButton.IsEnabled = !_isBusy;
         AnglesTextBox.IsEnabled = !_isBusy;
+        UpdateExportButtonState();
+    }
+
+    /// <summary>
+    /// 根据当前状态刷新导出按钮可用性。
+    /// </summary>
+    private void UpdateExportButtonState()
+    {
+        ExportRepresentativePointsButton.IsEnabled = !_isBusy && _latestRepresentativePoints.Count > 0;
+    }
+
+    /// <summary>
+    /// 将代表点写入 CSV 文件（X,Y）。
+    /// </summary>
+    /// <param name="outputPath">目标输出路径。</param>
+    private void ExportRepresentativePointsToCsv(string outputPath)
+    {
+        if (string.IsNullOrWhiteSpace(outputPath))
+        {
+            throw new InvalidOperationException("导出路径不能为空。");
+        }
+
+        string? directoryPath = Path.GetDirectoryName(outputPath);
+        if (string.IsNullOrWhiteSpace(directoryPath))
+        {
+            throw new InvalidOperationException("导出路径无效。");
+        }
+
+        Directory.CreateDirectory(directoryPath);
+
+        var builder = new StringBuilder();
+        builder.AppendLine("X,Y");
+        for (int index = 0; index < _latestRepresentativePoints.Count; index++)
+        {
+            RailProfilePoint point = _latestRepresentativePoints[index];
+            builder.Append(point.X.ToString("F6", CultureInfo.InvariantCulture));
+            builder.Append(',');
+            builder.AppendLine(point.Y.ToString("F6", CultureInfo.InvariantCulture));
+        }
+
+        File.WriteAllText(outputPath, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
     /// <summary>

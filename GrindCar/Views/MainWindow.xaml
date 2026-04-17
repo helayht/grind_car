@@ -52,8 +52,8 @@
     <Grid Background="{StaticResource WindowBackground}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="1.2*" />
-            <RowDefinition Height="0.48*" />
+            <RowDefinition Height="1*" />
+            <RowDefinition Height="0.58*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -69,6 +69,28 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button x:Name="OpenPlcConnectionSettingsButton"
+                            Padding="18,10"
+                            Background="#17304A"
+                            BorderBrush="#285377"
+                            Foreground="{StaticResource PrimaryText}"
+                            Content="PLC连接"
+                            Click="OpenPlcConnectionSettings_Click" />
+                    <Border Margin="12,0,0,0"
+                            Padding="14,8"
+                            CornerRadius="18"
+                            Background="#11243A"
+                            BorderBrush="#234A6F"
+                            BorderThickness="1">
+                        <TextBlock x:Name="MeasurementPlcEndpointTextBlock"
+                                   Foreground="{StaticResource PrimaryText}"
+                                   Text="127.0.0.1:502" />
+                    </Border>
+                </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="点云导出"
@@ -232,8 +254,8 @@
 
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0">
                             <TextBlock Foreground="{Binding BatteryAccentColor}"
-                                       FontSize="72"
-                                       LineHeight="74"
+                                       FontSize="58"
+                                       LineHeight="60"
                                        FontWeight="Bold"
                                        Text="{Binding BatteryLevelText}" />
                         </StackPanel>
@@ -368,13 +390,13 @@
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
                             <TextBlock Margin="0,10,0,0"
                                        Foreground="{Binding SpeedAccentColor}"
-                                       FontSize="96"
-                                       LineHeight="98"
+                                       FontSize="74"
+                                       LineHeight="76"
                                        FontWeight="Bold"
                                        Text="{Binding CurrentSpeedText}" />
                             <TextBlock Margin="0,-6,0,0"
                                        Foreground="{StaticResource PrimaryText}"
-                                       FontSize="30"
+                                       FontSize="24"
                                        FontWeight="Light"
                                        Text="{Binding SpeedUnit}" />
                         </StackPanel>
@@ -401,51 +423,97 @@
 
                 </Grid>
 
-                <UniformGrid Grid.Row="1" Margin="0,18,0,0" Rows="1" Columns="4">
-                    <Border Margin="0,0,12,0"
-                            CornerRadius="18"
-                            BorderBrush="#223753"
-                            BorderThickness="1"
-                            Background="#101A2A"
-                            Padding="16">
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Margin="0,12,0,0" Foreground="{StaticResource PrimaryText}" FontSize="20" FontWeight="SemiBold" Text="占位1" />
-                        </StackPanel>
-                    </Border>
+                <Border Grid.Row="1"
+                        Margin="0,18,0,0"
+                        CornerRadius="18"
+                        BorderBrush="#223753"
+                        BorderThickness="1"
+                        Background="#101A2A"
+                        Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
 
-                    <Border Margin="12,0"
-                            CornerRadius="18"
-                            BorderBrush="#223753"
-                            BorderThickness="1"
-                            Background="#101A2A"
-                            Padding="16">
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Margin="0,12,0,0" Foreground="{StaticResource PrimaryText}" FontSize="20" FontWeight="SemiBold" Text="占位2" />
-                        </StackPanel>
-                    </Border>
+                        <TextBlock Grid.Row="0"
+                                   Grid.ColumnSpan="2"
+                                   Foreground="{StaticResource SecondaryText}"
+                                   Text="参数设置" />
 
-                    <Border Margin="12,0"
-                            CornerRadius="18"
-                            BorderBrush="#223753"
-                            BorderThickness="1"
-                            Background="#101A2A"
-                            Padding="16">
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Margin="0,12,0,0" Foreground="{StaticResource PrimaryText}" FontSize="20" FontWeight="SemiBold" Text="占位3" />
+                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,12,12,0">
+                            <TextBlock Foreground="{StaticResource SecondaryText}"
+                                       Text="测量起点位置" />
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="MeasurementStartPositionTextBox"
+                                         Height="30" />
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource PrimaryText}"
+                                           Text="m" />
+                            </Grid>
                         </StackPanel>
-                    </Border>
 
-                    <Border Margin="12,0,0,0"
-                            CornerRadius="18"
-                            BorderBrush="#223753"
-                            BorderThickness="1"
-                            Background="#101A2A"
-                            Padding="16">
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Margin="0,12,0,0" Foreground="{StaticResource PrimaryText}" FontSize="20" FontWeight="SemiBold" Text="占位4" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="12,12,0,0">
+                            <TextBlock Foreground="{StaticResource SecondaryText}"
+                                       Text="测量终点位置" />
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="MeasurementEndPositionTextBox"
+                                         Height="30" />
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource PrimaryText}"
+                                           Text="m" />
+                            </Grid>
                         </StackPanel>
-                    </Border>
-                </UniformGrid>
+
+                        <StackPanel Grid.Row="2"
+                                    Grid.ColumnSpan="2"
+                                    Margin="0,14,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="WriteMeasurementParametersButton"
+                                        Height="34"
+                                        HorizontalAlignment="Left"
+                                        MinWidth="180"
+                                        Background="#17304A"
+                                        BorderBrush="#285377"
+                                        Foreground="{StaticResource PrimaryText}"
+                                        Content="写入测量起止点"
+                                        Click="WriteMeasurementParameters_Click" />
+                                <Button x:Name="StartMeasurementMotionButton"
+                                        Margin="12,0,0,0"
+                                        Height="34"
+                                        HorizontalAlignment="Left"
+                                        MinWidth="180"
+                                        Background="#17304A"
+                                        BorderBrush="#285377"
+                                        Foreground="{StaticResource PrimaryText}"
+                                        Content="测量运动启动"
+                                        Click="StartMeasurementMotion_Click" />
+                            </StackPanel>
+                            <TextBlock x:Name="MeasurementParameterStatusTextBlock"
+                                       Margin="0,10,0,0"
+                                       Foreground="{StaticResource SecondaryText}"
+                                       Text="请填写参数后写入。"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
         </Border>
 
