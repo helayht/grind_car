@@ -146,13 +146,17 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         try
         {
             IsBusy = true;
-            StatusMessage = "正在发送测量运动启动信号...";
+            StatusMessage = "正在启动测量流程...";
 
-            await _measurementParameterService.StartMeasurementMotionAsync(
-                _plcIpAddress,
-                _plcPort).ConfigureAwait(true);
+            var progress = new Progress<string>(message => StatusMessage = message);
+            MeasurementGrindingWorkflowResult result =
+                await _measurementParameterService.RunMeasurementWorkflowAsync(
+                    _plcIpAddress,
+                    _plcPort,
+                    progress).ConfigureAwait(true);
 
-            StatusMessage = "测量运动启动信号已发送。";
+            StatusMessage =
+                $"测量流程完成：累计 {result.SampleCount.ToString(CultureInfo.CurrentCulture)} 次测量，已写入 {result.Results.Count.ToString(CultureInfo.CurrentCulture)} 个角度的打磨次数。";
         }
         finally
         {

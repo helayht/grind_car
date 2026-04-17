@@ -1,3 +1,5 @@
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace GrindCar.Services.Measurement;
@@ -10,4 +12,10 @@ public interface IMeasurementParameterService
     Task WriteMeasurementRangeAsync(string ipAddress, int port, double startPosition, double endPosition);
 
     Task StartMeasurementMotionAsync(string ipAddress, int port);
+
+    Task<MeasurementGrindingWorkflowResult> RunMeasurementWorkflowAsync(
+        string ipAddress,
+        int port,
+        IProgress<string>? progress = null,
+        CancellationToken cancellationToken = default);
 }

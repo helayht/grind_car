@@ -32,6 +32,13 @@ public interface IPlcClient : IDisposable
     int ReadInt32(ushort startAddress);
 
     /// <summary>
+    /// 读取指定 Coil 地址的布尔值。
+    /// </summary>
+    /// <param name="coilAddress">目标 Coil 地址。</param>
+    /// <returns>读取到的布尔值。</returns>
+    bool ReadSingleCoil(ushort coilAddress);
+
+    /// <summary>
     /// 将一个 32 位整型值写入指定起始寄存器。
     /// </summary>
     /// <param name="startAddress">32 位整型值对应的起始寄存器地址。</param>

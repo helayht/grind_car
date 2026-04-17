@@ -8,6 +8,7 @@ GrindCar 是一个基于 `.NET 6 + WPF` 的轨面打磨设备上位机项目，�
 - 点云调试链路支持设备枚举、单帧点云导出、CSV 中位截面提取、需要打磨深度计算与已打磨深度检测
 - 提供曲线旋转调试窗口，可导入 `CSV(x,y)` 并按指定角度旋转后可视化散点
 - 主界面内置测量参数设置，可写入“测量起点位置/测量终点位置”，PLC 连接参数通过独立窗口维护
+- 主界面支持测量运行流程：按 `M31/M60/M61/M62` 交互，累计多次测量后计算平均打磨深度并写回各角度打磨次数
 - 轨面服务层提供标准轨面函数、代表截面提取、多角度打磨深度计算和按角度计算代表廓形 `b` 值的能力
 
 该项目当前不依赖 Web 服务，也不依赖环境变量配置，主要作为本地运行的 HMI/调试工具使用。
@@ -50,11 +51,11 @@ GrindCar.sln
 ### 1. 驾驶舱首页
 - 启动后默认进入首页
 - 展示电量、速度、连接状态和当前时间
-- 首页中的电量和速度当前为演示数据，由 `MotorViewModel` 定时刷新
+- 首页中的电量和速度当前为“未接入数据”占位展示
 - 可从首页进入点云导出、中位截面调试、打磨深度调试和电机调试窗口
 - 可从首页进入曲线旋转调试窗口进行角度校准可视化
 - 首页参数区可直接设置“测量起点位置/测量终点位置”并写入 PLC
-- 测量参数写入使用独立的“PLC连接设置”窗口维护 IP/Port
+- 测量参数与测量运行流程共用独立的“PLC连接设置”窗口维护 IP/Port
 
 ### 2. 电机调试
 - 通过 `IP + Port` 连接 PLC
@@ -168,6 +169,16 @@ dotnet clean GrindCar.sln
 2. 在首页参数区输入“测量起点位置(m)”和“测量终点位置(m)”。
 3. 点击“写入测量起止点”，系统将工程量按 `/100000` 比例换算后写入 PLC。
 4. 对应地址：`D1140`（测量起点位置）、`D1142`（测量终点位置）。
+5. 点击“测量运动启动”后，系统将进入测量运行流程并在结束后写回打磨次数。
+
+### 主界面测量运行流程
+1. 点击“测量运动启动”，系统写入 `M31=1` 并开始轮询测量状态位。
+2. 轮询期间监听 `M60`（启动当前廓形测量），按上升沿触发一次单次测量计算。
+3. 每次单次测量只缓存各角度打磨深度结果，不立即写 `D1200~D1236`。
+4. 单次测量完成后写入 `M61=1`；`M61` 由 PLC 负责清零。
+5. 当读取到 `M62=1`（测量运行结束）后，系统对各角度做平均打磨深度计算。
+6. 打磨次数计算公式：`打磨次数 = ceil(平均打磨深度 / 0.05)`。
+7. 最终将打磨次数写入 `D1200, D1202, ..., D1236`（19 个角度）。
 
 ### 曲线旋转调试流程
 1. 打开“曲线旋转调试”窗口。
@@ -198,7 +209,9 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/PlcModbusCommunicator.Motion.cs`：运动编排与批量采集（MoveAndMonitor/GetData）
 - `GrindCar/Services/PlcModbusCommunicator.ContinuousReading.cs`：持续读取任务与联动监控逻辑
 - `GrindCar/Services/PlcModbusCommunicator.Conversion.cs`：寄存器与数值类型转换
-- `GrindCar/Services/Measurement/MeasurementParameterService.cs`：主界面测量参数写入与启动信号发送
+- `GrindCar/Services/Measurement/MeasurementParameterService.cs`：主界面测量参数写入、测量运行轮询、平均打磨深度汇总与打磨次数写回
+- `GrindCar/Services/Measurement/MeasurementGrindingWorkflowResult.cs`：测量运行流程结果汇总模型
+- `GrindCar/Services/Measurement/MeasurementGrindingTimesResult.cs`：单角度平均深度与打磨次数模型
 - `GrindCar/Services/Rail/Debug/GrindDepthDebugWorkflowService.cs`：打磨深度调试业务编排
 - `GrindCar/Services/Rail/Debug/GrindDepthAngleParser.cs`：角度输入解析
 - `GrindCar/Services/Rail/Debug/RepresentativePointsCsvExporter.cs`：代表点 CSV 导出
@@ -341,6 +354,8 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 - 点云采集默认会在运行目录下创建 `Log/` 目录并落盘 `CSV`
 - 代表点预处理逻辑（离群点过滤、固定旋转、按 `xMax` 对称扩展、底部中点对齐平移）位于 `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`
 - 测量参数写入使用地址 `D1140/D1142`，比例 `/100000`，写入入口位于主界面参数区
+- 主界面测量运行流程使用地址 `M31`（启动）、`M60`（单次触发）、`M61`（单次完成）、`M62`（运行结束）
+- 打磨次数结果写回区为 `D1200~D1236`（步长 2，对应 19 个固定测算角度）
 - 打磨深度检测基线默认保存在 `Log/grind-depth-baseline.json`
 - `bin/`、`obj/`、`tmp_obj/` 等构建产物不应提交到版本库
-- 首页当前部分监控数据为演示数据，不等同于实时设备遥测
+- 首页电量与速度当前为占位显示，不等同于实时设备遥测

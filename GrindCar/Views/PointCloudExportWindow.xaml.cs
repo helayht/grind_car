@@ -117,5 +117,9 @@ public partial class PointCloudExportWindow : Window
         {
             MessageBox.Show(this, ex.Message, "刷新设备失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"刷新设备时发生未处理异常：{ex.Message}", "刷新设备失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 }

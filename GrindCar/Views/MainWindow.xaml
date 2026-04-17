@@ -11,543 +11,342 @@
         MinWidth="1200"
         MinHeight="760"
         WindowStartupLocation="CenterScreen"
-        Background="#07111E">
-    <Window.Resources>  
-        <LinearGradientBrush x:Key="WindowBackground" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#08111D" Offset="0" />
-            <GradientStop Color="#0B1B2D" Offset="0.55" />
-            <GradientStop Color="#081625" Offset="1" />
-        </LinearGradientBrush>
-        <RadialGradientBrush x:Key="GlowPanelBackground" Center="0.5,0.25" RadiusX="1.1" RadiusY="0.95">
-            <GradientStop Color="#132742" Offset="0" />
-            <GradientStop Color="#0F1F33" Offset="0.38" />
-            <GradientStop Color="#0A1727" Offset="1" />
-        </RadialGradientBrush>
-        <LinearGradientBrush x:Key="MetricGlow" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#7DF0BE" Offset="0" />
-            <GradientStop Color="#47D3A7" Offset="0.55" />
-            <GradientStop Color="#39A7D8" Offset="1" />
+        Background="#0B1118">
+    <Window.Resources>
+        <LinearGradientBrush x:Key="PageBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#0B1118" Offset="0" />
+            <GradientStop Color="#0F1823" Offset="0.55" />
+            <GradientStop Color="#0A121B" Offset="1" />
         </LinearGradientBrush>
 
-        <SolidColorBrush x:Key="PanelBorder" Color="#2C4461" /> 
-        <SolidColorBrush x:Key="SubtlePanelBackground" Color="#0C1726" />
-        <SolidColorBrush x:Key="PrimaryText" Color="#F4F7FB" />
-        <SolidColorBrush x:Key="SecondaryText" Color="#8EA7C2" />
-        <SolidColorBrush x:Key="AccentTeal" Color="#5AD7A0" />
+        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#121B27" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#2A384A" />
+        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#E8EEF5" />
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#AAB8C7" />
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#7E8EA0" />
+        <SolidColorBrush x:Key="PrimaryActionBrush" Color="#2B4F73" />
+        <SolidColorBrush x:Key="PrimaryActionHoverBrush" Color="#37638D" />
+        <SolidColorBrush x:Key="SecondaryActionBrush" Color="#1A2736" />
+        <SolidColorBrush x:Key="SecondaryActionBorderBrush" Color="#33475C" />
+        <SolidColorBrush x:Key="StatusOnlineBrush" Color="#5BD49A" />
+        <SolidColorBrush x:Key="StatusNeutralBrush" Color="#E1B86A" />
 
-        <Style x:Key="PanelCard" TargetType="Border">   
-            <Setter Property="Background" Value="{StaticResource GlowPanelBackground}" />
-            <Setter Property="BorderBrush" Value="{StaticResource PanelBorder}" />
+        <Style x:Key="PanelCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="24" />
-            <Setter Property="Padding" Value="24" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
         </Style>
 
-        <Style x:Key="DashboardTitle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource PrimaryText}" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Bahnschrift" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="22" />
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Bahnschrift" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="17" />
+        </Style>
+
+        <Style x:Key="CaptionStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+        </Style>
+
+        <Style x:Key="ValueStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontSize" Value="42" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="Background" Value="{StaticResource PrimaryActionBrush}" />
+            <Setter Property="BorderBrush" Value="#4F6982" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryActionHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.55" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{StaticResource SecondaryActionBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource SecondaryActionBorderBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#223244" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.55" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
-    <Grid Background="{StaticResource WindowBackground}">
+    <Grid Background="{StaticResource PageBackgroundBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="1*" />
-            <RowDefinition Height="0.58*" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0"
-                Margin="24,20,24,16"
-                Padding="18,14"
-                CornerRadius="22"
-                Background="#0B1828"
-                BorderBrush="#263B56"
-                BorderThickness="1">
-            <Grid>
+        <Grid Grid.Row="0" Margin="20,16,20,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource PanelCardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Margin="0,0,10,0"
+                                    Padding="10,6"
+                                    CornerRadius="6"
+                                    Background="#152A1F"
+                                    BorderBrush="#295640"
+                                    BorderThickness="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Fill="{StaticResource StatusOnlineBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Margin="7,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource PrimaryTextBrush}"
+                                               Text="{Binding ConnectionStatus}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Padding="10,6"
+                                    CornerRadius="6"
+                                    Background="#172433"
+                                    BorderBrush="{StaticResource CardBorderBrush}"
+                                    BorderThickness="1">
+                                <TextBlock Foreground="{StaticResource SecondaryTextBrush}"
+                                           FontFamily="Consolas"
+                                           Text="{Binding DashboardTimestamp}" />
+                            </Border>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <WrapPanel Grid.Row="1"
+                               Margin="0,14,0,0"
+                               ItemHeight="46"
+                               ItemWidth="140"
+                               Orientation="Horizontal">
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,8"
+                                Content="PLC连接"
+                                IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                Click="OpenPlcConnectionSettings_Click" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,8"
+                                Content="点云导出"
+                                Click="OpenPointCloudExportWindow_Click" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,8"
+                                Content="中位截面调试"
+                                Click="OpenMedianSectionDebugWindow_Click" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,8"
+                                Content="曲线旋转调试"
+                                Click="OpenCurveRotationDebugWindow_Click" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,8"
+                                Content="打磨深度调试"
+                                Click="OpenGrindDepthDebugWindow_Click" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,8"
+                                Content="电机调试"
+                                Click="OpenMotorDebugWindow_Click" />
+                    </WrapPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <Button x:Name="OpenPlcConnectionSettingsButton"
-                            Padding="18,10"
-                            Background="#17304A"
-                            BorderBrush="#285377"
-                            Foreground="{StaticResource PrimaryText}"
-                            IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                            Content="PLC连接"
-                            Click="OpenPlcConnectionSettings_Click" />
-                    <Border Margin="12,0,0,0"
-                            Padding="14,8"
-                            CornerRadius="18"
-                            Background="#11243A"
-                            BorderBrush="#234A6F"
-                            BorderThickness="1">
-                        <TextBlock x:Name="MeasurementPlcEndpointTextBlock"
-                                   Foreground="{StaticResource PrimaryText}"
-                                   Text="{Binding ElementName=MainWindowRoot, Path=Measurement.EndpointText}" />
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="点云导出"
-                            Margin="0,0,12,0"
-                            Padding="18,10"
-                            Background="#17304A"
-                            BorderBrush="#285377"
-                            Foreground="{StaticResource PrimaryText}"
-                            Click="OpenPointCloudExportWindow_Click" />
-
-                    <Button Content="中位截面调试"
-                            Margin="0,0,12,0"
-                            Padding="18,10"
-                            Background="#17304A"
-                            BorderBrush="#285377"
-                            Foreground="{StaticResource PrimaryText}"
-                            Click="OpenMedianSectionDebugWindow_Click" />
-
-                    <Button Content="曲线旋转调试"
-                            Margin="0,0,12,0"
-                            Padding="18,10"
-                            Background="#17304A"
-                            BorderBrush="#285377"
-                            Foreground="{StaticResource PrimaryText}"
-                            Click="OpenCurveRotationDebugWindow_Click" />
-
-                    <Button Content="打磨深度调试"
-                            Margin="0,0,12,0"
-                            Padding="18,10"
-                            Background="#17304A"
-                            BorderBrush="#285377"
-                            Foreground="{StaticResource PrimaryText}"
-                            Click="OpenGrindDepthDebugWindow_Click" />
-
-                    <Button Content="电机调试"
-                            Margin="0,0,12,0"
-                            Padding="18,10"
-                            Background="#17304A"
-                            BorderBrush="#285377"
-                            Foreground="{StaticResource PrimaryText}"
-                            Click="OpenMotorDebugWindow_Click" />
-
-                    <Border Margin="0,0,12,0"
-                            Padding="14,8"
-                            CornerRadius="18"
-                            Background="#11243A"
-                            BorderBrush="#234A6F"
-                            BorderThickness="1">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="10" Height="10" Fill="{StaticResource AccentTeal}" VerticalAlignment="Center" />
-                            <TextBlock Margin="8,0,0,0"
-                                       Foreground="{StaticResource PrimaryText}"
-                                       Text="{Binding ConnectionStatus}" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Padding="14,8"
-                            CornerRadius="18"
-                            Background="#11243A"
-                            BorderBrush="#234A6F"
-                            BorderThickness="1">
-                        <TextBlock Foreground="{StaticResource PrimaryText}"
-                                   Text="{Binding DashboardTimestamp}" />
-                    </Border>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Grid Grid.Row="1" Margin="24,0,24,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0" Style="{StaticResource PanelCard}" Margin="0,0,12,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <Canvas IsHitTestVisible="False">
-                        <Ellipse Width="220" Height="220" Fill="#1A3352" Opacity="0.16" Canvas.Left="-70" Canvas.Top="118" />
-                        <Ellipse Width="140" Height="140" Fill="#225C72" Opacity="0.10" Canvas.Left="410" Canvas.Top="-28" />
-                    </Canvas>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel>
-                            <TextBlock Text="电源监控"
-                                       Style="{StaticResource DashboardTitle}"
-                                       FontSize="24" />
-                        </StackPanel>
-
-                        <Border Grid.Column="1"
-                                Padding="12,6"
-                                CornerRadius="14"
-                                BorderBrush="#29445E"
-                                BorderThickness="1"
-                                Background="#132033">
-                            <TextBlock Foreground="{Binding BatteryAccentColor}"
-                                       FontWeight="SemiBold"
-                                       Text="{Binding BatteryStateText}" />
-                        </Border>
-                    </Grid>
-
-                    <Grid Grid.Row="1" Margin="0,10,0,0" VerticalAlignment="Center">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="300" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Grid Width="272" Height="176" VerticalAlignment="Center" Margin="0,0,8,0">
-                            <Border Width="236"
-                                    Height="108"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    CornerRadius="26"
-                                    BorderThickness="4"
-                                    BorderBrush="{Binding BatteryAccentColor}"
-                                    Background="#0B1624" />
-                            <Border Width="30"
-                                    Height="46"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    CornerRadius="0,14,14,0"
-                                    BorderThickness="4"
-                                    BorderBrush="{Binding BatteryAccentColor}"
-                                    Background="#0B1624" />
-                            <Border Width="{Binding BatteryFillWidth}"
-                                    MaxWidth="196"
-                                    Height="74"
-                                    Margin="24,0,0,0"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    CornerRadius="16"
-                                    Background="{StaticResource MetricGlow}"
-                                    Opacity="0.95" />
-                            <Border Width="{Binding BatteryFillWidth}"
-                                    MaxWidth="196"
-                                    Height="24"
-                                    Margin="24,-30,0,0"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    CornerRadius="12"
-                                    Background="#D8FFF0"
-                                    Opacity="0.16" />
-                            <Path Data="M 132,48 L 112,90 L 137,90 L 122,128 L 164,74 L 138,74 L 154,48 Z"
-                                  Fill="#E6FFF5"
-                                  Opacity="0.78"
-                                  Stretch="Uniform"
-                                  Width="58"
-                                  Height="86"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center" />
-                        </Grid>
-
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0">
-                            <TextBlock Foreground="{Binding BatteryAccentColor}"
-                                       FontSize="58"
-                                       LineHeight="60"
-                                       FontWeight="Bold"
-                                       Text="{Binding BatteryLevelText}" />
-                        </StackPanel>
-                    </Grid>
-                </Grid>
-            </Border>
-
-            <Border Grid.Column="1" Style="{StaticResource PanelCard}" Margin="12,0,0,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <Canvas IsHitTestVisible="False">
-                        <Ellipse Width="210" Height="210" Fill="#173C58" Opacity="0.16" Canvas.Left="392" Canvas.Top="120" />
-                        <Ellipse Width="128" Height="128" Fill="#244D6A" Opacity="0.10" Canvas.Left="28" Canvas.Top="-18" />
-                    </Canvas>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel>
-                            <TextBlock Text="速度监控"
-                                       Style="{StaticResource DashboardTitle}"
-                                       FontSize="24" />
-                        </StackPanel>
-
-                        <Border Grid.Column="1"
-                                Padding="12,6"
-                                CornerRadius="14"
-                                BorderBrush="#29445E"
-                                BorderThickness="1"
-                                Background="#132033">
-                            <TextBlock Foreground="{Binding SpeedAccentColor}"
-                                       FontWeight="SemiBold"
-                                       Text="{Binding SpeedStatus}" />
-                        </Border>
-                    </Grid>
-
-                    <Grid Grid.Row="1" Margin="0,6,0,0" VerticalAlignment="Center">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="420" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Grid Width="384" Height="248" VerticalAlignment="Center">
-                            <Ellipse Width="308"
-                                     Height="308"
-                                     Stroke="#14314B"
-                                     StrokeThickness="1"
-                                     Opacity="0.22"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Top"
-                                     Margin="0,-6,0,0" />
-                            <Ellipse Width="246"
-                                     Height="246"
-                                     Stroke="#16314A"
-                                     StrokeThickness="1"
-                                     Opacity="0.16"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Top"
-                                     Margin="0,26,0,0" />
-                            <Path Stroke="#183650"
-                                  StrokeThickness="16"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  Data="M 48,190 A 144,144 0 1 1 336,190" />
-                            <Path Stroke="{StaticResource MetricGlow}"
-                                  StrokeThickness="16"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  Data="M 48,190 A 144,144 0 0 1 336,190"
-                                  Opacity="0.94" />
-                            <Path Data="M 86,190 L 98,190 M 117,117 L 125,125 M 192,86 L 192,98 M 267,117 L 259,125 M 298,190 L 286,190"
-                                  Stroke="#A5B9CA"
-                                  StrokeThickness="2"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  Opacity="0.82" />
-                            <Line X1="192"
-                                  Y1="190"
-                                  X2="192"
-                                  Y2="58"
-                                  Stroke="#F3FFF9"
-                                  StrokeThickness="4"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round">
-                                <Line.RenderTransform>
-                                    <RotateTransform Angle="{Binding SpeedGaugeAngle}"
-                                                     CenterX="192"
-                                                     CenterY="190" />
-                                </Line.RenderTransform>
-                            </Line>
-                            <Ellipse Width="24"
-                                     Height="24"
-                                     Fill="#68E3B7"
-                                     Stroke="#D9FFF4"
-                                     StrokeThickness="2"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Top"
-                                     Margin="0,178,0,0" />
-                            <Ellipse Width="8"
-                                     Height="8"
-                                     Fill="#F3FFFB"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Top"
-                                     Margin="0,186,0,0" />
-                            <TextBlock Text="0"
-                                       Foreground="{StaticResource SecondaryText}"
-                                       FontSize="12"
-                                       Margin="58,180,0,0"
-                                       HorizontalAlignment="Left"
-                                       VerticalAlignment="Top" />
-                            <TextBlock Text="10"
-                                       Foreground="{StaticResource SecondaryText}"
-                                       FontSize="12"
-                                       Margin="0,56,0,0"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Top" />
-                            <TextBlock Text="20"
-                                       Foreground="{StaticResource SecondaryText}"
-                                       FontSize="12"
-                                       Margin="0,180,58,0"
-                                       HorizontalAlignment="Right"
-                                       VerticalAlignment="Top" />
-                        </Grid>
-
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
-                            <TextBlock Margin="0,10,0,0"
-                                       Foreground="{Binding SpeedAccentColor}"
-                                       FontSize="74"
-                                       LineHeight="76"
-                                       FontWeight="Bold"
-                                       Text="{Binding CurrentSpeedText}" />
-                            <TextBlock Margin="0,-6,0,0"
-                                       Foreground="{StaticResource PrimaryText}"
-                                       FontSize="24"
-                                       FontWeight="Light"
-                                       Text="{Binding SpeedUnit}" />
-                        </StackPanel>
-                    </Grid>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <Border Grid.Row="2"
-                Margin="24,0,24,16"
-                Style="{StaticResource PanelCard}"
-                Background="{StaticResource SubtlePanelBackground}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                </Grid>
-
-                <Border Grid.Row="1"
-                        Margin="0,18,0,0"
-                        CornerRadius="18"
-                        BorderBrush="#223753"
-                        BorderThickness="1"
-                        Background="#101A2A"
-                        Padding="16">
+                <Border Grid.Column="0" Style="{StaticResource PanelCardStyle}" Margin="0,0,8,0">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1*" />
-                            <ColumnDefinition Width="1*" />
-                        </Grid.ColumnDefinitions>
-
-                        <TextBlock Grid.Row="0"
-                                   Grid.ColumnSpan="2"
-                                   Foreground="{StaticResource SecondaryText}"
-                                   Text="参数设置" />
-
-                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,12,12,0">
-                            <TextBlock Foreground="{StaticResource SecondaryText}"
-                                       Text="测量起点位置" />
-                            <Grid Margin="0,8,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="MeasurementStartPositionTextBox"
-                                         Height="30"
-                                         IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                         Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StartPositionText, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Column="1"
-                                           Margin="8,0,0,0"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource PrimaryText}"
-                                           Text="m" />
-                            </Grid>
+                        <TextBlock Text="电源状态" Style="{StaticResource SectionTitleStyle}" />
+                        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+                            <TextBlock Text="{Binding BatteryLevelText}" Style="{StaticResource ValueStyle}" />
+                            <TextBlock Margin="0,4,0,0" Text="{Binding BatteryStateText}" Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
+                    </Grid>
+                </Border>
 
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="12,12,0,0">
-                            <TextBlock Foreground="{StaticResource SecondaryText}"
-                                       Text="测量终点位置" />
-                            <Grid Margin="0,8,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="MeasurementEndPositionTextBox"
-                                         Height="30"
-                                         IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                         Text="{Binding ElementName=MainWindowRoot, Path=Measurement.EndPositionText, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Column="1"
-                                           Margin="8,0,0,0"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource PrimaryText}"
-                                           Text="m" />
-                            </Grid>
-                        </StackPanel>
-
-                        <StackPanel Grid.Row="2"
-                                    Grid.ColumnSpan="2"
-                                    Margin="0,14,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <Button x:Name="WriteMeasurementParametersButton"
-                                        Height="34"
-                                        HorizontalAlignment="Left"
-                                        MinWidth="180"
-                                        Background="#17304A"
-                                        BorderBrush="#285377"
-                                        Foreground="{StaticResource PrimaryText}"
-                                        Content="写入测量起止点"
-                                        IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                        Click="WriteMeasurementParameters_Click" />
-                                <Button x:Name="StartMeasurementMotionButton"
-                                        Margin="12,0,0,0"
-                                        Height="34"
-                                        HorizontalAlignment="Left"
-                                        MinWidth="180"
-                                        Background="#17304A"
-                                        BorderBrush="#285377"
-                                        Foreground="{StaticResource PrimaryText}"
-                                        Content="测量运动启动"
-                                        IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                        Click="StartMeasurementMotion_Click" />
-                            </StackPanel>
-                            <TextBlock x:Name="MeasurementParameterStatusTextBlock"
-                                       Margin="0,10,0,0"
-                                       Foreground="{StaticResource SecondaryText}"
-                                       Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StatusMessage}"
-                                       TextWrapping="Wrap" />
+                <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}" Margin="8,0,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="速度状态" Style="{StaticResource SectionTitleStyle}" />
+                        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+                            <TextBlock Text="{Binding CurrentSpeedText}" Style="{StaticResource ValueStyle}" />
+                            <TextBlock Margin="0,4,0,0" Text="{Binding SpeedStatus}" Foreground="{StaticResource MutedTextBrush}" />
                         </StackPanel>
                     </Grid>
                 </Border>
             </Grid>
-        </Border>
 
-        <!-- <Border Grid.Row="3" -->
-        <!--         Margin="24,0,24,20" -->
-        <!--         Padding="16,12" -->
-        <!--         CornerRadius="18" -->
-        <!--         Background="#091420" -->
-        <!--         BorderBrush="#20344D" -->
-        <!--         BorderThickness="1"> -->
-        <!--     <Grid> -->
-        <!--         <Grid.ColumnDefinitions> -->
-        <!--             <ColumnDefinition Width="*" /> -->
-        <!--             <ColumnDefinition Width="Auto" /> -->
-        <!--         </Grid.ColumnDefinitions> -->
-        <!-- -->
-        <!--         <StackPanel Orientation="Horizontal"> -->
-        <!--             <TextBlock Foreground="{StaticResource SecondaryText}" Text="模式: 演示模式" /> -->
-        <!--             <TextBlock Margin="20,0,0,0" Foreground="{StaticResource SecondaryText}" Text="通讯: 预留" /> -->
-        <!--             <TextBlock Margin="20,0,0,0" Foreground="{StaticResource SecondaryText}" Text="PLC: 后续接入" /> -->
-        <!--         </StackPanel> -->
-        <!-- -->
-        <!--         <TextBlock Grid.Column="1" -->
-        <!--                    Foreground="{StaticResource SecondaryText}" -->
-        <!--                    Text="GrindCar HMI v1.0" /> -->
-        <!--     </Grid> -->
-        <!-- </Border> -->
+            <Border Grid.Row="2"
+                    Margin="0,12,0,0"
+                    Style="{StaticResource PanelCardStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Grid.ColumnSpan="2"
+                               Text="测量参数配置"
+                               Style="{StaticResource SectionTitleStyle}" />
+
+                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,14,12,0">
+                        <TextBlock Text="测量起点位置" Style="{StaticResource CaptionStyle}" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="MeasurementStartPositionTextBox"
+                                     Height="34"
+                                     Padding="8,4"
+                                     VerticalContentAlignment="Center"
+                                     Foreground="{StaticResource PrimaryTextBrush}"
+                                     Background="#0F1722"
+                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StartPositionText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Text="mm" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="12,14,0,0">
+                        <TextBlock Text="测量终点位置" Style="{StaticResource CaptionStyle}" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="MeasurementEndPositionTextBox"
+                                     Height="34"
+                                     Padding="8,4"
+                                     VerticalContentAlignment="Center"
+                                     Foreground="{StaticResource PrimaryTextBrush}"
+                                     Background="#0F1722"
+                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.EndPositionText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Text="mm" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2"
+                                Grid.ColumnSpan="2"
+                                Margin="0,16,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="WriteMeasurementParametersButton"
+                                    MinWidth="180"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                    Content="写入测量起止点"
+                                    Click="WriteMeasurementParameters_Click" />
+                            <Button x:Name="StartMeasurementMotionButton"
+                                    Margin="10,0,0,0"
+                                    MinWidth="180"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                    Content="测量运动启动"
+                                    Click="StartMeasurementMotion_Click" />
+                        </StackPanel>
+                        <Border Margin="0,10,0,0"
+                                Padding="10,8"
+                                CornerRadius="6"
+                                Background="#0F1722"
+                                BorderBrush="{StaticResource CardBorderBrush}"
+                                BorderThickness="1">
+                            <TextBlock x:Name="MeasurementParameterStatusTextBlock"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StatusMessage}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="1"
+                Margin="20,0,20,16"
+                Padding="10,8"
+                CornerRadius="6"
+                Background="#111A26"
+                BorderBrush="#2A3A4D"
+                BorderThickness="1">
+            <!-- <TextBlock Foreground="{StaticResource SecondaryTextBrush}" -->
+            <!--            Text="提示：如需接入实时速度/电量，请先在 PLC 协议中补充对应只读地址并同步到参数定义。" -->
+            <!--            TextWrapping="Wrap" /> -->
+        </Border>
     </Grid>
 </Window>

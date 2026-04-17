@@ -134,6 +134,11 @@ public static class MotorParameterDefinitions
     public const ushort MeasurementStartPositionAddress = 1140;
     public const ushort MeasurementEndPositionAddress = 1142;
     public const ushort MeasurementMotionStartAddress = 31;
+    public const ushort MeasurementProfileCaptureStartAddress = 60;
+    public const ushort MeasurementCurrentProfileCompletedAddress = 61;
+    public const ushort MeasurementMotionFinishedAddress = 62;
+    public const ushort GrindingTimesResultStartAddress = 1200;
+    public const ushort GrindingTimesResultAddressStep = 2;
 
     // 写入参数比例
     public const double CarJogSpeedScale = 1000.0;
@@ -283,4 +288,24 @@ public static class MotorParameterDefinitions
         [WheelRotationSpeedName] = UnitRadianPerMinute,
         [WheelQualityControlName] = string.Empty
     };
+
+    public static IReadOnlyList<int> MeasurementGrindingAngles { get; } = new List<int>
+    {
+        -35, -20, -15, -10, -5, -2, 0, 2, 5, 10, 15, 25, 35, 45, 55, 65, 75, 83, 90
+    };
+
+    public static IReadOnlyDictionary<int, ushort> MeasurementGrindingTimesAddresses { get; } =
+        BuildMeasurementGrindingTimesAddressMap();
+
+    private static IReadOnlyDictionary<int, ushort> BuildMeasurementGrindingTimesAddressMap()
+    {
+        var addressMap = new Dictionary<int, ushort>(MeasurementGrindingAngles.Count);
+        for (int index = 0; index < MeasurementGrindingAngles.Count; index++)
+        {
+            int angle = MeasurementGrindingAngles[index];
+            addressMap[angle] = (ushort)(GrindingTimesResultStartAddress + (index * GrindingTimesResultAddressStep));
+        }
+
+        return addressMap;
+    }
 }

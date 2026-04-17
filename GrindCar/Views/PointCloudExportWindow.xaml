@@ -94,7 +94,7 @@
                          IsEnabled="{Binding CanInteract}"
                          IsReadOnly="True"
                          Background="#FFFFFF"
-                         Text="{Binding OutputPath}" />
+                         Text="{Binding OutputPath, Mode=OneWay}" />
 
                 <Button Grid.Column="1"
                         Margin="12,0,0,0"

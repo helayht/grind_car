@@ -54,11 +54,18 @@ public partial class MainWindow : Window
     /// </summary>
     private void OpenPointCloudExportWindow_Click(object sender, RoutedEventArgs e)
     {
-        var window = new PointCloudExportWindow
+        try
         {
-            Owner = this
-        };
-        window.ShowDialog();
+            var window = new PointCloudExportWindow
+            {
+                Owner = this
+            };
+            window.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"打开点云导出窗口失败：{ex.Message}", "点云导出", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     /// <summary>
@@ -130,19 +137,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 向 PLC 发送测量运动启动信号（M31 置位）。
+    /// 启动测量运行流程并在结束后写回各角度打磨次数。
     /// </summary>
     private async void StartMeasurementMotion_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             await Measurement.StartMeasurementMotionAsync();
-            MessageBox.Show(this, "测量运动启动信号已发送。", "启动成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "测量流程已完成，打磨次数已写回 PLC。", "流程完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            Measurement.SetErrorStatus($"测量运动启动失败：{ex.Message}");
-            MessageBox.Show(this, ex.Message, "测量运动启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            Measurement.SetErrorStatus($"测量流程执行失败：{ex.Message}");
+            MessageBox.Show(this, ex.Message, "测量流程失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
