@@ -1,6 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# 
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrindCar", "GrindCar\GrindCar.csproj", "{E8E4731A-B9E8-46B0-9A5F-0767B1E33B14}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrindCar.Tests", "GrindCar.Tests\GrindCar.Tests.csproj", "{69DBE2F7-3168-41AC-8F41-1DDF8CC57BF2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +15,9 @@ Global
 		{E8E4731A-B9E8-46B0-9A5F-0767B1E33B14}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E8E4731A-B9E8-46B0-9A5F-0767B1E33B14}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E8E4731A-B9E8-46B0-9A5F-0767B1E33B14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69DBE2F7-3168-41AC-8F41-1DDF8CC57BF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69DBE2F7-3168-41AC-8F41-1DDF8CC57BF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69DBE2F7-3168-41AC-8F41-1DDF8CC57BF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69DBE2F7-3168-41AC-8F41-1DDF8CC57BF2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

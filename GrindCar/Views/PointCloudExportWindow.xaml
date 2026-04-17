@@ -1,6 +1,7 @@
 <Window x:Class="GrindCar.Views.PointCloudExportWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:pointCloudModels="clr-namespace:GrindCar.Models.PointCloud"
         Title="点云导出"
         Width="760"
         Height="320"
@@ -37,10 +38,14 @@
                       Grid.Column="1"
                       Height="32"
                       Margin="0,0,12,0"
+                      IsEnabled="{Binding CanInteract}"
+                      ItemsSource="{Binding Devices}"
+                      SelectedItem="{Binding SelectedDevice}"
                       DisplayMemberPath="DisplayName" />
 
             <Button Grid.Column="2"
                     Height="32"
+                    IsEnabled="{Binding CanInteract}"
                     Content="刷新设备"
                     Click="RefreshDevices_Click" />
         </Grid>
@@ -60,10 +65,16 @@
             <ComboBox x:Name="FormatComboBox"
                       Grid.Column="1"
                       Height="32"
+                      IsEnabled="{Binding CanInteract}"
+                      SelectedValuePath="Tag"
+                      SelectedValue="{Binding SelectedExportFormat}"
                       SelectedIndex="0">
-                <ComboBoxItem Content="PLY" Tag="Ply" />
-                <ComboBoxItem Content="CSV" Tag="Csv" />
-                <ComboBoxItem Content="OBJ" Tag="Obj" />
+                <ComboBoxItem Content="PLY"
+                              Tag="{x:Static pointCloudModels:PointCloudExportFormat.Ply}" />
+                <ComboBoxItem Content="CSV"
+                              Tag="{x:Static pointCloudModels:PointCloudExportFormat.Csv}" />
+                <ComboBoxItem Content="OBJ"
+                              Tag="{x:Static pointCloudModels:PointCloudExportFormat.Obj}" />
             </ComboBox>
 
             <TextBlock Grid.Column="2"
@@ -80,12 +91,15 @@
                 <TextBox x:Name="OutputPathTextBox"
                          Height="32"
                          VerticalContentAlignment="Center"
+                         IsEnabled="{Binding CanInteract}"
                          IsReadOnly="True"
-                         Background="#FFFFFF" />
+                         Background="#FFFFFF"
+                         Text="{Binding OutputPath}" />
 
                 <Button Grid.Column="1"
                         Margin="12,0,0,0"
                         Height="32"
+                        IsEnabled="{Binding CanInteract}"
                         Content="选择路径"
                         Click="ChooseOutputPath_Click" />
             </Grid>
@@ -100,7 +114,8 @@
                 Background="#FFFFFF">
             <TextBlock x:Name="StatusTextBlock"
                        Foreground="#4C5B65"
-                       TextWrapping="Wrap"/>
+                       TextWrapping="Wrap"
+                       Text="{Binding StatusText}"/>
         </Border>
 
         <StackPanel Grid.Row="5"
@@ -115,6 +130,7 @@
             <Button x:Name="ExportButton"
                     Width="120"
                     Height="34"
+                    IsEnabled="{Binding CanInteract}"
                     Content="开始导出"
                     Click="Export_Click" />
         </StackPanel>

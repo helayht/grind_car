@@ -30,13 +30,18 @@ GrindCar.sln
 │  │  ├─ PointCloud/      # 点云设备、导出格式模型
 │  │  └─ Rail/            # 轨面截面、计算结果模型
 │  ├─ Services/           # PLC、轨面、点云业务服务
+│  │  ├─ Motor/           # 电机参数映射、连接参数校验、仪表盘数据服务
+│  │  ├─ Measurement/     # 主界面测量参数解析与写入服务
 │  │  ├─ PointCloud/      # 点云设备 SDK 封装与导出
 │  │  └─ Rail/            # 中位截面与代表廓形提取
+│  │     ├─ Core/         # 轨面求解、基线存储、代表截面采集核心服务
+│  │     └─ Processing/   # 代表廓形 CSV 解析与点集处理
 │  ├─ ViewModels/         # ViewModel
 │  ├─ Views/              # WPF 窗口
 │  ├─ Converters/         # XAML 转换器
 │  ├─ lib/                # 第三方本地 DLL
 │  └─ Doc/                # 项目文档
+├─ GrindCar.Tests/        # xUnit 单元测试项目
 ├─ global.json
 └─ README.md
 ```
@@ -56,7 +61,7 @@ GrindCar.sln
 - 支持只读参数轮询
 - 支持整型、短整型、布尔型参数写入
 - 参数地址、比例和单位统一定义在 `Definitions/MotorParameterDefinitions.cs`
-- 写入映射逻辑集中在 `ViewModels/MotorViewModel.BuildWriteSpecs()`
+- 写入映射逻辑集中在 `Services/Motor/MotorParameterSpecProvider.cs`
 
 ### 3. 点云导出与截面提取
 - `PointCloudExportService` 用于枚举设备并导出单帧点云
@@ -68,8 +73,7 @@ GrindCar.sln
 
 ### 4. 打磨深度计算
 - `RailSurfaceService.RailSurfaceFun(double x)` 提供标准轨面函数
-- `RailSurfaceService.GetGrindDepth(int angle)` 计算单个角度的打磨深度
-- `RailSurfaceService.GetGrindDepths(IReadOnlyList<int> angles)` 支持多角度批量计算
+- `RailSurfaceService.CalculateGrindDepths(IReadOnlyList<int> angles)` 支持多角度批量计算
 - 批量计算时只采集一次代表截面点集，避免重复调用点云设备
 - “计算需要打磨深度”时会同步保存当前各角度的代表廓形 `b` 值作为检测基线
 - “检测已打磨深度”时会重新采集代表截面，并将当前 `b` 与基线 `b` 逐角度做差
@@ -179,12 +183,40 @@ dotnet clean GrindCar.sln
 - `GrindCar/Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
 - `GrindCar/Views/PlcConnectionSettingsWindow.xaml`：PLC连接设置窗口（供首页参数区写入测量参数使用）
 - `GrindCar/ViewModels/MotorViewModel.cs`：PLC 连接、轮询、写入、首页演示数据和状态文本管理
+- `GrindCar/ViewModels/MainWindowMeasurementViewModel.cs`：主界面测量参数区状态与操作编排
+- `GrindCar/ViewModels/GrindDepthDebugViewModel.cs`：打磨深度调试窗口状态与命令编排
+- `GrindCar/ViewModels/MedianSectionDebugViewModel.cs`：中位截面调试窗口状态与导入导出编排
+- `GrindCar/ViewModels/PointCloudExportViewModel.cs`：点云导出窗口设备刷新、导出状态与流程编排
+- `GrindCar/ViewModels/RepresentativeProfileComparisonViewModel.cs`：代表轨面与标准轨面对比窗口状态与绘图数据编排
+- `GrindCar/Services/Motor/MotorParameterSpecProvider.cs`：电机读写参数映射与比例定义提供者
+- `GrindCar/Services/Motor/MotorDashboardTelemetryService.cs`：首页仪表盘演示数据生成
+- `GrindCar/Services/Motor/PlcConnectionSettingsValidator.cs`：PLC 连接参数校验
 - `GrindCar/Definitions/MotorParameterDefinitions.cs`：参数名称、地址、比例和单位定义中心
-- `GrindCar/Services/PlcModbusCommunicator.cs`：Modbus TCP 通信封装
+- `GrindCar/Services/PlcModbusCommunicator.cs`：Modbus 通信上下文（字段、地址常量与构造注入）
+- `GrindCar/Services/PlcModbusCommunicator.Connection.cs`：连接管理与资源释放（Connect/Disconnect/Dispose）
+- `GrindCar/Services/PlcModbusCommunicator.SingleReadWrite.cs`：单次读写与连接校验（Coil/Register 读写）
+- `GrindCar/Services/PlcModbusCommunicator.Motion.cs`：运动编排与批量采集（MoveAndMonitor/GetData）
+- `GrindCar/Services/PlcModbusCommunicator.ContinuousReading.cs`：持续读取任务与联动监控逻辑
+- `GrindCar/Services/PlcModbusCommunicator.Conversion.cs`：寄存器与数值类型转换
+- `GrindCar/Services/Measurement/MeasurementParameterService.cs`：主界面测量参数写入与启动信号发送
+- `GrindCar/Services/Rail/Debug/GrindDepthDebugWorkflowService.cs`：打磨深度调试业务编排
+- `GrindCar/Services/Rail/Debug/GrindDepthAngleParser.cs`：角度输入解析
+- `GrindCar/Services/Rail/Debug/RepresentativePointsCsvExporter.cs`：代表点 CSV 导出
+- `GrindCar/Services/Rail/Debug/MedianSectionDebugWorkflowService.cs`：中位截面调试业务编排
+- `GrindCar/Services/Rail/Debug/MedianSectionCsvExporter.cs`：中位截面代表点 CSV 导出
+- `GrindCar/Services/Rail/Debug/RepresentativeProfileComparisonService.cs`：代表轨面与标准轨面对齐、采样与绘图数据计算
+- `GrindCar/Services/Curve/CurveCsvReader.cs`：曲线旋转窗口的 CSV 读取与列识别
+- `GrindCar/Services/Curve/CurveRotationService.cs`：角度解析与二维旋转计算
 - `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、采集和文件导出
 - `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从 CSV 提取中位截面二维点集
+- `GrindCar/Services/Rail/Processing/PointCloudCsvReader.cs`：点云 CSV 解析（分隔符/表头/坐标列识别）
+- `GrindCar/Services/Rail/Processing/RepresentativeProfilePointProcessor.cs`：离群过滤、旋转、对称扩展和平移
+- `GrindCar/Services/Rail/Processing/QuickSelect.cs`：中位值快速选择算法
 - `GrindCar/Services/Rail/PointCloudMedianSectionCaptureService.cs`：采集单帧点云并输出中位截面提取结果
-- `GrindCar/Services/RailSurfaceService.cs`：标准轨面函数、打磨深度计算、代表廓形 `b` 值计算、检测基线生成/持久化及已打磨深度检测逻辑
+- `GrindCar/Services/Rail/Core/StandardRailProfileSolver.cs`：标准轨面函数和切线 `b` 求解
+- `GrindCar/Services/Rail/Core/RepresentativeSectionCaptureService.cs`：代表截面点采集
+- `GrindCar/Services/Rail/Core/GrindingDepthBaselineStore.cs`：检测基线持久化
+- `GrindCar/Services/RailSurfaceService.cs`：轨面计算外观层（Facade），对 UI 保持稳定调用入口
 
 ## 坐标与算法说明
 ### 点云坐标约定

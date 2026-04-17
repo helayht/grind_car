@@ -59,12 +59,14 @@
                             Height="34"
                             Margin="0,0,10,0"
                             Content="计算需要打磨深度"
+                            IsEnabled="{Binding CanRunActions}"
                             Click="Calculate_Click" />
                     <Button x:Name="DetectButton"
                             Width="150"
                             Height="34"
                             Margin="0,0,10,0"
                             Content="检测已打磨深度"
+                            IsEnabled="{Binding CanRunActions}"
                             Click="Detect_Click" />
                     <Button x:Name="ExportRepresentativePointsButton"
                             Width="120"
@@ -72,7 +74,7 @@
                             Margin="0,0,10,0"
                             Content="导出代表点"
                             Click="ExportRepresentativePoints_Click"
-                            IsEnabled="False" />
+                            IsEnabled="{Binding CanExportRepresentativePoints}" />
                     <Button Width="88"
                             Height="34"
                             Content="关闭"
@@ -102,7 +104,8 @@
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
                              VerticalContentAlignment="Top"
-                             Text="-20,-15,-10,-5,-2,0,2,5,10,15,25,35,45,55,65,75,83" />
+                             IsEnabled="{Binding CanEditAngles}"
+                             Text="{Binding AnglesInput, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{StaticResource Muted}"
                                />
@@ -120,7 +123,7 @@
                                FontSize="32"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource Accent}"
-                               Text="0" />
+                               Text="{Binding ResultCountText}" />
                 </StackPanel>
             </Border>
         </Grid>
@@ -212,7 +215,8 @@
                 Style="{StaticResource CardBorderStyle}">
             <TextBlock x:Name="StatusTextBlock"
                        Foreground="{StaticResource Muted}"
-                       TextWrapping="Wrap" />
+                       TextWrapping="Wrap"
+                       Text="{Binding StatusMessage}" />
         </Border>
     </Grid>
 </Window>

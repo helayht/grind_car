@@ -66,11 +66,12 @@
                             Margin="0,0,10,0"
                             Content="导出代表截面"
                             Click="ExportProfile_Click"
-                            IsEnabled="False" />
+                            IsEnabled="{Binding CanExport}" />
                     <Button Width="120"
                             Height="34"
                             Margin="0,0,10,0"
                             Content="导入点云文件"
+                            IsEnabled="{Binding CanImport}"
                             Click="ImportFile_Click" />
                     <Button Width="88"
                             Height="34"

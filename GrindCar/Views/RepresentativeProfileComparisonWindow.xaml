@@ -72,31 +72,34 @@
                 <StackPanel>
                     <TextBlock Foreground="{StaticResource Muted}"
                                Text="代表点数量" />
-                    <TextBlock x:Name="PointCountTextBlock"
+                    <TextBlock
                                Margin="0,8,0,0"
                                FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource RepresentativeBrush}" />
+                               Foreground="{StaticResource RepresentativeBrush}"
+                               Text="{Binding PointCountText}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1">
                     <TextBlock Foreground="{StaticResource Muted}"
                                Text="横向范围" />
-                    <TextBlock x:Name="XRangeTextBlock"
+                    <TextBlock
                                Margin="0,8,0,0"
                                FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}" />
+                               Foreground="{StaticResource Ink}"
+                               Text="{Binding XRangeText}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
                     <TextBlock Foreground="{StaticResource Muted}"
                                Text="高度范围" />
-                    <TextBlock x:Name="YRangeTextBlock"
+                    <TextBlock
                                Margin="0,8,0,0"
                                FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource StandardBrush}" />
+                               Foreground="{StaticResource StandardBrush}"
+                               Text="{Binding YRangeText}" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -107,27 +110,56 @@
                 <Canvas x:Name="PlotCanvas"
                         Background="#FCFDFD"
                         SizeChanged="PlotCanvas_SizeChanged">
-                    <Line x:Name="XAxis"
+                    <Line
                           Stroke="#B9C6CE"
                           StrokeThickness="1"
-                          StrokeDashArray="4,4" />
-                    <Line x:Name="YAxis"
+                          StrokeDashArray="4,4"
+                          X1="{Binding XAxisX1}"
+                          X2="{Binding XAxisX2}"
+                          Y1="{Binding XAxisY1}"
+                          Y2="{Binding XAxisY2}" />
+                    <Line
                           Stroke="#B9C6CE"
                           StrokeThickness="1"
-                          StrokeDashArray="4,4" />
-                    <Path x:Name="StandardCurvePath"
+                          StrokeDashArray="4,4"
+                          X1="{Binding YAxisX1}"
+                          X2="{Binding YAxisX2}"
+                          Y1="{Binding YAxisY1}"
+                          Y2="{Binding YAxisY2}" />
+                    <Path
                           Stroke="{StaticResource StandardBrush}"
                           StrokeThickness="2.5"
                           StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round" />
-                    <Path x:Name="RepresentativeCurvePath"
+                          StrokeEndLineCap="Round"
+                          Data="{Binding StandardCurveGeometry}" />
+                    <Path
                           Stroke="{StaticResource RepresentativeBrush}"
                           StrokeThickness="3"
                           StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round" />
-                    <Canvas x:Name="RepresentativePointCanvas"
-                            Width="{Binding ActualWidth, ElementName=PlotCanvas}"
-                            Height="{Binding ActualHeight, ElementName=PlotCanvas}" />
+                          StrokeEndLineCap="Round"
+                          Data="{Binding RepresentativeCurveGeometry}" />
+                    <ItemsControl ItemsSource="{Binding RepresentativePointItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left"
+                                        Value="{Binding Left}" />
+                                <Setter Property="Canvas.Top"
+                                        Value="{Binding Top}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Ellipse Width="5"
+                                         Height="5"
+                                         Fill="{StaticResource PointBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Canvas>
             </Grid>
         </Border>
