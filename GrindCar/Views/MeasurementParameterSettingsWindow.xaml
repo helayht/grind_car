@@ -1,0 +1,107 @@
+<Window x:Class="GrindCar.Views.MeasurementParameterSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="参数设置"
+        Width="760"
+        Height="360"
+        WindowStartupLocation="CenterOwner"
+        Background="#F4F6F8">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock FontSize="22"
+                   FontWeight="SemiBold"
+                   Foreground="#1E2A32"
+                   Text="测量参数设置" />
+
+        <Grid Grid.Row="1" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="160" />
+                <ColumnDefinition Width="80" />
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="100" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock VerticalAlignment="Center" Foreground="#1E2A32" Text="PLC IP" />
+            <TextBox x:Name="IpAddressTextBox"
+                     Grid.Column="1"
+                     Height="32"
+                     VerticalContentAlignment="Center"
+                     Text="127.0.0.1" />
+
+            <TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="#1E2A32" Text="端口" />
+            <TextBox x:Name="PortTextBox"
+                     Grid.Column="3"
+                     Height="32"
+                     VerticalContentAlignment="Center"
+                     Text="502" />
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="80" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock VerticalAlignment="Center" Foreground="#1E2A32" Text="测量起点位置" />
+            <TextBox x:Name="MeasurementStartTextBox"
+                     Grid.Column="1"
+                     Height="32"
+                     VerticalContentAlignment="Center" />
+            <TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="#1E2A32" Text="m" />
+        </Grid>
+
+        <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="80" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock VerticalAlignment="Center" Foreground="#1E2A32" Text="测量终点位置" />
+            <TextBox x:Name="MeasurementEndTextBox"
+                     Grid.Column="1"
+                     Height="32"
+                     VerticalContentAlignment="Center" />
+            <TextBlock Grid.Column="2" VerticalAlignment="Center" Foreground="#1E2A32" Text="m" />
+        </Grid>
+
+        <Border Grid.Row="4"
+                Margin="0,16,0,0"
+                Padding="14"
+                CornerRadius="10"
+                BorderBrush="#D8E0E5"
+                BorderThickness="1"
+                Background="#FFFFFF">
+            <TextBlock x:Name="StatusTextBlock"
+                       Foreground="#4C5B65"
+                       TextWrapping="Wrap"
+                       Text="请设置测量起点和测量终点后点击“写入参数”。" />
+        </Border>
+
+        <StackPanel Grid.Row="5"
+                    Margin="0,16,0,0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Width="96"
+                    Height="34"
+                    Margin="0,0,10,0"
+                    Content="关闭"
+                    Click="Close_Click" />
+            <Button x:Name="WriteButton"
+                    Width="120"
+                    Height="34"
+                    Content="写入参数"
+                    Click="WriteParameters_Click" />
+        </StackPanel>
+    </Grid>
+</Window>
