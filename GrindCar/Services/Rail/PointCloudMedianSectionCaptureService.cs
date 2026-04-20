@@ -9,7 +9,7 @@ namespace GrindCar.Services.Rail;
 
 /// <summary>
 /// 将 SDK 点云采集与中位 Y 截面提取串联起来。
-/// 当前采用“先导出 CSV 到 Log 目录，再读取 CSV 提取截面”的方式。
+/// 默认采用“在线采集点云 -> 直接提取截面”方式，必要时回退到 CSV。
 /// </summary>
 public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSectionCaptureService
 {
@@ -35,7 +35,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     /// </summary>
     /// <param name="pointCloudExportService">点云导出服务。</param>
     /// <param name="representativeProfileService">中位截面提取服务。</param>
-    /// <param name="logDirectoryPath">CSV 落盘目录。</param>
+    /// <param name="logDirectoryPath">CSV 回退模式的落盘目录。</param>
     public PointCloudMedianSectionCaptureService(
         PointCloudExportService pointCloudExportService,
         IPointCloudRepresentativeProfileService representativeProfileService,
@@ -60,9 +60,23 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
             throw new PointCloudSdkException("未选择设备序列号。");
         }
 
+        if (_representativeProfileService is PointCloudRepresentativeProfileService representativeProfileService)
+        {
+            try
+            {
+                var points = _pointCloudExportService.CapturePointCloudPoints(serialNumber);
+                MedianSectionExtractionResult onlineExtractionResult =
+                    representativeProfileService.ExtractMedianSectionProfileFromPoints(points);
+                return new PointCloudMedianSectionCaptureResult(string.Empty, onlineExtractionResult);
+            }
+            catch
+            {
+                // 在线读取失败时自动回退到 CSV 方案，避免阻断业务流程。
+            }
+        }
+
         Directory.CreateDirectory(_logDirectoryPath);
         string csvPath = BuildCsvPath();
-
         _pointCloudExportService.ExportPointCloud(serialNumber, csvPath, PointCloudExportFormat.Csv);
 
         MedianSectionExtractionResult extractionResult =

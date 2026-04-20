@@ -123,6 +123,48 @@ internal static class RepresentativeProfilePointProcessor
         return translatedPoints;
     }
 
+    public static List<RailProfilePoint> TranslatePointsToMidXReferencePointAsOrigin(IReadOnlyList<RailProfilePoint> points)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (points.Count == 0)
+        {
+            return new List<RailProfilePoint>();
+        }
+
+        double xMin = points.Min(point => point.X);
+        double xMax = points.Max(point => point.X);
+        double xMid = (xMin + xMax) / 2.0;
+
+        RailProfilePoint referencePoint = points[0];
+        double bestDistance = Math.Abs(referencePoint.X - xMid);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            double distance = Math.Abs(point.X - xMid);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                referencePoint = point;
+            }
+        }
+
+        double offsetX = -referencePoint.X;
+        double offsetY = -referencePoint.Y;
+
+        var translatedPoints = new List<RailProfilePoint>(points.Count);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            translatedPoints.Add(new RailProfilePoint(point.X + offsetX, point.Y + offsetY));
+        }
+
+        return translatedPoints;
+    }
+
     private static List<RailProfilePoint> FilterOutlierRepresentativePointsSinglePass(IReadOnlyList<RailProfilePoint> sortedPoints)
     {
         int count = sortedPoints.Count;

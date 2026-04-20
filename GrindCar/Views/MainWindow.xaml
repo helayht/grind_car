@@ -244,6 +244,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*" />
@@ -275,7 +276,7 @@
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource SecondaryTextBrush}"
-                                       Text="mm" />
+                                       Text="m" />
                         </Grid>
                     </StackPanel>
 
@@ -299,11 +300,59 @@
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource SecondaryTextBrush}"
-                                       Text="mm" />
+                                       Text="m" />
                         </Grid>
                     </StackPanel>
 
-                    <StackPanel Grid.Row="2"
+                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,14,12,0">
+                        <TextBlock Text="打磨起点位置" Style="{StaticResource CaptionStyle}" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="GrindingStartPositionTextBox"
+                                     Height="34"
+                                     Padding="8,4"
+                                     VerticalContentAlignment="Center"
+                                     Foreground="{StaticResource PrimaryTextBrush}"
+                                     Background="#0F1722"
+                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.GrindingStartPositionText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Text="m" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="12,14,0,0">
+                        <TextBlock Text="打磨终点位置" Style="{StaticResource CaptionStyle}" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="GrindingEndPositionTextBox"
+                                     Height="34"
+                                     Padding="8,4"
+                                     VerticalContentAlignment="Center"
+                                     Foreground="{StaticResource PrimaryTextBrush}"
+                                     Background="#0F1722"
+                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.GrindingEndPositionText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Text="m" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="3"
                                 Grid.ColumnSpan="2"
                                 Margin="0,16,0,0">
                         <StackPanel Orientation="Horizontal">
@@ -313,6 +362,13 @@
                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                     Content="写入测量起止点"
                                     Click="WriteMeasurementParameters_Click" />
+                            <Button x:Name="WriteGrindingParametersButton"
+                                    Margin="10,0,0,0"
+                                    MinWidth="180"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                    Content="写入打磨起止点"
+                                    Click="WriteGrindingParameters_Click" />
                             <Button x:Name="StartMeasurementMotionButton"
                                     Margin="10,0,0,0"
                                     MinWidth="180"
@@ -320,6 +376,13 @@
                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                     Content="测量运动启动"
                                     Click="StartMeasurementMotion_Click" />
+                            <Button x:Name="StartGrindingMotionButton"
+                                    Margin="10,0,0,0"
+                                    MinWidth="180"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                    Content="打磨运动启动"
+                                    Click="StartGrindingMotion_Click" />
                         </StackPanel>
                         <Border Margin="0,10,0,0"
                                 Padding="10,8"

@@ -19,6 +19,8 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     private int _plcPort;
     private string _startPositionText = string.Empty;
     private string _endPositionText = string.Empty;
+    private string _grindingStartPositionText = string.Empty;
+    private string _grindingEndPositionText = string.Empty;
     private string _statusMessage = "请填写参数后写入。";
     private bool _isBusy;
 
@@ -66,6 +68,36 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
             }
 
             _endPositionText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string GrindingStartPositionText
+    {
+        get => _grindingStartPositionText;
+        set
+        {
+            if (_grindingStartPositionText == value)
+            {
+                return;
+            }
+
+            _grindingStartPositionText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string GrindingEndPositionText
+    {
+        get => _grindingEndPositionText;
+        set
+        {
+            if (_grindingEndPositionText == value)
+            {
+                return;
+            }
+
+            _grindingEndPositionText = value;
             OnPropertyChanged();
         }
     }
@@ -141,6 +173,34 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         }
     }
 
+    public async Task WriteGrindingParametersAsync()
+    {
+        double startPosition = MeasurementInputParser.ParsePosition(
+            GrindingStartPositionText,
+            MotorParameterDefinitions.GrindingStartPositionName);
+        double endPosition = MeasurementInputParser.ParsePosition(
+            GrindingEndPositionText,
+            MotorParameterDefinitions.GrindingEndPositionName);
+
+        try
+        {
+            IsBusy = true;
+            StatusMessage = "正在写入打磨参数...";
+
+            await _measurementParameterService.WriteGrindingRangeAsync(
+                _plcIpAddress,
+                _plcPort,
+                startPosition,
+                endPosition).ConfigureAwait(true);
+
+            StatusMessage = $"写入成功：打磨起点 {startPosition.ToString("0.###", CultureInfo.CurrentCulture)}m，打磨终点 {endPosition.ToString("0.###", CultureInfo.CurrentCulture)}m";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     public async Task StartMeasurementMotionAsync()
     {
         try
@@ -157,6 +217,25 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 
             StatusMessage =
                 $"测量流程完成：累计 {result.SampleCount.ToString(CultureInfo.CurrentCulture)} 次测量，已写入 {result.Results.Count.ToString(CultureInfo.CurrentCulture)} 个角度的打磨次数。";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task StartGrindingMotionAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = "正在启动打磨运动...";
+
+            await _measurementParameterService.StartGrindingMotionAsync(
+                _plcIpAddress,
+                _plcPort).ConfigureAwait(true);
+
+            StatusMessage = "打磨运动启动信号已写入。";
         }
         finally
         {

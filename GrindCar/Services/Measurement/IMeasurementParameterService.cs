@@ -10,8 +10,10 @@ namespace GrindCar.Services.Measurement;
 public interface IMeasurementParameterService
 {
     Task WriteMeasurementRangeAsync(string ipAddress, int port, double startPosition, double endPosition);
+    Task WriteGrindingRangeAsync(string ipAddress, int port, double startPosition, double endPosition);
 
     Task StartMeasurementMotionAsync(string ipAddress, int port);
+    Task StartGrindingMotionAsync(string ipAddress, int port);
 
     Task<MeasurementGrindingWorkflowResult> RunMeasurementWorkflowAsync(
         string ipAddress,

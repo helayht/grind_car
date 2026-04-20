@@ -10,7 +10,7 @@ namespace GrindCar.Views;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private const string DefaultMeasurementPlcIpAddress = "127.0.0.1";
+    private const string DefaultMeasurementPlcIpAddress = "192.168.1.10";
     private const int DefaultMeasurementPlcPort = 502;
 
     private readonly MotorViewModel _viewModel = new();
@@ -137,6 +137,22 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 将主界面中的打磨起点和终点参数写入 PLC。
+    /// </summary>
+    private async void WriteGrindingParameters_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await Measurement.WriteGrindingParametersAsync();
+        }
+        catch (Exception ex)
+        {
+            Measurement.SetErrorStatus($"写入失败：{ex.Message}");
+            MessageBox.Show(this, ex.Message, "参数写入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
     /// 启动测量运行流程并在结束后写回各角度打磨次数。
     /// </summary>
     private async void StartMeasurementMotion_Click(object sender, RoutedEventArgs e)
@@ -150,6 +166,23 @@ public partial class MainWindow : Window
         {
             Measurement.SetErrorStatus($"测量流程执行失败：{ex.Message}");
             MessageBox.Show(this, ex.Message, "测量流程失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 触发打磨运动启动信号写入 PLC。
+    /// </summary>
+    private async void StartGrindingMotion_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await Measurement.StartGrindingMotionAsync();
+            MessageBox.Show(this, "打磨运动启动信号已写入 PLC。", "操作完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Measurement.SetErrorStatus($"打磨运动启动失败：{ex.Message}");
+            MessageBox.Show(this, ex.Message, "打磨运动启动失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

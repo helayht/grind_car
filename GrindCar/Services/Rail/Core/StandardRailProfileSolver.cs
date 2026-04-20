@@ -9,6 +9,8 @@ namespace GrindCar.Services.Rail.Core;
 /// </summary>
 public static class StandardRailProfileSolver
 {
+    private const double StandardProfileVerticalOffset = -176.0;
+
     private static readonly Arc[] Arcs =
     {
         new(-35.4, -25.3, true, false, 13, -22.42, 161.15),
@@ -34,7 +36,7 @@ public static class StandardRailProfileSolver
                 value = 0;
             }
 
-            return Math.Sqrt(value) + arc.D;
+            return Math.Sqrt(value) + arc.D + StandardProfileVerticalOffset;
         }
 
         return double.NaN;

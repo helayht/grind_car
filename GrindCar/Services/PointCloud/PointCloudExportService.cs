@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using GrindCar.Models.PointCloud;
+using GrindCar.Services.Rail.Processing;
 
 namespace GrindCar.Services.PointCloud;
 
@@ -12,6 +14,9 @@ public sealed class PointCloudExportService
 {
     private const uint DefaultGetImageTimeoutMs = 3000;
     private const uint RangeImageModeValue = 7;
+    private const int PointCoordinateCount = 3;
+    private const int FloatPointSizeInBytes = sizeof(float) * PointCoordinateCount;
+    private const int Int16PointSizeInBytes = sizeof(short) * PointCoordinateCount;
 
     /// <summary>
     /// 获取当前可用的点云设备列表。
@@ -119,6 +124,60 @@ public sealed class PointCloudExportService
     }
 
     /// <summary>
+    /// 从指定设备在线采集单帧点云并直接返回三维点集合（不落盘 CSV）。
+    /// </summary>
+    /// <param name="serialNumber">目标设备序列号。</param>
+    /// <returns>采集到的三维点列表。</returns>
+    internal IReadOnlyList<PointCloudPoint3D> CapturePointCloudPoints(string serialNumber)
+    {
+        if (string.IsNullOrWhiteSpace(serialNumber))
+        {
+            throw new PointCloudSdkException("未选择设备序列号。");
+        }
+
+        return ExecuteWithSdkLifecycle<IReadOnlyList<PointCloudPoint3D>>(() =>
+        {
+            IntPtr deviceHandle = IntPtr.Zero;
+            bool measurementStarted = false;
+            using var imageModeParam = new MV3D_LP_PARAM();
+            using var imageModeValue = new MV3D_LP_ENUMPARAM();
+            using var depthImage = new MV3D_LP_IMAGE_DATA();
+            using var pointCloudImage = new MV3D_LP_IMAGE_DATA();
+
+            try
+            {
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_OpenDeviceBySN(ref deviceHandle, serialNumber), $"打开设备失败，SN: {serialNumber}");
+
+                imageModeValue.nCurValue = RangeImageModeValue;
+                imageModeParam.set_enumparam(imageModeValue);
+                EnsureSuccess(
+                    Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam),
+                    "设置图像模式失败。");
+
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_StartMeasure(deviceHandle), "启动测量失败。");
+                measurementStarted = true;
+
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, depthImage, DefaultGetImageTimeoutMs), "获取深度图失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_MapDepthToPointCloud(depthImage, pointCloudImage), "深度图转换点云失败。");
+
+                return DecodePointCloudImage(pointCloudImage);
+            }
+            finally
+            {
+                if (measurementStarted)
+                {
+                    TryExecute(() => Mv3dLpSDK.MV3D_LP_StopMeasure(deviceHandle));
+                }
+
+                if (deviceHandle != IntPtr.Zero)
+                {
+                    TryExecute(() => Mv3dLpSDK.MV3D_LP_CloseDevice(ref deviceHandle));
+                }
+            }
+        });
+    }
+
+    /// <summary>
     /// 创建指定容量的设备信息向量，供 SDK 写入设备列表。
     /// </summary>
     /// <param name="deviceCount">设备数量。</param>
@@ -215,6 +274,103 @@ public sealed class PointCloudExportService
             PointCloudExportFormat.Obj => ".obj",
             _ => throw new PointCloudSdkException($"不支持的导出格式: {exportFormat}")
         };
+    }
+
+    private static IReadOnlyList<PointCloudPoint3D> DecodePointCloudImage(MV3D_LP_IMAGE_DATA pointCloudImage)
+    {
+        if (pointCloudImage == null)
+        {
+            throw new PointCloudSdkException("点云图像数据为空。");
+        }
+
+        if (pointCloudImage.pData == IntPtr.Zero || pointCloudImage.nDataLen == 0)
+        {
+            throw new PointCloudSdkException("点云图像数据缓冲区为空。");
+        }
+
+        uint pointCountByShape = pointCloudImage.nWidth * pointCloudImage.nHeight;
+        int dataLength = checked((int)pointCloudImage.nDataLen);
+        int pointCountByFloat = dataLength / FloatPointSizeInBytes;
+        int pointCountByInt16 = dataLength / Int16PointSizeInBytes;
+
+        bool treatAsFloat = dataLength % FloatPointSizeInBytes == 0;
+        if (!treatAsFloat && dataLength % Int16PointSizeInBytes != 0)
+        {
+            throw new PointCloudSdkException($"点云数据长度异常，无法识别坐标格式。DataLen={pointCloudImage.nDataLen}");
+        }
+
+        int expectedCount = pointCountByShape > 0 ? checked((int)pointCountByShape) : (treatAsFloat ? pointCountByFloat : pointCountByInt16);
+        int usableCount = treatAsFloat ? Math.Min(expectedCount, pointCountByFloat) : Math.Min(expectedCount, pointCountByInt16);
+        if (usableCount <= 0)
+        {
+            return Array.Empty<PointCloudPoint3D>();
+        }
+
+        return treatAsFloat
+            ? DecodeFloatPointCloud(pointCloudImage, usableCount)
+            : DecodeInt16PointCloud(pointCloudImage, usableCount);
+    }
+
+    private static IReadOnlyList<PointCloudPoint3D> DecodeFloatPointCloud(MV3D_LP_IMAGE_DATA pointCloudImage, int pointCount)
+    {
+        var rawValues = new float[pointCount * PointCoordinateCount];
+        Marshal.Copy(pointCloudImage.pData, rawValues, 0, rawValues.Length);
+
+        var points = new List<PointCloudPoint3D>(pointCount);
+        for (int index = 0; index < pointCount; index++)
+        {
+            int baseIndex = index * PointCoordinateCount;
+            double x = rawValues[baseIndex];
+            double y = rawValues[baseIndex + 1];
+            double z = rawValues[baseIndex + 2];
+
+            if (!IsFinitePoint(x, y, z))
+            {
+                continue;
+            }
+
+            points.Add(new PointCloudPoint3D(x, y, z));
+        }
+
+        return points;
+    }
+
+    private static IReadOnlyList<PointCloudPoint3D> DecodeInt16PointCloud(MV3D_LP_IMAGE_DATA pointCloudImage, int pointCount)
+    {
+        var rawValues = new short[pointCount * PointCoordinateCount];
+        Marshal.Copy(pointCloudImage.pData, rawValues, 0, rawValues.Length);
+
+        float xScale = pointCloudImage.fXScale;
+        float yScale = pointCloudImage.fYScale;
+        float zScale = pointCloudImage.fZScale;
+        int xOffset = pointCloudImage.nXOffset;
+        int yOffset = pointCloudImage.nYOffset;
+        int zOffset = pointCloudImage.nZOffset;
+
+        var points = new List<PointCloudPoint3D>(pointCount);
+        for (int index = 0; index < pointCount; index++)
+        {
+            int baseIndex = index * PointCoordinateCount;
+            double x = rawValues[baseIndex] * xScale + xOffset;
+            double y = rawValues[baseIndex + 1] * yScale + yOffset;
+            double z = rawValues[baseIndex + 2] * zScale + zOffset;
+
+            if (!IsFinitePoint(x, y, z))
+            {
+                continue;
+            }
+
+            points.Add(new PointCloudPoint3D(x, y, z));
+        }
+
+        return points;
+    }
+
+    private static bool IsFinitePoint(double x, double y, double z)
+    {
+        return !(double.IsNaN(x) || double.IsInfinity(x) ||
+                 double.IsNaN(y) || double.IsInfinity(y) ||
+                 double.IsNaN(z) || double.IsInfinity(z));
     }
 
     /// <summary>

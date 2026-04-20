@@ -4,6 +4,8 @@ namespace GrindCar.Definitions;
 
 public static class MotorParameterDefinitions
 {
+    public const ushort MAddressOffset = 8192;
+
     public const string UnitMeter = "m";
     public const string UnitMillimeter = "mm";
     public const string UnitDegree = "°";
@@ -68,6 +70,8 @@ public static class MotorParameterDefinitions
     public const string WheelQualityControlName = "砂轮质量控制";
     public const string MeasurementStartPositionName = "测量起点位置";
     public const string MeasurementEndPositionName = "测量终点位置";
+    public const string GrindingStartPositionName = "打磨起点位置";
+    public const string GrindingEndPositionName = "打磨终点位置";
 
     // 只读参数 Modbus 地址
     public const ushort CarCurrentPositionAddress = 100;
@@ -87,58 +91,61 @@ public static class MotorParameterDefinitions
     public const ushort CarJogSpeedAddress = 1000;
     public const ushort CarPositionTargetAddress = 1002;
     public const ushort CarPositionSpeedAddress = 1004;
-    public const ushort CarPositionStartAddress = 104;
-    public const ushort CarJogForwardAddress = 100;
-    public const ushort CarJogBackwardAddress = 101;
-    public const ushort CarHomeAddress = 102;
-    public const ushort CarFaultResetAddress = 109;
+    public const ushort CarPositionStartAddress = (ushort)(104 + MAddressOffset);
+    public const ushort CarJogForwardAddress = (ushort)(100 + MAddressOffset);
+    public const ushort CarJogBackwardAddress = (ushort)(101 + MAddressOffset);
+    public const ushort CarHomeAddress = (ushort)(102 + MAddressOffset);
+    public const ushort CarFaultResetAddress = (ushort)(109 + MAddressOffset);
 
     public const ushort WheelLongitudinalJogSpeedAddress = 1040;
     public const ushort WheelLongitudinalPositionTargetAddress = 1042;
     public const ushort WheelLongitudinalPositionSpeedAddress = 1044;
-    public const ushort WheelLongitudinalPositionStartAddress = 304;
-    public const ushort WheelLongitudinalJogDownAddress = 300;
-    public const ushort WheelLongitudinalJogUpAddress = 301;
-    public const ushort WheelLongitudinalHomeAddress = 302;
-    public const ushort WheelLongitudinalFaultResetAddress = 309;
+    public const ushort WheelLongitudinalPositionStartAddress = (ushort)(304 + MAddressOffset);
+    public const ushort WheelLongitudinalJogDownAddress = (ushort)(300 + MAddressOffset);
+    public const ushort WheelLongitudinalJogUpAddress = (ushort)(301 + MAddressOffset);
+    public const ushort WheelLongitudinalHomeAddress = (ushort)(302 + MAddressOffset);
+    public const ushort WheelLongitudinalFaultResetAddress = (ushort)(309 + MAddressOffset);
 
     public const ushort WheelLateralJogSpeedAddress = 1060;
     public const ushort WheelLateralPositionTargetAddress = 1062;
     public const ushort WheelLateralPositionSpeedAddress = 1064;
-    public const ushort WheelLateralPositionStartAddress = 404;
-    public const ushort WheelLateralJogLeftAddress = 400;
-    public const ushort WheelLateralJogRightAddress = 401;
-    public const ushort WheelLateralHomeAddress = 402;
-    public const ushort WheelLateralFaultResetAddress = 409;
+    public const ushort WheelLateralPositionStartAddress = (ushort)(404 + MAddressOffset);
+    public const ushort WheelLateralJogLeftAddress = (ushort)(400 + MAddressOffset);
+    public const ushort WheelLateralJogRightAddress = (ushort)(401 + MAddressOffset);
+    public const ushort WheelLateralHomeAddress = (ushort)(402 + MAddressOffset);
+    public const ushort WheelLateralFaultResetAddress = (ushort)(409 + MAddressOffset);
 
     public const ushort WheelAngleJogSpeedAddress = 1080;
     public const ushort WheelAnglePositionTargetAddress = 1082;
     public const ushort WheelAnglePositionSpeedAddress = 1084;
-    public const ushort WheelAnglePositionStartAddress = 504;
-    public const ushort WheelAngleJogReverseAddress = 500;
-    public const ushort WheelAngleJogForwardAddress = 501;
-    public const ushort WheelAngleHomeAddress = 502;
-    public const ushort WheelAngleFaultResetAddress = 509;
+    public const ushort WheelAnglePositionStartAddress = (ushort)(504 + MAddressOffset);
+    public const ushort WheelAngleJogReverseAddress = (ushort)(500 + MAddressOffset);
+    public const ushort WheelAngleJogForwardAddress = (ushort)(501 + MAddressOffset);
+    public const ushort WheelAngleHomeAddress = (ushort)(502 + MAddressOffset);
+    public const ushort WheelAngleFaultResetAddress = (ushort)(509 + MAddressOffset);
 
     public const ushort ProfilerJogSpeedAddress = 1100;
     public const ushort ProfilerPositionTargetAddress = 1102;
     public const ushort ProfilerPositionSpeedAddress = 1104;
-    public const ushort ProfilerPositionStartAddress = 604;
-    public const ushort ProfilerJogDownAddress = 600;
-    public const ushort ProfilerJogUpAddress = 601; 
-    public const ushort ProfilerHomeAddress = 602;
-    public const ushort ProfilerFaultResetAddress = 609;
+    public const ushort ProfilerPositionStartAddress = (ushort)(604 + MAddressOffset);
+    public const ushort ProfilerJogDownAddress = (ushort)(600 + MAddressOffset);
+    public const ushort ProfilerJogUpAddress = (ushort)(601 + MAddressOffset); 
+    public const ushort ProfilerHomeAddress = (ushort)(602 + MAddressOffset);
+    public const ushort ProfilerFaultResetAddress = (ushort)(609 + MAddressOffset);
 
     public const ushort WheelRotationSpeedAddress = 1150;
     public const ushort WheelQualityControlAddress = 1152;
     public const ushort MeasurementStartPositionAddress = 1140;
     public const ushort MeasurementEndPositionAddress = 1142;
-    public const ushort MeasurementMotionStartAddress = 31;
-    public const ushort MeasurementProfileCaptureStartAddress = 60;
-    public const ushort MeasurementCurrentProfileCompletedAddress = 61;
-    public const ushort MeasurementMotionFinishedAddress = 62;
-    public const ushort GrindingTimesResultStartAddress = 1200;
-    public const ushort GrindingTimesResultAddressStep = 2;
+    public const ushort GrindingStartPositionAddress = 1180;
+    public const ushort GrindingEndPositionAddress = 1182;
+    public const ushort MeasurementMotionStartAddress = (ushort)(31 + MAddressOffset);
+    public const ushort MeasurementProfileCaptureStartAddress = (ushort)(60 + MAddressOffset);
+    public const ushort MeasurementCurrentProfileCompletedAddress = (ushort)(61 + MAddressOffset);
+    public const ushort MeasurementMotionFinishedAddress = (ushort)(62 + MAddressOffset);
+    public const ushort GrindingMotionStartAddress = (ushort)(32 + MAddressOffset);
+    public const ushort GrindingTimesResultStartAddress = 1800;
+    public const ushort GrindingTimesResultAddressStep = 1;
 
     // 写入参数比例
     public const double CarJogSpeedScale = 1000.0;
@@ -165,6 +172,8 @@ public static class MotorParameterDefinitions
     public const double WheelQualityControlScale = 1.0;
     public const double MeasurementStartPositionScale = 100000.0;
     public const double MeasurementEndPositionScale = 100000.0;
+    public const double GrindingStartPositionScale = 100000.0;
+    public const double GrindingEndPositionScale = 100000.0;
     public const double BoolScale = 1.0;
 
     public static IReadOnlyList<string> ReadOnlyParameterNames { get; } = new List<string>

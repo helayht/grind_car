@@ -14,7 +14,7 @@ namespace GrindCar.Services.Rail;
 public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresentativeProfileService
 {
     private const double Tolerance = 1e-7;
-    private const double RepresentativeRotationDegrees = 28.5;
+    private const double RepresentativeRotationDegrees = 20.5;
     private const double DegreesToRadiansFactor = Math.PI / 180.0;
 
     /// <summary>
@@ -27,30 +27,7 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         try
         {
             List<PointCloudPoint3D> points = PointCloudCsvReader.ReadPointsFromCsv(csvPath);
-            if (points.Count == 0)
-            {
-                throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效坐标点。");
-            }
-
-            double medianY = ResolveMedianY(points);
-            List<RailProfilePoint> sectionPoints = CreateSectionPoints(points, medianY);
-            if (sectionPoints.Count == 0)
-            {
-                throw new RepresentativeProfileExtractionException("未找到中位 Y 截面的有效 X/Z 点。");
-            }
-
-            List<RailProfilePoint> filteredSectionPoints =
-                RepresentativeProfilePointProcessor.FilterOutlierRepresentativePoints(sectionPoints);
-            List<RailProfilePoint> rotatedSectionPoints =
-                RepresentativeProfilePointProcessor.RotateRepresentativePoints(
-                    filteredSectionPoints,
-                    RepresentativeRotationDegrees * DegreesToRadiansFactor);
-            List<RailProfilePoint> symmetricSectionPoints =
-                RepresentativeProfilePointProcessor.AppendSymmetricPointsByMinX(rotatedSectionPoints);
-            List<RailProfilePoint> translatedSectionPoints =
-                RepresentativeProfilePointProcessor.TranslatePointsToBottomCenterAsOrigin(symmetricSectionPoints);
-
-            return new MedianSectionExtractionResult(medianY, translatedSectionPoints);
+            return ExtractMedianSectionProfileFromPoints(points);
         }
         catch (RepresentativeProfileExtractionException)
         {
@@ -60,6 +37,37 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         {
             throw new RepresentativeProfileExtractionException("从 CSV 提取中位 Y 截面时发生未处理异常。", ex);
         }
+    }
+
+    internal MedianSectionExtractionResult ExtractMedianSectionProfileFromPoints(IReadOnlyList<PointCloudPoint3D> points)
+    {
+        if (points == null || points.Count == 0)
+        {
+            throw new RepresentativeProfileExtractionException("点云数据中未解析到有效坐标点。");
+        }
+
+        double medianY = ResolveMedianY(points);
+        List<RailProfilePoint> sectionPoints = CreateSectionPoints(points, medianY);
+        if (sectionPoints.Count == 0)
+        {
+            throw new RepresentativeProfileExtractionException("未找到中位 Y 截面的有效 X/Z 点。");
+        }
+
+        List<RailProfilePoint> filteredSectionPoints =
+            RepresentativeProfilePointProcessor.FilterOutlierRepresentativePoints(sectionPoints);
+        List<RailProfilePoint> rotatedSectionPoints =
+            RepresentativeProfilePointProcessor.RotateRepresentativePoints(
+                filteredSectionPoints,
+                RepresentativeRotationDegrees * DegreesToRadiansFactor);
+        List<RailProfilePoint> symmetricSectionPoints =
+            RepresentativeProfilePointProcessor.AppendSymmetricPointsByMinX(rotatedSectionPoints);
+        // List<RailProfilePoint> symmetricSectionPoints = rotatedSectionPoints;
+        List<RailProfilePoint> translatedSectionPoints =
+            RepresentativeProfilePointProcessor.TranslatePointsToBottomCenterAsOrigin(symmetricSectionPoints);
+        List<RailProfilePoint> centerXAlignedSectionPoints =
+            RepresentativeProfilePointProcessor.TranslatePointsToMidXReferencePointAsOrigin(translatedSectionPoints);
+
+        return new MedianSectionExtractionResult(medianY, centerXAlignedSectionPoints);
     }
 
     private static double ResolveMedianY(IReadOnlyList<PointCloudPoint3D> points)

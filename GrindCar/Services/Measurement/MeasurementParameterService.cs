@@ -40,11 +40,43 @@ public class MeasurementParameterService : IMeasurementParameterService
         plcClient.Disconnect();
     }
 
+    public async Task WriteGrindingRangeAsync(string ipAddress, int port, double startPosition, double endPosition)
+    {
+        if (startPosition > endPosition)
+        {
+            throw new InvalidOperationException("打磨起点位置不能大于打磨终点位置。");
+        }
+
+        int startRawValue = MeasurementInputParser.ToScaledInt32(
+            startPosition,
+            MotorParameterDefinitions.GrindingStartPositionScale,
+            MotorParameterDefinitions.GrindingStartPositionName);
+        int endRawValue = MeasurementInputParser.ToScaledInt32(
+            endPosition,
+            MotorParameterDefinitions.GrindingEndPositionScale,
+            MotorParameterDefinitions.GrindingEndPositionName);
+
+        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        await plcClient.ConnectAsync().ConfigureAwait(false);
+        plcClient.WriteInt32(MotorParameterDefinitions.GrindingStartPositionAddress, startRawValue);
+        plcClient.WriteInt32(MotorParameterDefinitions.GrindingEndPositionAddress, endRawValue);
+        plcClient.Disconnect();
+    }
+
     public async Task StartMeasurementMotionAsync(string ipAddress, int port)
     {
         using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
         await plcClient.ConnectAsync().ConfigureAwait(false);
         await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.MeasurementMotionStartAddress, true)
+            .ConfigureAwait(false);
+        plcClient.Disconnect();
+    }
+
+    public async Task StartGrindingMotionAsync(string ipAddress, int port)
+    {
+        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        await plcClient.ConnectAsync().ConfigureAwait(false);
+        await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.GrindingMotionStartAddress, true)
             .ConfigureAwait(false);
         plcClient.Disconnect();
     }
