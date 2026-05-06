@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using GrindCar.Models.Rail;
 
@@ -10,6 +11,7 @@ namespace GrindCar.Services.Rail.Core;
 public static class StandardRailProfileSolver
 {
     private const double StandardProfileVerticalOffset = -176.0;
+    private const int SlopeCacheDigits = 12;
 
     private static readonly Arc[] Arcs =
     {
@@ -19,6 +21,8 @@ public static class StandardRailProfileSolver
         new(10, 25.35, false, true, 80, 7.3, 95.88),
         new(25.35, 35.4, false, true, 13, 22.42, 161.15)
     };
+
+    private static readonly ConcurrentDictionary<double, TangentSolution> TangentSolutionCache = new();
 
     public static double RailSurfaceFun(double x)
     {
@@ -44,16 +48,28 @@ public static class StandardRailProfileSolver
 
     public static double SolveB(double k)
     {
-        return SolveBAndTouchPoint(k).b;
+        return GetOrAddTangentSolution(k).B;
     }
 
     public static (double b, double xTouch) SolveBAndTouchPoint(double k)
+    {
+        TangentSolution solution = GetOrAddTangentSolution(k);
+        return (solution.B, solution.XTouch);
+    }
+
+    private static TangentSolution GetOrAddTangentSolution(double k)
     {
         if (double.IsNaN(k) || double.IsInfinity(k))
         {
             throw new ArgumentException("参数 k 必须为有限数值。", nameof(k));
         }
 
+        double normalizedK = NormalizeSlope(k);
+        return TangentSolutionCache.GetOrAdd(normalizedK, ComputeTangentSolution);
+    }
+
+    private static TangentSolution ComputeTangentSolution(double k)
+    {
         var candidates = new List<double>();
         for (int index = 0; index < Arcs.Length; index++)
         {
@@ -111,7 +127,12 @@ public static class StandardRailProfileSolver
             throw new InvalidOperationException("未找到有效接触点，请检查轨面函数与参数 k。");
         }
 
-        return (bestB, bestX);
+        return new TangentSolution(bestB, bestX);
+    }
+
+    private static double NormalizeSlope(double k)
+    {
+        return Math.Round(k, SlopeCacheDigits, MidpointRounding.AwayFromZero);
     }
 
     public static double GetRepresentativeB(double k, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
@@ -190,4 +211,6 @@ public static class StandardRailProfileSolver
             return leftOk && rightOk;
         }
     }
+
+    private readonly record struct TangentSolution(double B, double XTouch);
 }

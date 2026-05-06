@@ -10,7 +10,6 @@ namespace GrindCar.Services;
 /// </summary>
 public static class RailSurfaceService
 {
-    private const double StraightAngleDegrees = 180.0;
     private const double DegreesToRadiansFactor = Math.PI / 180.0;
 
     /// <summary>
@@ -209,7 +208,7 @@ public static class RailSurfaceService
 
     private static double CalculateSlopeFromAngle(int angle)
     {
-        double radians = (StraightAngleDegrees + angle) * DegreesToRadiansFactor;
+        double radians = angle * DegreesToRadiansFactor;
         return Math.Tan(radians);
     }
 }

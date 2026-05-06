@@ -74,6 +74,7 @@ public static class CurveCsvReader
         return null;
     }
 
+    
     private static char DetectDelimiter(string line)
     {
         if (line.Contains('\t'))
@@ -149,7 +150,7 @@ public static class CurveCsvReader
 
     private static bool TryParseDouble(string value, out double result)
     {
-        if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out result))
+        if (double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out result)) 
         {
             return true;
         }
