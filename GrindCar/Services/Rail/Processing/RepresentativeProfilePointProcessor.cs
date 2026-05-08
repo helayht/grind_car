@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GrindCar.Models.Rail;
+using GrindCar.Services.Rail.Core;
 
 namespace GrindCar.Services.Rail.Processing;
 
@@ -10,6 +11,13 @@ namespace GrindCar.Services.Rail.Processing;
 /// </summary>
 internal static class RepresentativeProfilePointProcessor
 {
+    private const double BoundaryCandidateRatio = 0.2;
+    private const double TopInlierRatio = 0.1;
+    private const int MinBoundaryCandidateCount = 8;
+    private const int MinBoundaryInlierCount = 6;
+    private const double BoundaryLineSigmaFactor = 3.0;
+    private const double MinBoundaryDistanceThreshold = 0.05;
+    private const double MaxBoundaryVerticalAngleDegrees = 20.0;
     private const int OutlierFilterWindowSize = 15;
     private const int OutlierFilterPassCount = 2;
     private const int MinNeighborCount = 6;
@@ -37,6 +45,46 @@ internal static class RepresentativeProfilePointProcessor
         }
 
         return rotatedPoints;
+    }
+
+    public static List<RailProfilePoint> AlignRepresentativePointsToStandardBoundary(
+        IReadOnlyList<RailProfilePoint> points,
+        PointCloudDeviceSide side)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (points.Count == 0)
+        {
+            return new List<RailProfilePoint>();
+        }
+
+        // 每台廓形仪只采集半边轨面，先用外侧非工作面直线确定该半边的标准边界。
+        BoundaryLineFitResult boundaryLine = FitBoundaryLine(points, side);
+        RailProfilePoint measuredCorner = ResolveTopBoundaryPoint(boundaryLine.Inliers);
+        double targetX = side == PointCloudDeviceSide.Left
+            ? StandardRailProfileSolver.LeftBoundaryX
+            : StandardRailProfileSolver.RightBoundaryX;
+        double targetY = StandardRailProfileSolver.RailSurfaceFun(targetX);
+        if (double.IsNaN(targetY) || double.IsInfinity(targetY))
+        {
+            throw new InvalidOperationException($"标准轨面边界点无效: X={targetX}");
+        }
+
+        // 本阶段只做平移，不做自动旋转，避免把安装角度误差和真实轨面磨耗混在一起。
+        double offsetX = targetX - measuredCorner.X;
+        double offsetY = targetY - measuredCorner.Y;
+
+        var alignedPoints = new List<RailProfilePoint>(points.Count);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            alignedPoints.Add(new RailProfilePoint(point.X + offsetX, point.Y + offsetY));
+        }
+
+        return alignedPoints;
     }
 
     public static List<RailProfilePoint> FilterOutlierRepresentativePoints(IReadOnlyList<RailProfilePoint> points)
@@ -233,6 +281,163 @@ internal static class RepresentativeProfilePointProcessor
         return kept;
     }
 
+    private static BoundaryLineFitResult FitBoundaryLine(IReadOnlyList<RailProfilePoint> points, PointCloudDeviceSide side)
+    {
+        List<RailProfilePoint> candidates = SelectBoundaryCandidates(points, side);
+        FittedLine initialLine = FitLineByPrincipalComponent(candidates);
+        // 按点到通用直线 ax+by+c=0 的垂直距离剔除离群点，再重拟合最终边界线。
+        List<RailProfilePoint> inliers = SelectBoundaryInliers(candidates, initialLine);
+        if (inliers.Count < MinBoundaryInlierCount)
+        {
+            throw new InvalidOperationException("非工作面直线内点数量不足，无法完成点云对齐。");
+        }
+
+        FittedLine refinedLine = FitLineByPrincipalComponent(inliers);
+        ValidateBoundaryLine(refinedLine);
+        return new BoundaryLineFitResult(refinedLine, inliers);
+    }
+
+    private static List<RailProfilePoint> SelectBoundaryCandidates(
+        IReadOnlyList<RailProfilePoint> points,
+        PointCloudDeviceSide side)
+    {
+        // 侧别来自配置文件，因此候选区只取对应外侧的固定比例窗口，不再自动猜左右。
+        int candidateCount = Math.Max(MinBoundaryCandidateCount, (int)Math.Ceiling(points.Count * BoundaryCandidateRatio));
+        candidateCount = Math.Min(candidateCount, points.Count);
+
+        List<RailProfilePoint> sortedPoints = points
+            .OrderBy(point => point.X)
+            .ThenBy(point => point.Y)
+            .ToList();
+
+        if (side == PointCloudDeviceSide.Left)
+        {
+            return sortedPoints.Take(candidateCount).ToList();
+        }
+
+        return sortedPoints
+            .Skip(sortedPoints.Count - candidateCount)
+            .ToList();
+    }
+
+    private static List<RailProfilePoint> SelectBoundaryInliers(
+        IReadOnlyList<RailProfilePoint> candidates,
+        FittedLine line)
+    {
+        var distances = new double[candidates.Count];
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            distances[index] = line.DistanceTo(candidates[index]);
+        }
+
+        double medianDistance = Median(distances);
+        var centeredDistances = new double[distances.Length];
+        for (int index = 0; index < distances.Length; index++)
+        {
+            centeredDistances[index] = Math.Abs(distances[index] - medianDistance);
+        }
+
+        double mad = Median(centeredDistances);
+        double robustSigma = 1.4826 * mad;
+        double threshold = Math.Max(MinBoundaryDistanceThreshold, medianDistance + BoundaryLineSigmaFactor * robustSigma);
+
+        var inliers = new List<RailProfilePoint>(candidates.Count);
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            if (distances[index] <= threshold)
+            {
+                inliers.Add(candidates[index]);
+            }
+        }
+
+        return inliers;
+    }
+
+    private static FittedLine FitLineByPrincipalComponent(IReadOnlyList<RailProfilePoint> points)
+    {
+        if (points.Count < 2)
+        {
+            throw new InvalidOperationException("非工作面候选点数量不足，无法拟合直线。");
+        }
+
+        double meanX = points.Average(point => point.X);
+        double meanY = points.Average(point => point.Y);
+        double covarianceXX = 0.0;
+        double covarianceXY = 0.0;
+        double covarianceYY = 0.0;
+
+        for (int index = 0; index < points.Count; index++)
+        {
+            double dx = points[index].X - meanX;
+            double dy = points[index].Y - meanY;
+            covarianceXX += dx * dx;
+            covarianceXY += dx * dy;
+            covarianceYY += dy * dy;
+        }
+
+        double trace = covarianceXX + covarianceYY;
+        double determinant = covarianceXX * covarianceYY - covarianceXY * covarianceXY;
+        double discriminant = Math.Max(0.0, trace * trace / 4.0 - determinant);
+        double principalEigenvalue = trace / 2.0 + Math.Sqrt(discriminant);
+
+        double directionX;
+        double directionY;
+        if (Math.Abs(covarianceXY) > 1e-12 || Math.Abs(principalEigenvalue - covarianceXX) > 1e-12)
+        {
+            directionX = covarianceXY;
+            directionY = principalEigenvalue - covarianceXX;
+        }
+        else
+        {
+            directionX = 1.0;
+            directionY = 0.0;
+        }
+
+        double directionLength = Math.Sqrt(directionX * directionX + directionY * directionY);
+        if (directionLength <= 1e-12)
+        {
+            throw new InvalidOperationException("非工作面候选点退化，无法拟合直线。");
+        }
+
+        directionX /= directionLength;
+        directionY /= directionLength;
+
+        // PCA/TLS 对近似竖直线更稳定，不需要把竖直边强行写成 y=ax+b。
+        double a = -directionY;
+        double b = directionX;
+        double c = -(a * meanX + b * meanY);
+        return new FittedLine(a, b, c, directionX, directionY);
+    }
+
+    private static void ValidateBoundaryLine(FittedLine line)
+    {
+        double angleFromVerticalRadians = Math.Atan2(Math.Abs(line.DirectionX), Math.Abs(line.DirectionY));
+        double angleFromVerticalDegrees = angleFromVerticalRadians * 180.0 / Math.PI;
+        if (angleFromVerticalDegrees > MaxBoundaryVerticalAngleDegrees)
+        {
+            throw new InvalidOperationException($"非工作面直线不接近竖直方向，当前夹角 {angleFromVerticalDegrees:0.###}°。");
+        }
+    }
+
+    private static RailProfilePoint ResolveTopBoundaryPoint(IReadOnlyList<RailProfilePoint> inliers)
+    {
+        if (inliers.Count == 0)
+        {
+            throw new InvalidOperationException("非工作面直线内点为空，无法确定临界点。");
+        }
+
+        // 顶部若干内点取中位值，降低单个边缘噪点对上下平移的影响。
+        int topCount = Math.Max(1, (int)Math.Ceiling(inliers.Count * TopInlierRatio));
+        RailProfilePoint[] topPoints = inliers
+            .OrderByDescending(point => point.Y)
+            .Take(topCount)
+            .ToArray();
+
+        double[] xValues = topPoints.Select(point => point.X).ToArray();
+        double[] yValues = topPoints.Select(point => point.Y).ToArray();
+        return new RailProfilePoint(Median(xValues), Median(yValues));
+    }
+
     private static (double slope, double intercept) FitLineExcludingIndex(
         IReadOnlyList<RailProfilePoint> points,
         int leftInclusive,
@@ -298,5 +503,20 @@ internal static class RepresentativeProfilePointProcessor
         }
 
         return sorted[mid];
+    }
+
+    private readonly record struct BoundaryLineFitResult(FittedLine Line, IReadOnlyList<RailProfilePoint> Inliers);
+
+    private readonly record struct FittedLine(
+        double A,
+        double B,
+        double C,
+        double DirectionX,
+        double DirectionY)
+    {
+        public double DistanceTo(RailProfilePoint point)
+        {
+            return Math.Abs(A * point.X + B * point.Y + C);
+        }
     }
 }

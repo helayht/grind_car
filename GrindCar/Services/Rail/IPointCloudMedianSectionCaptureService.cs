@@ -11,6 +11,7 @@ public interface IPointCloudMedianSectionCaptureService
     /// 从指定设备采集单帧点云，将 CSV 落盘到 Log 目录，并提取中位 Y 截面的二维 X/Z 点集。
     /// </summary>
     /// <param name="serialNumber">目标点云设备序列号。</param>
+    /// <param name="side">目标点云设备对应的轨面半边。</param>
     /// <returns>包含导出 CSV 路径和中位截面提取结果的对象。</returns>
-    PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(string serialNumber);
+    PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(string serialNumber, PointCloudDeviceSide side);
 }

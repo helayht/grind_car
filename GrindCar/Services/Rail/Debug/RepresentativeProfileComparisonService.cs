@@ -36,9 +36,10 @@ public sealed class RepresentativeProfileComparisonService
             throw new InvalidOperationException("代表点数量不足，无法绘制曲线。");
         }
 
-        AlignmentResult alignmentResult = AlignRepresentativePoints(representativePoints);
-        IReadOnlyList<RailProfilePoint> alignedRepresentativePoints = alignmentResult.Points;
-        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints(alignmentResult);
+        IReadOnlyList<RailProfilePoint> alignedRepresentativePoints = representativePoints
+            .OrderBy(point => point.X)
+            .ToArray();
+        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints(alignedRepresentativePoints);
         RepresentativeProfileBounds bounds = BuildBounds(alignedRepresentativePoints, standardPoints);
 
         IEnumerable<RailProfilePoint> allPoints = alignedRepresentativePoints.Concat(standardPoints);
@@ -209,40 +210,23 @@ public sealed class RepresentativeProfileComparisonService
         return new Point(x, y);
     }
 
-    private static AlignmentResult AlignRepresentativePoints(IReadOnlyList<RailProfilePoint> representativePoints)
+    private static IReadOnlyList<RailProfilePoint> BuildStandardPoints(
+        IReadOnlyList<RailProfilePoint> alignedRepresentativePoints)
     {
-        List<RailProfilePoint> sortedPoints = representativePoints
-            .OrderBy(point => point.X)
-            .ToList();
-
-        double xMid = (sortedPoints[0].X + sortedPoints[sortedPoints.Count - 1].X) / 2.0;
-        double yMid = (sortedPoints[0].Y + sortedPoints[sortedPoints.Count - 1].Y) / 2.0;
-
-        RailProfilePoint[] alignedPoints = sortedPoints
-            .Select(point => new RailProfilePoint(point.X - xMid, point.Y - yMid))
-            .ToArray();
-
-        return new AlignmentResult(alignedPoints, xMid, yMid);
-    }
-
-    private static IReadOnlyList<RailProfilePoint> BuildStandardPoints(AlignmentResult alignmentResult)
-    {
-        IReadOnlyList<RailProfilePoint> alignedRepresentativePoints = alignmentResult.Points;
         double minX = alignedRepresentativePoints[0].X;
         double maxX = alignedRepresentativePoints[alignedRepresentativePoints.Count - 1].X;
 
         var standardPoints = new List<RailProfilePoint>(StandardSampleCount + 1);
         for (int index = 0; index <= StandardSampleCount; index++)
         {
-            double normalizedX = minX + (maxX - minX) * index / StandardSampleCount;
-            double originalX = normalizedX + alignmentResult.XMid;
-            double originalY = RailSurfaceService.RailSurfaceFun(originalX);
-            if (double.IsNaN(originalY) || double.IsInfinity(originalY))
+            double x = minX + (maxX - minX) * index / StandardSampleCount;
+            double y = RailSurfaceService.RailSurfaceFun(x);
+            if (double.IsNaN(y) || double.IsInfinity(y))
             {
                 continue;
             }
 
-            standardPoints.Add(new RailProfilePoint(normalizedX, originalY - alignmentResult.YMid));
+            standardPoints.Add(new RailProfilePoint(x, y));
         }
 
         return standardPoints;
@@ -263,8 +247,6 @@ public sealed class RepresentativeProfileComparisonService
 
         return new RepresentativeProfileBounds(minX - xMargin, maxX + xMargin, minY - yMargin, maxY + yMargin);
     }
-
-    private readonly record struct AlignmentResult(IReadOnlyList<RailProfilePoint> Points, double XMid, double YMid);
 }
 
 /// <summary>

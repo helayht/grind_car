@@ -53,7 +53,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     /// </summary>
     /// <param name="serialNumber">目标设备序列号。</param>
     /// <returns>包含落盘 CSV 路径和提取结果的对象。</returns>
-    public PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(string serialNumber)
+    public PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(string serialNumber, PointCloudDeviceSide side)
     {
         if (string.IsNullOrWhiteSpace(serialNumber))
         {
@@ -66,7 +66,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
             {
                 var points = _pointCloudExportService.CapturePointCloudPoints(serialNumber);
                 MedianSectionExtractionResult onlineExtractionResult =
-                    representativeProfileService.ExtractMedianSectionProfileFromPoints(points);
+                    representativeProfileService.ExtractMedianSectionProfileFromPoints(points, side);
                 return new PointCloudMedianSectionCaptureResult(string.Empty, onlineExtractionResult);
             }
             catch
@@ -80,7 +80,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
         _pointCloudExportService.ExportPointCloud(serialNumber, csvPath, PointCloudExportFormat.Csv);
 
         MedianSectionExtractionResult extractionResult =
-            _representativeProfileService.ExtractMedianSectionProfileFromCsv(csvPath);
+            _representativeProfileService.ExtractMedianSectionProfileFromCsv(csvPath, side);
 
         return new PointCloudMedianSectionCaptureResult(csvPath, extractionResult);
     }

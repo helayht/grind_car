@@ -15,6 +15,7 @@ public static class RepresentativeSectionCaptureService
     {
         IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
         PointCloudExportService pointCloudExportService = new PointCloudExportService();
+        PointCloudDeviceConfigurationStore configurationStore = new();
         IReadOnlyList<PointCloudDeviceInfo> pointCloudDeviceInfos = pointCloudExportService.GetDevices();
 
         if (pointCloudDeviceInfos.Count == 0)
@@ -22,12 +23,17 @@ public static class RepresentativeSectionCaptureService
             throw new PointCloudSdkException("未找到任何点云设备。");
         }
 
+        IReadOnlyDictionary<string, PointCloudDeviceSide> deviceSideMap = configurationStore.LoadDeviceSideMap();
         var mergedPoints = new List<RailProfilePoint>();
         for (int index = 0; index < pointCloudDeviceInfos.Count; index++)
         {
             PointCloudDeviceInfo pointCloudDeviceInfo = pointCloudDeviceInfos[index];
+            PointCloudDeviceSide side = PointCloudDeviceConfigurationStore.ResolveConfiguredSide(
+                deviceSideMap,
+                pointCloudDeviceInfo.SerialNumber);
+
             PointCloudMedianSectionCaptureResult result =
-                medianSectionCaptureService.CaptureMedianSectionProfile(pointCloudDeviceInfo.SerialNumber);
+                medianSectionCaptureService.CaptureMedianSectionProfile(pointCloudDeviceInfo.SerialNumber, side);
 
             if (result.ExtractionResult.ProfilePoints.Count == 0)
             {

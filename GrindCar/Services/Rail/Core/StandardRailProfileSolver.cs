@@ -10,6 +10,9 @@ namespace GrindCar.Services.Rail.Core;
 /// </summary>
 public static class StandardRailProfileSolver
 {
+    public const double LeftBoundaryX = -35.4;
+    public const double RightBoundaryX = 35.4;
+
     private const double StandardProfileVerticalOffset = -176.0;
     private const int SlopeCacheDigits = 12;
 
@@ -152,17 +155,11 @@ public static class StandardRailProfileSolver
             throw new InvalidOperationException("代表截面点集不能为空。");
         }
 
-        var sortedPoints = new List<RailProfilePoint>(representativeSectionPoints);
-        sortedPoints.Sort((left, right) => left.X.CompareTo(right.X));
-
-        double xMid = (sortedPoints[0].X + sortedPoints[^1].X) / 2.0;
-        double yMid = (sortedPoints[0].Y + sortedPoints[^1].Y) / 2.0;
-
         double best = double.NegativeInfinity;
-        for (int index = 0; index < sortedPoints.Count; index++)
+        for (int index = 0; index < representativeSectionPoints.Count; index++)
         {
-            RailProfilePoint point = sortedPoints[index];
-            double candidate = (point.Y - yMid) - k * (point.X - xMid);
+            RailProfilePoint point = representativeSectionPoints[index];
+            double candidate = point.Y - k * point.X;
             if (candidate > best)
             {
                 best = candidate;
