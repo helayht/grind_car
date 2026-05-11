@@ -12,11 +12,11 @@ namespace GrindCar.Services.Rail.Processing;
 internal static class RepresentativeProfilePointProcessor
 {
     private const double BoundaryCandidateRatio = 0.2;
-    private const double TopInlierRatio = 0.1;
     private const int MinBoundaryCandidateCount = 8;
     private const int MinBoundaryInlierCount = 6;
     private const double BoundaryLineSigmaFactor = 3.0;
     private const double MinBoundaryDistanceThreshold = 0.05;
+    private const double BoundaryWorkSurfaceExclusionDistance = 0.5;
     private const double MaxBoundaryVerticalAngleDegrees = 20.0;
     private const int OutlierFilterWindowSize = 15;
     private const int OutlierFilterPassCount = 2;
@@ -63,25 +63,22 @@ internal static class RepresentativeProfilePointProcessor
 
         // 每台廓形仪只采集半边轨面，先用外侧非工作面直线确定该半边的标准边界。
         BoundaryLineFitResult boundaryLine = FitBoundaryLine(points, side);
-        RailProfilePoint measuredCorner = ResolveTopBoundaryPoint(boundaryLine.Inliers);
         double targetX = side == PointCloudDeviceSide.Left
             ? StandardRailProfileSolver.LeftBoundaryX
             : StandardRailProfileSolver.RightBoundaryX;
-        double targetY = StandardRailProfileSolver.RailSurfaceFun(targetX);
-        if (double.IsNaN(targetY) || double.IsInfinity(targetY))
-        {
-            throw new InvalidOperationException($"标准轨面边界点无效: X={targetX}");
-        }
 
-        // 本阶段只做平移，不做自动旋转，避免把安装角度误差和真实轨面磨耗混在一起。
-        double offsetX = targetX - measuredCorner.X;
-        double offsetY = targetY - measuredCorner.Y;
+        // 非工作面只决定横向边界位置；上下方向改由工作面整体刚好位于标准曲线上方来确定。
+        double measuredBoundaryX = Median(boundaryLine.Inliers.Select(point => point.X).ToArray());
+        double offsetX = targetX - measuredBoundaryX;
+        List<RailProfilePoint> xAlignedPoints = TranslatePoints(points, offsetX, 0.0);
+        FittedLine xAlignedBoundaryLine = boundaryLine.Line.Translate(offsetX, 0.0);
+        double offsetY = CalculateStandardUpperOffsetY(xAlignedPoints, xAlignedBoundaryLine);
 
         var alignedPoints = new List<RailProfilePoint>(points.Count);
-        for (int index = 0; index < points.Count; index++)
+        for (int index = 0; index < xAlignedPoints.Count; index++)
         {
-            RailProfilePoint point = points[index];
-            alignedPoints.Add(new RailProfilePoint(point.X + offsetX, point.Y + offsetY));
+            RailProfilePoint point = xAlignedPoints[index];
+            alignedPoints.Add(new RailProfilePoint(point.X, point.Y + offsetY));
         }
 
         return alignedPoints;
@@ -419,23 +416,53 @@ internal static class RepresentativeProfilePointProcessor
         }
     }
 
-    private static RailProfilePoint ResolveTopBoundaryPoint(IReadOnlyList<RailProfilePoint> inliers)
+    private static double CalculateStandardUpperOffsetY(
+        IReadOnlyList<RailProfilePoint> xAlignedPoints,
+        FittedLine xAlignedBoundaryLine)
     {
-        if (inliers.Count == 0)
+        double minDiff = double.PositiveInfinity;
+        for (int index = 0; index < xAlignedPoints.Count; index++)
         {
-            throw new InvalidOperationException("非工作面直线内点为空，无法确定临界点。");
+            RailProfilePoint point = xAlignedPoints[index];
+            if (xAlignedBoundaryLine.DistanceTo(point) <= BoundaryWorkSurfaceExclusionDistance)
+            {
+                continue;
+            }
+
+            double standardY = StandardRailProfileSolver.RailSurfaceFun(point.X);
+            if (double.IsNaN(standardY) || double.IsInfinity(standardY))
+            {
+                continue;
+            }
+
+            double diff = point.Y - standardY;
+            if (diff < minDiff)
+            {
+                minDiff = diff;
+            }
         }
 
-        // 顶部若干内点取中位值，降低单个边缘噪点对上下平移的影响。
-        int topCount = Math.Max(1, (int)Math.Ceiling(inliers.Count * TopInlierRatio));
-        RailProfilePoint[] topPoints = inliers
-            .OrderByDescending(point => point.Y)
-            .Take(topCount)
-            .ToArray();
+        if (double.IsPositiveInfinity(minDiff))
+        {
+            throw new InvalidOperationException("无法基于标准曲线完成 Y 方向对齐，未找到有效工作面点。");
+        }
 
-        double[] xValues = topPoints.Select(point => point.X).ToArray();
-        double[] yValues = topPoints.Select(point => point.Y).ToArray();
-        return new RailProfilePoint(Median(xValues), Median(yValues));
+        return -minDiff;
+    }
+
+    private static List<RailProfilePoint> TranslatePoints(
+        IReadOnlyList<RailProfilePoint> points,
+        double offsetX,
+        double offsetY)
+    {
+        var translatedPoints = new List<RailProfilePoint>(points.Count);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            translatedPoints.Add(new RailProfilePoint(point.X + offsetX, point.Y + offsetY));
+        }
+
+        return translatedPoints;
     }
 
     private static (double slope, double intercept) FitLineExcludingIndex(
@@ -517,6 +544,12 @@ internal static class RepresentativeProfilePointProcessor
         public double DistanceTo(RailProfilePoint point)
         {
             return Math.Abs(A * point.X + B * point.Y + C);
+        }
+
+        public FittedLine Translate(double offsetX, double offsetY)
+        {
+            double translatedC = C - A * offsetX - B * offsetY;
+            return new FittedLine(A, B, translatedC, DirectionX, DirectionY);
         }
     }
 }
