@@ -68,7 +68,7 @@ GrindCar.sln
 - `PointCloudExportService` 用于枚举设备并导出单帧点云
 - 支持点云导出格式：`CSV`、`PLY`、`OBJ`
 - `PointCloudRepresentativeProfileService` 支持从在线点云点集或 `CSV` 提取中位 `Y` 截面二维点集
-- 代表点提取后会执行固定流程：离群点过滤 -> 逆时针旋转 -> 对称扩展 -> 平移到“最下方中点”为原点
+- 代表点提取后会执行固定流程：离群点过滤 -> 外侧非工作面竖线旋转对齐 -> 标准边界 X 对齐 -> 工作面 Y 贴合
 - `PointCloudMedianSectionCaptureService` 提供一条串联流程（在线优先）：
   `SDK 单帧采集 -> 内存点集提取中位截面`
 - 在线链路异常时会自动回退：
@@ -223,7 +223,6 @@ dotnet clean GrindCar.sln
 - `GrindCar/ViewModels/PointCloudExportViewModel.cs`：点云导出窗口设备刷新、导出状态与流程编排
 - `GrindCar/ViewModels/RepresentativeProfileComparisonViewModel.cs`：代表轨面与标准轨面对比窗口状态与绘图数据编排
 - `GrindCar/Services/Motor/MotorParameterSpecProvider.cs`：电机读写参数映射与比例定义提供者
-- `GrindCar/Services/Motor/MotorDashboardTelemetryService.cs`：首页仪表盘演示数据生成
 - `GrindCar/Services/Motor/PlcConnectionSettingsValidator.cs`：PLC 连接参数校验
 - `GrindCar/Definitions/MotorParameterDefinitions.cs`：参数名称、地址、比例和单位定义中心
 - `GrindCar/Services/PlcModbusCommunicator.cs`：Modbus 通信上下文（字段、地址常量与构造注入）
@@ -273,10 +272,12 @@ dotnet clean GrindCar.sln
 - 输出二维 `(X, Z)` 点集用于后续轨面计算
 - 当前实现会在提取代表点后按固定流程处理：
 - 先执行离群点过滤（局部拟合残差 + MAD 阈值）
-- 再围绕原点执行固定角度逆时针旋转（角度由 `RepresentativeRotationDegrees` 常量控制）
-- 再按 `xMax` 扩展对称点（对每个点追加 `(2*xMax-x, y)`）
-- 先平移到“最下方中点”为原点：`xCenter=(xMin+xMax)/2`，`yMin=minY`，平移后 `(xCenter,yMin) -> (0,0)`
-- 再以 `x` 中间位置对应的最近点为基准点做二次平移：`xMid=(xMin+xMax)/2`，选取 `|x-xMid|` 最小点 `(xBase,yBase)`，再平移 `(xBase,yBase) -> (0,0)`
+- 按设备侧别固定选择外侧 10 个点作为非工作面竖线候选点
+- 使用 PCA/TLS 拟合竖线，剔除离群候选点后重拟合
+- 当竖线偏离垂直方向不超过 35° 时，自动尝试正反方向旋转，使竖线接近垂直
+- 旋转后要求竖线残余倾角不超过 2°，且至少 85% 的点云主体位于正确侧
+- 再将左侧边界对齐到 `x=-35.4`、右侧边界对齐到 `x=35.4`
+- 最后按工作面点相对标准轨面的最小高度差完成 Y 方向贴合
 
 ### 打磨深度计算说明
 - 输入角度以“度”为单位
