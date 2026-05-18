@@ -13,7 +13,10 @@ namespace GrindCar.Services.PointCloud;
 public sealed class PointCloudExportService
 {
     private const uint DefaultGetImageTimeoutMs = 3000;
+    private const uint OriginImageModeValue = 1;
+    private const uint PointCloudImageModeValue = 4;
     private const uint RangeImageModeValue = 7;
+    private const uint IntensityImageModeValue = 10;
     private const int PointCoordinateCount = 3;
     private const int FloatPointSizeInBytes = sizeof(float) * PointCoordinateCount;
     private const int Int16PointSizeInBytes = sizeof(short) * PointCoordinateCount;
@@ -86,22 +89,20 @@ public sealed class PointCloudExportService
 
             using var imageModeParam = new MV3D_LP_PARAM();
             using var imageModeValue = new MV3D_LP_ENUMPARAM();
-            using var depthImage = new MV3D_LP_IMAGE_DATA();
             using var pointCloudImage = new MV3D_LP_IMAGE_DATA();
 
             try
             {
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_OpenDeviceBySN(ref deviceHandle, serialNumber), $"打开设备失败，SN: {serialNumber}");
 
-                imageModeValue.nCurValue = RangeImageModeValue;
+                imageModeValue.nCurValue = PointCloudImageModeValue;
                 imageModeParam.set_enumparam(imageModeValue);
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam), "设置图像模式失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam), "设置 3D 点云模式失败。");
 
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_StartMeasure(deviceHandle), "启动测量失败。");
                 measurementStarted = true;
 
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, depthImage, DefaultGetImageTimeoutMs), "获取深度图失败。");
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_MapDepthToPointCloud(depthImage, pointCloudImage), "深度图转换点云失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, pointCloudImage, DefaultGetImageTimeoutMs), "获取点云数据失败。");
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_SaveImage(pointCloudImage, ToSdkFileType(exportFormat), sdkOutputPath), "导出点云文件失败。");
             }
             finally
@@ -141,24 +142,22 @@ public sealed class PointCloudExportService
             bool measurementStarted = false;
             using var imageModeParam = new MV3D_LP_PARAM();
             using var imageModeValue = new MV3D_LP_ENUMPARAM();
-            using var depthImage = new MV3D_LP_IMAGE_DATA();
             using var pointCloudImage = new MV3D_LP_IMAGE_DATA();
 
             try
             {
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_OpenDeviceBySN(ref deviceHandle, serialNumber), $"打开设备失败，SN: {serialNumber}");
 
-                imageModeValue.nCurValue = RangeImageModeValue;
+                imageModeValue.nCurValue = PointCloudImageModeValue;
                 imageModeParam.set_enumparam(imageModeValue);
                 EnsureSuccess(
                     Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam),
-                    "设置图像模式失败。");
+                    "设置 3D 点云模式失败。");
 
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_StartMeasure(deviceHandle), "启动测量失败。");
                 measurementStarted = true;
 
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, depthImage, DefaultGetImageTimeoutMs), "获取深度图失败。");
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_MapDepthToPointCloud(depthImage, pointCloudImage), "深度图转换点云失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, pointCloudImage, DefaultGetImageTimeoutMs), "获取点云数据失败。");
 
                 return DecodePointCloudImage(pointCloudImage);
             }
