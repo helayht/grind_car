@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +15,10 @@ public interface IMeasurementParameterService
 
     Task StartMeasurementMotionAsync(string ipAddress, int port);
     Task StartGrindingMotionAsync(string ipAddress, int port);
+    Task WriteGrindingTimesAsync(
+        string ipAddress,
+        int port,
+        IReadOnlyList<MeasurementGrindingTimesResult> results);
 
     Task<MeasurementGrindingWorkflowResult> RunMeasurementWorkflowAsync(
         string ipAddress,

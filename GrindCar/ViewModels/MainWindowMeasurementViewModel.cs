@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.ComponentModel;
@@ -268,7 +269,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         }
     }
 
-    public async Task StartMeasurementMotionAsync()
+    public async Task<MeasurementGrindingWorkflowResult> StartMeasurementMotionAsync()
     {
         try
         {
@@ -286,12 +287,39 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
                     progress).ConfigureAwait(true);
 
             StatusMessage =
-                $"测量流程完成：累计 {result.SampleCount.ToString(CultureInfo.CurrentCulture)} 次测量，已写入 {result.Results.Count.ToString(CultureInfo.CurrentCulture)} 个角度的打磨次数。";
+                $"测量流程完成：累计 {result.SampleCount.ToString(CultureInfo.CurrentCulture)} 次测量，已生成 {result.Results.Count.ToString(CultureInfo.CurrentCulture)} 个角度的打磨深度。";
+            return result;
         }
         finally
         {
             IsBusy = false;
         }
+    }
+
+    public async Task WriteGrindingTimesAsync(IReadOnlyList<MeasurementGrindingTimesResult> results)
+    {
+        try
+        {
+            IsBusy = true;
+            StatusMessage = "正在写入确认后的打磨次数...";
+
+            await _measurementParameterService.WriteGrindingTimesAsync(
+                _plcIpAddress,
+                _plcPort,
+                results).ConfigureAwait(true);
+
+            StatusMessage =
+                $"打磨次数已写入 PLC，共写入 {results.Count.ToString(CultureInfo.CurrentCulture)} 个角度。";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public void SetMeasurementWriteCanceled()
+    {
+        StatusMessage = "已取消写入 PLC。";
     }
 
     public async Task StartGrindingMotionAsync()

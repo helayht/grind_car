@@ -17,6 +17,21 @@ public class MeasurementParameterService : IMeasurementParameterService
     private const int DefaultPollIntervalMs = 300;
     private const double GrindingTimesDepthStep = 0.05;
 
+    public static int CalculateGrindingTimes(double grindDepth)
+    {
+        if (double.IsNaN(grindDepth) || double.IsInfinity(grindDepth))
+        {
+            throw new InvalidOperationException("打磨深度必须是有效数字。");
+        }
+
+        if (grindDepth < 0)
+        {
+            throw new InvalidOperationException("打磨深度不能小于 0。");
+        }
+
+        return (int)Math.Ceiling(grindDepth / GrindingTimesDepthStep);
+    }
+
     public async Task WriteMeasurementRangeAsync(string ipAddress, int port, double startPosition, double endPosition)
     {
         if (startPosition > endPosition)
@@ -81,6 +96,34 @@ public class MeasurementParameterService : IMeasurementParameterService
         plcClient.Disconnect();
     }
 
+    public async Task WriteGrindingTimesAsync(
+        string ipAddress,
+        int port,
+        IReadOnlyList<MeasurementGrindingTimesResult> results)
+    {
+        if (results.Count == 0)
+        {
+            throw new InvalidOperationException("没有可写入的打磨次数。");
+        }
+
+        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        await plcClient.ConnectAsync().ConfigureAwait(false);
+
+        for (int index = 0; index < results.Count; index++)
+        {
+            MeasurementGrindingTimesResult result = results[index];
+            if (!MotorParameterDefinitions.MeasurementGrindingTimesAddresses.TryGetValue(result.Angle, out ushort address))
+            {
+                throw new InvalidOperationException($"角度 {result.Angle} 未配置打磨次数写入地址。");
+            }
+
+            int grindingTimes = CalculateGrindingTimes(result.AverageGrindDepth);
+            plcClient.WriteInt32(address, grindingTimes);
+        }
+
+        plcClient.Disconnect();
+    }
+
     public async Task<MeasurementGrindingWorkflowResult> RunMeasurementWorkflowAsync(
         string ipAddress,
         int port,
@@ -108,7 +151,7 @@ public class MeasurementParameterService : IMeasurementParameterService
             bool measurementFinished = plcClient.ReadSingleCoil(MotorParameterDefinitions.MeasurementMotionFinishedAddress);
             if (measurementFinished)
             {
-                Report(progress, "检测到测量运行结束信号，开始汇总并写入打磨次数。");
+                Report(progress, "检测到测量运行结束信号，开始汇总打磨深度。");
                 break;
             }
 
@@ -140,14 +183,7 @@ public class MeasurementParameterService : IMeasurementParameterService
         IReadOnlyList<MeasurementGrindingTimesResult> summaryResults =
             CalculateSummaryResults(depthAccumulatorMap, sampleCount, angles);
 
-        for (int index = 0; index < summaryResults.Count; index++)
-        {
-            MeasurementGrindingTimesResult result = summaryResults[index];
-            ushort address = MotorParameterDefinitions.MeasurementGrindingTimesAddresses[result.Angle];
-            plcClient.WriteInt32(address, result.GrindingTimes);
-        }
-
-        Report(progress, $"打磨次数写入完成，共写入 {summaryResults.Count.ToString(CultureInfo.InvariantCulture)} 个角度。");
+        Report(progress, $"打磨深度汇总完成，共得到 {summaryResults.Count.ToString(CultureInfo.InvariantCulture)} 个角度。");
         plcClient.Disconnect();
         return new MeasurementGrindingWorkflowResult(sampleCount, summaryResults);
     }
@@ -201,7 +237,7 @@ public class MeasurementParameterService : IMeasurementParameterService
             }
 
             double averageDepth = accumulator.SumDepth / accumulator.Count;
-            int grindingTimes = (int)Math.Ceiling(averageDepth / GrindingTimesDepthStep);
+            int grindingTimes = CalculateGrindingTimes(averageDepth);
             results.Add(new MeasurementGrindingTimesResult(angle, averageDepth, grindingTimes));
         }
 

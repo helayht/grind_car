@@ -169,14 +169,27 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 启动测量运行流程并在结束后写回各角度打磨次数。
+    /// 启动测量运行流程，并在用户确认打磨深度后写回各角度打磨次数。
     /// </summary>
     private async void StartMeasurementMotion_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            await Measurement.StartMeasurementMotionAsync();
-            MessageBox.Show(this, "测量流程已完成，打磨次数已写回 PLC。", "流程完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            MeasurementGrindingWorkflowResult result = await Measurement.StartMeasurementMotionAsync();
+            var confirmationWindow = new GrindDepthConfirmationWindow(result.Results)
+            {
+                Owner = this
+            };
+
+            if (confirmationWindow.ShowDialog() != true)
+            {
+                Measurement.SetMeasurementWriteCanceled();
+                MessageBox.Show(this, "已取消写入 PLC。", "流程取消", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            await Measurement.WriteGrindingTimesAsync(confirmationWindow.ConfirmedResults);
+            MessageBox.Show(this, "打磨次数已写入 PLC。", "流程完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
