@@ -145,7 +145,7 @@ public static class MotorParameterDefinitions
     public const ushort MeasurementMotionFinishedAddress = (ushort)(62 + MAddressOffset);
     public const ushort GrindingMotionStartAddress = (ushort)(32 + MAddressOffset);
     public const ushort GrindingTimesResultStartAddress = 1800;
-    public const ushort GrindingTimesResultAddressStep = 1;
+    public const ushort GrindingTimesResultAddressStep = 2;
 
     // 写入参数比例
     public const double CarJogSpeedScale = 1000.0;

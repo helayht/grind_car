@@ -1,7 +1,7 @@
 namespace GrindCar.Models.Rail;
 
 /// <summary>
-/// 中位 Y 截面代表点显示项。
+/// 代表截面点显示项。
 /// 其中 X 为横坐标，Z 为纵坐标。
 /// </summary>
 public sealed class MedianSectionPointDisplayItem

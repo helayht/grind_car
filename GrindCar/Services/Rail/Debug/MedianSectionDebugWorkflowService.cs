@@ -6,7 +6,7 @@ using GrindCar.Services.Rail;
 namespace GrindCar.Services.Rail.Debug;
 
 /// <summary>
-/// 中位截面调试业务编排服务。
+/// 代表截面调试业务编排服务。
 /// </summary>
 public class MedianSectionDebugWorkflowService
 {
@@ -22,8 +22,8 @@ public class MedianSectionDebugWorkflowService
         return _profileService.ExtractMedianSectionProfileFromCsv(filePath);
     }
 
-    public void Export(string outputPath, double medianY, IReadOnlyList<RailProfilePoint> points)
+    public void Export(string outputPath, double representativeY, IReadOnlyList<RailProfilePoint> points)
     {
-        MedianSectionCsvExporter.Export(outputPath, medianY, points);
+        MedianSectionCsvExporter.Export(outputPath, representativeY, points);
     }
 }

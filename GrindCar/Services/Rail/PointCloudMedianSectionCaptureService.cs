@@ -1,14 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
+using GrindCar.Services.Rail.Processing;
 
 namespace GrindCar.Services.Rail;
 
 /// <summary>
-/// 将 SDK 点云采集与中位 Y 截面提取串联起来。
+/// 将 SDK 点云采集与代表截面提取串联起来。
 /// 默认采用“在线采集点云 -> 直接提取截面”方式，必要时回退到 CSV。
 /// </summary>
 public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSectionCaptureService
@@ -34,7 +36,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     /// 使用指定依赖和日志目录初始化实例。
     /// </summary>
     /// <param name="pointCloudExportService">点云导出服务。</param>
-    /// <param name="representativeProfileService">中位截面提取服务。</param>
+    /// <param name="representativeProfileService">代表截面提取服务。</param>
     /// <param name="logDirectoryPath">CSV 回退模式的落盘目录。</param>
     public PointCloudMedianSectionCaptureService(
         PointCloudExportService pointCloudExportService,
@@ -49,35 +51,61 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     }
 
     /// <summary>
-    /// 采集指定设备的单帧点云并提取中位截面点集。
+    /// 采集指定设备的单帧点云并提取代表截面点集。
     /// </summary>
     /// <param name="serialNumber">目标设备序列号。</param>
     /// <returns>包含落盘 CSV 路径和提取结果的对象。</returns>
     public PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(string serialNumber, PointCloudDeviceSide side)
+    {
+        PointCloudCaptureSettings captureSettings = new PointCloudCaptureSettingsStore().LoadRequired();
+        return CaptureMedianSectionProfile(serialNumber, side, captureSettings);
+    }
+
+    /// <summary>
+    /// 采集指定设备的单帧点云并提取代表截面点集。
+    /// </summary>
+    /// <param name="serialNumber">目标设备序列号。</param>
+    /// <param name="side">目标点云设备对应的轨面半边。</param>
+    /// <param name="captureSettings">点云在线采集参数。</param>
+    /// <returns>包含落盘 CSV 路径和提取结果的对象。</returns>
+    public PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(
+        string serialNumber,
+        PointCloudDeviceSide side,
+        PointCloudCaptureSettings captureSettings)
     {
         if (string.IsNullOrWhiteSpace(serialNumber))
         {
             throw new PointCloudSdkException("未选择设备序列号。");
         }
 
+        if (captureSettings == null)
+        {
+            throw new ArgumentNullException(nameof(captureSettings));
+        }
+
         if (_representativeProfileService is PointCloudRepresentativeProfileService representativeProfileService)
         {
+            IReadOnlyList<PointCloudPoint3D>? points = null;
             try
             {
-                var points = _pointCloudExportService.CapturePointCloudPoints(serialNumber);
-                MedianSectionExtractionResult onlineExtractionResult =
-                    representativeProfileService.ExtractMedianSectionProfileFromPoints(points, side);
-                return new PointCloudMedianSectionCaptureResult(string.Empty, onlineExtractionResult);
+                points = _pointCloudExportService.CapturePointCloudPoints(serialNumber, captureSettings);
             }
             catch
             {
                 // 在线读取失败时自动回退到 CSV 方案，避免阻断业务流程。
             }
+
+            if (points != null)
+            {
+                MedianSectionExtractionResult onlineExtractionResult =
+                    representativeProfileService.ExtractMedianSectionProfileFromPoints(points, side);
+                return new PointCloudMedianSectionCaptureResult(string.Empty, onlineExtractionResult);
+            }
         }
 
         Directory.CreateDirectory(_logDirectoryPath);
         string csvPath = BuildCsvPath();
-        _pointCloudExportService.ExportPointCloud(serialNumber, csvPath, PointCloudExportFormat.Csv);
+        _pointCloudExportService.ExportPointCloud(serialNumber, csvPath, PointCloudExportFormat.Csv, captureSettings);
 
         MedianSectionExtractionResult extractionResult =
             _representativeProfileService.ExtractMedianSectionProfileFromCsv(csvPath, side);

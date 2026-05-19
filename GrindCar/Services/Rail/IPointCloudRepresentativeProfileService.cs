@@ -6,21 +6,21 @@ namespace GrindCar.Services.Rail;
 public interface IPointCloudRepresentativeProfileService
 {
     /// <summary>
-    /// 从点云 CSV 文件中提取中位 Y 截面的二维 X/Z 点集。
+    /// 从点云 CSV 文件中提取所有有效截面的算术平均二维 X/Z 点集。
     /// 处理规则：
-    /// 1. 先对全部 Y 去重；
-    /// 2. 再按偏左中位定义找到唯一 Y 集合中的中位值；
-    /// 3. 最后从原始点集中严格筛选 Y 等于该中位值的点，并输出 (X, Z)。
+    /// 1. 先过滤 X/Y/Z 全为 0 的异常点；
+    /// 2. 再按 X 坐标聚合全部有效截面点；
+    /// 3. 最后对每个 X 的 Z 坐标取算术平均，并输出 (X, AverageZ)。
     /// </summary>
     /// <param name="csvPath">点云 CSV 文件路径。</param>
-    /// <returns>包含中位 Y 值和截面点集的提取结果。</returns>
+    /// <returns>包含代表 Y 值和平均截面点集的提取结果。</returns>
     MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath);
 
     /// <summary>
-    /// 从点云 CSV 文件中提取中位 Y 截面的二维 X/Z 点集，并按设备侧别对齐到标准轨面边界。
+    /// 从点云 CSV 文件中提取所有有效截面的算术平均二维 X/Z 点集，并按设备侧别对齐到标准轨面边界。
     /// </summary>
     /// <param name="csvPath">点云 CSV 文件路径。</param>
     /// <param name="side">点云设备对应的轨面半边。</param>
-    /// <returns>包含中位 Y 值和对齐后截面点集的提取结果。</returns>
+    /// <returns>包含代表 Y 值和对齐后平均截面点集的提取结果。</returns>
     MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath, PointCloudDeviceSide side);
 }

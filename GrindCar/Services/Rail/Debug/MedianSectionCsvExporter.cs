@@ -8,11 +8,11 @@ using GrindCar.Models.Rail;
 namespace GrindCar.Services.Rail.Debug;
 
 /// <summary>
-/// 中位截面导出器。
+/// 代表截面导出器。
 /// </summary>
 public static class MedianSectionCsvExporter
 {
-    public static void Export(string outputPath, double medianY, IReadOnlyList<RailProfilePoint> points)
+    public static void Export(string outputPath, double representativeY, IReadOnlyList<RailProfilePoint> points)
     {
         if (string.IsNullOrWhiteSpace(outputPath))
         {
@@ -33,7 +33,7 @@ public static class MedianSectionCsvExporter
         Directory.CreateDirectory(directoryPath);
 
         var builder = new StringBuilder();
-        builder.AppendLine($"MedianY,{medianY.ToString("F6", CultureInfo.InvariantCulture)}");
+        builder.AppendLine($"RepresentativeY,{representativeY.ToString("F6", CultureInfo.InvariantCulture)}");
         builder.AppendLine("X,Z");
 
         for (int index = 0; index < points.Count; index++)

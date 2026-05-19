@@ -3,7 +3,6 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\App.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.deps.json
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.runtimeconfig.json
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.dll
-D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.pdb
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\NModbus4.dll
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.g.resources
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.GeneratedMSBuildEditorConfig.editorconfig
@@ -13,7 +12,6 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.cspro
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.csproj.CopyComplete
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.dll
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\refint\GrindCar.dll
-D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.pdb
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.genruntimeconfig.cache
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\ref\GrindCar.dll
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GeneratedInternalTypeHelper.g.cs
@@ -45,3 +43,5 @@ D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PlcConne
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\PlcConnectionSettingsWindow.g.cs
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\Mv3dLpNet.dll
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.exe
+D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.pdb
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.pdb

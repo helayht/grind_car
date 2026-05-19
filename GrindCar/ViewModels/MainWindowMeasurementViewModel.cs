@@ -4,7 +4,9 @@ using System.Threading.Tasks;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using GrindCar.Definitions;
+using GrindCar.Models.PointCloud;
 using GrindCar.Services.Measurement;
+using GrindCar.Services.PointCloud;
 
 namespace GrindCar.ViewModels;
 
@@ -13,7 +15,11 @@ namespace GrindCar.ViewModels;
 /// </summary>
 public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 {
+    private const string CarSpeedParameterName = "小车运行速度";
+    private const string ProfileCountParameterName = "单次测量总条数";
+
     private readonly IMeasurementParameterService _measurementParameterService;
+    private readonly PointCloudCaptureSettingsStore _pointCloudCaptureSettingsStore;
 
     private string _plcIpAddress;
     private int _plcPort;
@@ -21,17 +27,22 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     private string _endPositionText = string.Empty;
     private string _grindingStartPositionText = string.Empty;
     private string _grindingEndPositionText = string.Empty;
+    private string _carSpeedText = string.Empty;
+    private string _profileCountText = string.Empty;
     private string _statusMessage = "请填写参数后写入。";
     private bool _isBusy;
 
     public MainWindowMeasurementViewModel(
         IMeasurementParameterService measurementParameterService,
         string defaultIpAddress,
-        int defaultPort)
+        int defaultPort,
+        PointCloudCaptureSettingsStore? pointCloudCaptureSettingsStore = null)
     {
         _measurementParameterService = measurementParameterService ?? throw new ArgumentNullException(nameof(measurementParameterService));
+        _pointCloudCaptureSettingsStore = pointCloudCaptureSettingsStore ?? new PointCloudCaptureSettingsStore();
         _plcIpAddress = defaultIpAddress;
         _plcPort = defaultPort;
+        LoadPointCloudCaptureSettings();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -99,6 +110,54 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 
             _grindingEndPositionText = value;
             OnPropertyChanged();
+        }
+    }
+
+    public string CarSpeedText
+    {
+        get => _carSpeedText;
+        set
+        {
+            if (_carSpeedText == value)
+            {
+                return;
+            }
+
+            _carSpeedText = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CalculatedFrameRateText));
+        }
+    }
+
+    public string ProfileCountText
+    {
+        get => _profileCountText;
+        set
+        {
+            if (_profileCountText == value)
+            {
+                return;
+            }
+
+            _profileCountText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string CalculatedFrameRateText
+    {
+        get
+        {
+            try
+            {
+                double speedKmPerHour = MeasurementInputParser.ParsePositiveDouble(CarSpeedText, CarSpeedParameterName);
+                double frameRateHz = PointCloudCaptureSettings.CalculateFrameRateHz(speedKmPerHour);
+                return $"{frameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz";
+            }
+            catch
+            {
+                return "-- Hz";
+            }
         }
     }
 
@@ -173,6 +232,14 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         }
     }
 
+    public void SavePointCloudCaptureSettings()
+    {
+        PointCloudCaptureSettings settings = CreatePointCloudCaptureSettingsFromInput();
+        _pointCloudCaptureSettingsStore.Save(settings);
+        StatusMessage =
+            $"点云采集参数已保存：速度 {settings.SpeedKmPerHour.ToString("0.###", CultureInfo.CurrentCulture)} km/h，单次 {settings.ProfileCount.ToString(CultureInfo.CurrentCulture)} 条，帧率 {settings.FrameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz";
+    }
+
     public async Task WriteGrindingParametersAsync()
     {
         double startPosition = MeasurementInputParser.ParsePosition(
@@ -206,7 +273,10 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         try
         {
             IsBusy = true;
-            StatusMessage = "正在启动测量流程...";
+            PointCloudCaptureSettings captureSettings = CreatePointCloudCaptureSettingsFromInput();
+            _pointCloudCaptureSettingsStore.Save(captureSettings);
+            StatusMessage =
+                $"点云采集参数已保存，帧率 {captureSettings.FrameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz，正在启动测量流程...";
 
             var progress = new Progress<string>(message => StatusMessage = message);
             MeasurementGrindingWorkflowResult result =
@@ -246,6 +316,34 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     public void SetErrorStatus(string message)
     {
         StatusMessage = message;
+    }
+
+    private PointCloudCaptureSettings CreatePointCloudCaptureSettingsFromInput()
+    {
+        double speedKmPerHour = MeasurementInputParser.ParsePositiveDouble(CarSpeedText, CarSpeedParameterName);
+        int profileCount = MeasurementInputParser.ParsePositiveInt32(ProfileCountText, ProfileCountParameterName);
+        return new PointCloudCaptureSettings(speedKmPerHour, profileCount);
+    }
+
+    private void LoadPointCloudCaptureSettings()
+    {
+        try
+        {
+            PointCloudCaptureSettings? settings = _pointCloudCaptureSettingsStore.Load();
+            if (settings == null)
+            {
+                return;
+            }
+
+            _carSpeedText = settings.SpeedKmPerHour.ToString("0.###", CultureInfo.CurrentCulture);
+            _profileCountText = settings.ProfileCount.ToString(CultureInfo.CurrentCulture);
+            _statusMessage =
+                $"已加载点云采集参数：速度 {_carSpeedText} km/h，单次 {_profileCountText} 条。";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"点云采集参数加载失败：{ex.Message}";
+        }
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

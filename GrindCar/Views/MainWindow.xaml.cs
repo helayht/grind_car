@@ -69,7 +69,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 打开中位截面调试窗口。
+    /// 打开代表截面调试窗口。
     /// </summary>
     private void OpenMedianSectionDebugWindow_Click(object sender, RoutedEventArgs e)
     {
@@ -149,6 +149,22 @@ public partial class MainWindow : Window
         {
             Measurement.SetErrorStatus($"写入失败：{ex.Message}");
             MessageBox.Show(this, ex.Message, "参数写入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// 保存主界面点云在线采集参数。
+    /// </summary>
+    private void SavePointCloudCaptureSettings_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Measurement.SavePointCloudCaptureSettings();
+        }
+        catch (Exception ex)
+        {
+            Measurement.SetErrorStatus($"点云采集参数保存失败：{ex.Message}");
+            MessageBox.Show(this, ex.Message, "点云采集参数保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

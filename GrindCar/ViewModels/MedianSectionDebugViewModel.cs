@@ -14,7 +14,7 @@ using GrindCar.Services.Rail.Debug;
 namespace GrindCar.ViewModels;
 
 /// <summary>
-/// 中位截面调试窗口 ViewModel。
+/// 代表截面调试窗口 ViewModel。
 /// </summary>
 public class MedianSectionDebugViewModel : INotifyPropertyChanged
 {
@@ -22,9 +22,9 @@ public class MedianSectionDebugViewModel : INotifyPropertyChanged
     private readonly ObservableCollection<MedianSectionPointDisplayItem> _pointRows = new();
 
     private List<RailProfilePoint> _currentPoints = new();
-    private double? _currentMedianY;
+    private double? _currentRepresentativeY;
     private string _importedFilePath = "未导入文件";
-    private string _medianYText = "-";
+    private string _representativeYText = "-";
     private string _representativePointCountText = "0";
     private string _xRangeText = "-";
     private string _zRangeText = "-";
@@ -50,17 +50,17 @@ public class MedianSectionDebugViewModel : INotifyPropertyChanged
         }
     }
 
-    public string MedianYText
+    public string RepresentativeYText
     {
-        get => _medianYText;
+        get => _representativeYText;
         private set
         {
-            if (_medianYText == value)
+            if (_representativeYText == value)
             {
                 return;
             }
 
-            _medianYText = value;
+            _representativeYText = value;
             OnPropertyChanged();
         }
     }
@@ -144,12 +144,12 @@ public class MedianSectionDebugViewModel : INotifyPropertyChanged
 
     public bool CanImport => !IsBusy;
 
-    public bool CanExport => !IsBusy && _currentPoints.Count > 0 && _currentMedianY.HasValue;
+    public bool CanExport => !IsBusy && _currentPoints.Count > 0 && _currentRepresentativeY.HasValue;
 
     public async Task ImportAsync(string filePath)
     {
         ImportedFilePath = filePath;
-        StatusText = $"正在提取中位 Y 截面: {filePath}";
+        StatusText = $"正在提取平均代表截面: {filePath}";
 
         try
         {
@@ -173,24 +173,24 @@ public class MedianSectionDebugViewModel : INotifyPropertyChanged
 
     public void Export(string outputPath)
     {
-        if (_currentMedianY == null)
+        if (_currentRepresentativeY == null)
         {
-            throw new InvalidOperationException("当前未加载中位 Y 截面数据。");
+            throw new InvalidOperationException("当前未加载代表截面数据。");
         }
 
-        _workflowService.Export(outputPath, _currentMedianY.Value, _currentPoints);
+        _workflowService.Export(outputPath, _currentRepresentativeY.Value, _currentPoints);
         StatusText = $"代表截面坐标已导出: {outputPath}";
     }
 
     public string BuildDefaultExportFileName()
     {
         string sourceFileName = string.IsNullOrWhiteSpace(ImportedFilePath) || ImportedFilePath == "未导入文件"
-            ? "median_section"
+            ? "representative_section"
             : Path.GetFileNameWithoutExtension(ImportedFilePath);
 
-        string medianYText = _currentMedianY?.ToString("F6", CultureInfo.InvariantCulture) ?? "unknown";
-        string safeMedianYText = medianYText.Replace('.', '_');
-        return $"{sourceFileName}_median_section_{safeMedianYText}.csv";
+        string representativeYText = _currentRepresentativeY?.ToString("F6", CultureInfo.InvariantCulture) ?? "unknown";
+        string safeRepresentativeYText = representativeYText.Replace('.', '_');
+        return $"{sourceFileName}_representative_section_{safeRepresentativeYText}.csv";
     }
 
     public void SetErrorStatus(string status)
@@ -200,8 +200,8 @@ public class MedianSectionDebugViewModel : INotifyPropertyChanged
 
     private void ApplyProfilePoints(MedianSectionExtractionResult extractionResult)
     {
-        _currentMedianY = extractionResult.MedianY;
-        MedianYText = extractionResult.MedianY.ToString("F6", CultureInfo.InvariantCulture);
+        _currentRepresentativeY = extractionResult.RepresentativeY;
+        RepresentativeYText = extractionResult.RepresentativeY.ToString("F6", CultureInfo.InvariantCulture);
 
         _currentPoints = extractionResult.ProfilePoints
             .OrderBy(point => point.X)
@@ -238,10 +238,10 @@ public class MedianSectionDebugViewModel : INotifyPropertyChanged
 
     private void ClearCurrentPoints()
     {
-        _currentMedianY = null;
+        _currentRepresentativeY = null;
         _currentPoints = new List<RailProfilePoint>();
         _pointRows.Clear();
-        MedianYText = "-";
+        RepresentativeYText = "-";
         RepresentativePointCountText = "0";
         XRangeText = "-";
         ZRangeText = "-";

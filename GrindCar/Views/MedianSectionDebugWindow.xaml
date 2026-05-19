@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="中位截面调试"
+        Title="代表截面调试"
         Width="1240"
         Height="760"
         MinWidth="1080"
@@ -51,10 +51,10 @@
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource Ink}"
-                               Text="中位 Y 截面调试" />
+                               Text="平均代表截面调试" />
                     <TextBlock Margin="0,6,0,0"
                                Foreground="{StaticResource Muted}"
-                               Text="导入 .csv 点云文件，提取去重后中位 Y 截面的代表点集 (X, Z)。" />
+                               Text="导入 .csv 点云文件，提取平均代表截面点集 (X, Z)。" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
@@ -110,12 +110,12 @@
                     Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Foreground="{StaticResource Muted}"
-                               Text="中位 Y" />
+                               Text="代表 Y" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="18"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource Ink}"
-                               Text="{Binding MedianYText}" />
+                               Text="{Binding RepresentativeYText}" />
                 </StackPanel>
             </Border>
 
@@ -177,7 +177,7 @@
                                    Text="代表点表" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{StaticResource Muted}"
-                                   Text="这里显示中位 Y 截面上全部 (X, Z) 点。" />
+                                   Text="这里显示平均代表截面上的全部 (X, Z) 点。" />
                     </StackPanel>
 
                     <DataGrid Grid.Row="1"

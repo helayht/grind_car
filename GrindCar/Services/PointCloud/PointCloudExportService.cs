@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using GrindCar.Models.PointCloud;
@@ -62,6 +63,15 @@ public sealed class PointCloudExportService
     /// <param name="exportFormat">导出文件格式。</param>
     public void ExportPointCloud(string serialNumber, string outputPath, PointCloudExportFormat exportFormat)
     {
+        ExportPointCloud(serialNumber, outputPath, exportFormat, null);
+    }
+
+    internal void ExportPointCloud(
+        string serialNumber,
+        string outputPath,
+        PointCloudExportFormat exportFormat,
+        PointCloudCaptureSettings? captureSettings)
+    {
         if (string.IsNullOrWhiteSpace(serialNumber))
         {
             throw new PointCloudSdkException("未选择设备序列号。");
@@ -99,6 +109,11 @@ public sealed class PointCloudExportService
                 imageModeParam.set_enumparam(imageModeValue);
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam), "设置 3D 点云模式失败。");
 
+                if (captureSettings != null)
+                {
+                    ApplyCaptureSettings(deviceHandle, captureSettings);
+                }
+
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_StartMeasure(deviceHandle), "启动测量失败。");
                 measurementStarted = true;
 
@@ -131,9 +146,28 @@ public sealed class PointCloudExportService
     /// <returns>采集到的三维点列表。</returns>
     internal IReadOnlyList<PointCloudPoint3D> CapturePointCloudPoints(string serialNumber)
     {
+        PointCloudCaptureSettings settings = new PointCloudCaptureSettingsStore().LoadRequired();
+        return CapturePointCloudPoints(serialNumber, settings);
+    }
+
+    /// <summary>
+    /// 从指定设备在线采集单帧点云并直接返回三维点集合（不落盘 CSV）。
+    /// </summary>
+    /// <param name="serialNumber">目标设备序列号。</param>
+    /// <param name="captureSettings">点云在线采集参数。</param>
+    /// <returns>采集到的三维点列表。</returns>
+    internal IReadOnlyList<PointCloudPoint3D> CapturePointCloudPoints(
+        string serialNumber,
+        PointCloudCaptureSettings captureSettings)
+    {
         if (string.IsNullOrWhiteSpace(serialNumber))
         {
             throw new PointCloudSdkException("未选择设备序列号。");
+        }
+
+        if (captureSettings == null)
+        {
+            throw new ArgumentNullException(nameof(captureSettings));
         }
 
         return ExecuteWithSdkLifecycle<IReadOnlyList<PointCloudPoint3D>>(() =>
@@ -153,6 +187,8 @@ public sealed class PointCloudExportService
                 EnsureSuccess(
                     Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam),
                     "设置 3D 点云模式失败。");
+
+                ApplyCaptureSettings(deviceHandle, captureSettings);
 
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_StartMeasure(deviceHandle), "启动测量失败。");
                 measurementStarted = true;
@@ -174,6 +210,68 @@ public sealed class PointCloudExportService
                 }
             }
         });
+    }
+
+    private static void ApplyCaptureSettings(IntPtr deviceHandle, PointCloudCaptureSettings captureSettings)
+    {
+        using var frameRateReadParam = new MV3D_LP_PARAM();
+        EnsureSuccess(
+            Mv3dLpSDK.MV3D_LP_GetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_FLOAT_FRAMERATE, frameRateReadParam),
+            "读取采集帧率范围失败。");
+        MV3D_LP_FLOATPARAM frameRateRange = frameRateReadParam.get_floatparam();
+        EnsureFrameRateInRange(captureSettings.FrameRateHz, frameRateRange.fMin, frameRateRange.fMax);
+
+        using var heightReadParam = new MV3D_LP_PARAM();
+        EnsureSuccess(
+            Mv3dLpSDK.MV3D_LP_GetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_INT_HEIGHT, heightReadParam),
+            "读取单次测量总条数范围失败。");
+        MV3D_LP_INTPARAM heightRange = heightReadParam.get_intparam();
+        EnsureProfileCountInRange(captureSettings.ProfileCount, heightRange.nMin, heightRange.nMax, heightRange.nInc);
+
+        using var frameRateWriteParam = new MV3D_LP_PARAM();
+        using var frameRateValue = new MV3D_LP_FLOATPARAM();
+        frameRateValue.fCurValue = (float)captureSettings.FrameRateHz;
+        frameRateWriteParam.set_floatparam(frameRateValue);
+        EnsureSuccess(
+            Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_FLOAT_FRAMERATE, frameRateWriteParam),
+            "设置采集帧率失败。");
+
+        using var heightWriteParam = new MV3D_LP_PARAM();
+        using var heightValue = new MV3D_LP_INTPARAM();
+        heightValue.nCurValue = captureSettings.ProfileCount;
+        heightWriteParam.set_intparam(heightValue);
+        EnsureSuccess(
+            Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_INT_HEIGHT, heightWriteParam),
+            "设置单次测量总条数失败。");
+    }
+
+    internal static void EnsureFrameRateInRange(double frameRateHz, double minFrameRateHz, double maxFrameRateHz)
+    {
+        if (frameRateHz < minFrameRateHz || frameRateHz > maxFrameRateHz)
+        {
+            throw new PointCloudSdkException(
+                $"计算帧率 {FormatNumber(frameRateHz)}Hz 超出设备支持范围 {FormatNumber(minFrameRateHz)}~{FormatNumber(maxFrameRateHz)}Hz。");
+        }
+    }
+
+    internal static void EnsureProfileCountInRange(int profileCount, long minProfileCount, long maxProfileCount, long increment)
+    {
+        if (profileCount < minProfileCount || profileCount > maxProfileCount)
+        {
+            throw new PointCloudSdkException(
+                $"单次测量总条数 {profileCount.ToString(CultureInfo.InvariantCulture)} 超出设备 Height 支持范围 {minProfileCount.ToString(CultureInfo.InvariantCulture)}~{maxProfileCount.ToString(CultureInfo.InvariantCulture)}。");
+        }
+
+        if (increment > 1 && (profileCount - minProfileCount) % increment != 0)
+        {
+            throw new PointCloudSdkException(
+                $"单次测量总条数 {profileCount.ToString(CultureInfo.InvariantCulture)} 不满足设备 Height 步进 {increment.ToString(CultureInfo.InvariantCulture)}。");
+        }
+    }
+
+    private static string FormatNumber(double value)
+    {
+        return value.ToString("0.###", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -213,7 +311,7 @@ public sealed class PointCloudExportService
     /// 某些 SDK 文件类型会自动补扩展名，因此这里传入不带目标扩展名的基路径，避免出现 .csv.csv。
     /// </summary>
     /// <param name="outputPath">调用方期望的最终导出路径。</param>
-    /// <param name="exportFormat">导出格式。</param>
+    /// <param name="exportFormat">导出格式。</param>                            
     /// <returns>适合传给 SDK 的输出路径。</returns>
     private static string BuildSdkOutputPath(string outputPath, PointCloudExportFormat exportFormat)
     {
@@ -275,7 +373,7 @@ public sealed class PointCloudExportService
         };
     }
 
-    private static IReadOnlyList<PointCloudPoint3D> DecodePointCloudImage(MV3D_LP_IMAGE_DATA pointCloudImage)
+    internal static IReadOnlyList<PointCloudPoint3D> DecodePointCloudImage(MV3D_LP_IMAGE_DATA pointCloudImage)
     {
         if (pointCloudImage == null)
         {
@@ -287,27 +385,61 @@ public sealed class PointCloudExportService
             throw new PointCloudSdkException("点云图像数据缓冲区为空。");
         }
 
-        uint pointCountByShape = pointCloudImage.nWidth * pointCloudImage.nHeight;
+        ulong pointCountByShape = (ulong)pointCloudImage.nWidth * pointCloudImage.nHeight;
         int dataLength = checked((int)pointCloudImage.nDataLen);
-        int pointCountByFloat = dataLength / FloatPointSizeInBytes;
-        int pointCountByInt16 = dataLength / Int16PointSizeInBytes;
+        DecodeFormat decodeFormat = ResolveDecodeFormat(dataLength, pointCountByShape);
 
-        bool treatAsFloat = dataLength % FloatPointSizeInBytes == 0;
-        if (!treatAsFloat && dataLength % Int16PointSizeInBytes != 0)
-        {
-            throw new PointCloudSdkException($"点云数据长度异常，无法识别坐标格式。DataLen={pointCloudImage.nDataLen}");
-        }
-
-        int expectedCount = pointCountByShape > 0 ? checked((int)pointCountByShape) : (treatAsFloat ? pointCountByFloat : pointCountByInt16);
-        int usableCount = treatAsFloat ? Math.Min(expectedCount, pointCountByFloat) : Math.Min(expectedCount, pointCountByInt16);
-        if (usableCount <= 0)
+        if (decodeFormat.PointCount <= 0)
         {
             return Array.Empty<PointCloudPoint3D>();
         }
 
-        return treatAsFloat
-            ? DecodeFloatPointCloud(pointCloudImage, usableCount)
-            : DecodeInt16PointCloud(pointCloudImage, usableCount);
+        return decodeFormat.Kind == PointCloudCoordinateFormat.Float
+            ? DecodeFloatPointCloud(pointCloudImage, decodeFormat.PointCount)
+            : DecodeInt16PointCloud(pointCloudImage, decodeFormat.PointCount);
+    }
+
+    private static DecodeFormat ResolveDecodeFormat(int dataLength, ulong pointCountByShape)
+    {
+        if (pointCountByShape > 0)
+        {
+            ulong expectedFloatLength = pointCountByShape * FloatPointSizeInBytes;
+            ulong expectedInt16Length = pointCountByShape * Int16PointSizeInBytes;
+
+            if ((ulong)dataLength == expectedFloatLength)
+            {
+                return new DecodeFormat(PointCloudCoordinateFormat.Float, checked((int)pointCountByShape));
+            }
+
+            if ((ulong)dataLength == expectedInt16Length)
+            {
+                return new DecodeFormat(PointCloudCoordinateFormat.Int16, checked((int)pointCountByShape));
+            }
+
+            throw new PointCloudSdkException(
+                $"点云数据长度与图像尺寸不匹配，无法识别坐标格式。WidthHeight={pointCountByShape}, DataLen={dataLength}");
+        }
+
+        bool canDecodeAsFloat = dataLength % FloatPointSizeInBytes == 0;
+        bool canDecodeAsInt16 = dataLength % Int16PointSizeInBytes == 0;
+
+        if (canDecodeAsFloat && canDecodeAsInt16)
+        {
+            throw new PointCloudSdkException(
+                $"点云数据缺少有效宽高且长度存在格式歧义，无法识别坐标格式。DataLen={dataLength}");
+        }
+
+        if (canDecodeAsFloat)
+        {
+            return new DecodeFormat(PointCloudCoordinateFormat.Float, dataLength / FloatPointSizeInBytes);
+        }
+
+        if (canDecodeAsInt16)
+        {
+            return new DecodeFormat(PointCloudCoordinateFormat.Int16, dataLength / Int16PointSizeInBytes);
+        }
+
+        throw new PointCloudSdkException($"点云数据长度异常，无法识别坐标格式。DataLen={dataLength}");
     }
 
     private static IReadOnlyList<PointCloudPoint3D> DecodeFloatPointCloud(MV3D_LP_IMAGE_DATA pointCloudImage, int pointCount)
@@ -371,6 +503,14 @@ public sealed class PointCloudExportService
                  double.IsNaN(y) || double.IsInfinity(y) ||
                  double.IsNaN(z) || double.IsInfinity(z));
     }
+
+    private enum PointCloudCoordinateFormat
+    {
+        Float,
+        Int16
+    }
+
+    private readonly record struct DecodeFormat(PointCloudCoordinateFormat Kind, int PointCount);
 
     /// <summary>
     /// 在统一的 SDK 初始化和释放流程中执行指定操作。

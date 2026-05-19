@@ -5,9 +5,9 @@ GrindCar 是一个基于 `.NET 6 + WPF` 的轨面打磨设备上位机项目，�
 
 - 驾驶舱首页展示电量、速度、连接状态等运行信息
 - 电机调试窗口通过 `Modbus TCP` 与 PLC 建立连接，完成参数轮询、写入和调试
-- 点云调试链路支持设备枚举、单帧点云导出、在线点云中位截面提取（失败时自动回退 CSV）、需要打磨深度计算与已打磨深度检测
+- 点云调试链路支持设备枚举、3D 点云模式单帧导出、在线点云平均代表截面提取（失败时自动回退 CSV）、需要打磨深度计算与已打磨深度检测
 - 提供曲线旋转调试窗口，可导入 `CSV(x,y)` 并按指定角度旋转后可视化散点
-- 主界面内置参数设置，可写入“测量起点位置/测量终点位置”与“打磨起点位置/打磨终点位置”，PLC 连接参数通过独立窗口维护
+- 主界面内置参数设置，可写入“测量起点位置/测量终点位置”与“打磨起点位置/打磨终点位置”，并可配置点云在线采集速度、单次测量总条数和计算帧率；PLC 连接参数通过独立窗口维护
 - 主界面支持测量运行流程：按 `M31/M60/M61/M62` 交互，累计多次测量后计算平均打磨深度并写回各角度打磨次数；并支持独立写入打磨运动启动 `M32`
 - 轨面服务层提供标准轨面函数、代表截面提取、多角度打磨深度计算和按角度计算代表廓形 `b` 值的能力
 
@@ -34,7 +34,7 @@ GrindCar.sln
 │  │  ├─ Motor/           # 电机参数映射、连接参数校验、仪表盘数据服务
 │  │  ├─ Measurement/     # 主界面测量参数解析与写入服务
 │  │  ├─ PointCloud/      # 点云设备 SDK 封装与导出
-│  │  └─ Rail/            # 中位截面与代表廓形提取
+│  │  └─ Rail/            # 平均代表截面与代表廓形提取
 │  │     ├─ Core/         # 轨面求解、基线存储、代表截面采集核心服务
 │  │     └─ Processing/   # 代表廓形点集处理与 CSV 解析
 │  ├─ ViewModels/         # ViewModel
@@ -52,7 +52,7 @@ GrindCar.sln
 - 启动后默认进入首页
 - 展示电量、速度、连接状态和当前时间
 - 首页中的电量和速度当前为“未接入数据”占位展示
-- 可从首页进入点云导出、中位截面调试、打磨深度调试和电机调试窗口
+- 可从首页进入点云导出、代表截面调试、打磨深度调试和电机调试窗口
 - 可从首页进入曲线旋转调试窗口进行角度校准可视化
 - 首页参数区可直接设置“测量起点位置/测量终点位置”并写入 PLC
 - 测量参数与测量运行流程共用独立的“PLC连接设置”窗口维护 IP/Port
@@ -65,16 +65,30 @@ GrindCar.sln
 - 写入映射逻辑集中在 `Services/Motor/MotorParameterSpecProvider.cs`
 
 ### 3. 点云导出与截面提取
-- `PointCloudExportService` 用于枚举设备并导出单帧点云
+- `PointCloudExportService` 用于枚举设备、设置 3D 点云模式并导出单帧点云
 - 支持点云导出格式：`CSV`、`PLY`、`OBJ`
-- `PointCloudRepresentativeProfileService` 支持从在线点云点集或 `CSV` 提取中位 `Y` 截面二维点集
+- 点云 SDK 图像模式集中定义在 `PointCloudExportService`：`Origin=1`、`PointCloud=4`、`Range=7`、`Intensity=10`
+- 当前默认采集使用 `ImageMode=4`（3D 点云模式），直接 `GetImage` 获取点云数据，不再走深度图 `ImageMode=7` + `MapDepthToPointCloud` 转换
+- `PointCloudRepresentativeProfileService` 支持从在线点云点集或 `CSV` 提取平均代表截面二维点集
 - 代表点提取后会执行固定流程：离群点过滤 -> 外侧非工作面竖线旋转对齐 -> 标准边界 X 对齐 -> 工作面 Y 贴合
 - `PointCloudMedianSectionCaptureService` 提供一条串联流程（在线优先）：
-  `SDK 单帧采集 -> 内存点集提取中位截面`
+  `SDK 单帧采集 -> 内存点集提取平均代表截面`
 - 在线链路异常时会自动回退：
-  `SDK 单帧采集 -> 落盘 CSV -> 从 CSV 提取中位截面`
+  `SDK 单帧采集 -> 落盘 CSV -> 从 CSV 提取平均代表截面`
 
-### 4. 打磨深度计算
+### 4. 点云在线采集参数
+- 主界面“测量参数配置”区域支持配置“小车运行速度”和“单次测量总条数”
+- 计算帧率按固定 1 cm 采样间距自动计算：`AcquisitionFrameRate = speedKmH * 250 / 9`
+- 配置会保存到运行目录 `point-cloud-capture-settings.json`，下次启动自动恢复
+- 启动主界面测量流程前会自动校验并保存点云采集参数，避免遗漏手动保存
+- 所有在线点云采集会在 `StartMeasure` 前写入：
+  - `ImageMode = 4`
+  - `AcquisitionFrameRate = speedKmH * 250 / 9`
+  - `Height = profileCount`
+- 写入前会读取设备 `AcquisitionFrameRate` 和 `Height` 支持范围；超出范围或不满足 `Height` 步进时直接报错，不自动回退到深度图模式
+- “点云导出”窗口的手动导出流程不读取主界面点云采集参数，只负责手动选择设备和格式导出
+
+### 5. 打磨深度计算
 - `RailSurfaceService.RailSurfaceFun(double x)` 提供标准轨面函数
 - `RailSurfaceService.CalculateGrindDepths(IReadOnlyList<int> angles)` 支持多角度批量计算
 - 批量计算时只采集一次代表截面点集，避免重复调用点云设备
@@ -130,6 +144,12 @@ dotnet build GrindCar.sln
 dotnet run --project GrindCar/GrindCar.csproj
 ```
 
+运行单元测试：
+
+```powershell
+dotnet test GrindCar.sln
+```
+
 清理构建产物：
 
 ```powershell
@@ -140,7 +160,7 @@ dotnet clean GrindCar.sln
 ### 首页入口
 1. 启动应用后进入“轨面打磨驾驶舱”首页。
 2. 通过右上角按钮可打开对应功能窗口。
-3. 当前可进入的窗口包括：`点云导出`、`中位截面调试`、`曲线旋转调试`、`打磨深度调试`、`电机调试`。
+3. 当前可进入的窗口包括：`点云导出`、`代表截面调试`、`曲线旋转调试`、`打磨深度调试`、`电机调试`。
 4. 首页下方参数区可直接设置并写入：`测量起点位置`、`测量终点位置`、`打磨起点位置`、`打磨终点位置`。
 5. 点击“设置PLC连接”可打开独立窗口维护测量参数写入用的 `IP/Port`。
 
@@ -162,7 +182,7 @@ dotnet clean GrindCar.sln
 ### 点云调试流程
 1. 在运行目录创建 `point-cloud-devices.json`，按点云设备序列号配置 `Left` / `Right` 侧别。
 2. 打开“点云导出”窗口，选择设备并导出单帧点云文件。
-3. 打开“中位截面调试”窗口，验证从 `CSV` 中提取的中位截面点集。
+3. 打开“代表截面调试”窗口，验证从 `CSV` 中提取的平均代表截面点集。
 4. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。
 5. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
 6. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
@@ -192,16 +212,19 @@ dotnet clean GrindCar.sln
 3. 点击“写入测量起止点”，系统将工程量按 `/100000` 比例换算后写入 PLC。
 4. 测量参数地址：`D1140`（测量起点位置）、`D1142`（测量终点位置）。
 5. 打磨参数地址：`D1180`（打磨起点位置）、`D1182`（打磨终点位置）。
-6. 点击“测量运动启动”后，系统将进入测量运行流程并在结束后写回打磨次数。
+6. 输入“小车运行速度(km/h)”和“单次测量总条数”，确认只读显示的“计算帧率(Hz)”。
+7. 点击“保存点云采集参数”会保存到运行目录 `point-cloud-capture-settings.json`。
+8. 点击“测量运动启动”后，系统会再次校验并保存点云采集参数，然后进入测量运行流程并在结束后写回打磨次数。
 
 ### 主界面测量运行流程
 1. 点击“测量运动启动”，系统写入 `M31=1` 并开始轮询测量状态位。
 2. 轮询期间监听 `M60`（启动当前廓形测量），按上升沿触发一次单次测量计算。
-3. 每次单次测量只缓存各角度打磨深度结果，不立即写打磨次数结果区。
-4. 单次测量完成后写入 `M61=1`；`M61` 由 PLC 负责清零。
-5. 当读取到 `M62=1`（测量运行结束）后，系统对各角度做平均打磨深度计算。
-6. 打磨次数计算公式：`打磨次数 = ceil(平均打磨深度 / 0.05)`。
-7. 最终将打磨次数写入 `D1800 + (N-1)`（`N=1..19`，对应 19 个角度）。
+3. 单次测量触发后，系统加载点云采集参数，按 3D 点云模式设置 `ImageMode`、`AcquisitionFrameRate` 和 `Height`，采集点云并计算平均代表截面。
+4. 每次单次测量只缓存各角度打磨深度结果，不立即写打磨次数结果区。
+5. 单次测量完成后写入 `M61=1`；`M61` 由 PLC 负责清零。
+6. 当读取到 `M62=1`（测量运行结束）后，系统对各角度做平均打磨深度计算。
+7. 打磨次数计算公式：`打磨次数 = ceil(平均打磨深度 / 0.05)`。
+8. 最终将打磨次数写入 `D1800 + (N-1)`（`N=1..19`，对应 19 个角度）。
 
 ### 曲线旋转调试流程
 1. 打开“曲线旋转调试”窗口。
@@ -212,14 +235,14 @@ dotnet clean GrindCar.sln
 - `GrindCar/Views/MainWindow.xaml`：驾驶舱首页
 - `GrindCar/Views/MotorDebugWindow.xaml`：电机调试窗口
 - `GrindCar/Views/PointCloudExportWindow.xaml`：点云导出窗口
-- `GrindCar/Views/MedianSectionDebugWindow.xaml`：中位截面调试窗口
+- `GrindCar/Views/MedianSectionDebugWindow.xaml`：代表截面调试窗口（类型名保留 MedianSection）
 - `GrindCar/Views/CurveRotationDebugWindow.xaml`：曲线旋转调试窗口
 - `GrindCar/Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
 - `GrindCar/Views/PlcConnectionSettingsWindow.xaml`：PLC连接设置窗口（供首页参数区写入测量参数使用）
 - `GrindCar/ViewModels/MotorViewModel.cs`：PLC 连接、轮询、写入、首页演示数据和状态文本管理
 - `GrindCar/ViewModels/MainWindowMeasurementViewModel.cs`：主界面测量参数区状态与操作编排
 - `GrindCar/ViewModels/GrindDepthDebugViewModel.cs`：打磨深度调试窗口状态与命令编排
-- `GrindCar/ViewModels/MedianSectionDebugViewModel.cs`：中位截面调试窗口状态与导入导出编排
+- `GrindCar/ViewModels/MedianSectionDebugViewModel.cs`：代表截面调试窗口状态与导入导出编排（类型名保留 MedianSection）
 - `GrindCar/ViewModels/PointCloudExportViewModel.cs`：点云导出窗口设备刷新、导出状态与流程编排
 - `GrindCar/ViewModels/RepresentativeProfileComparisonViewModel.cs`：代表轨面与标准轨面对比窗口状态与绘图数据编排
 - `GrindCar/Services/Motor/MotorParameterSpecProvider.cs`：电机读写参数映射与比例定义提供者
@@ -237,17 +260,19 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Rail/Debug/GrindDepthDebugWorkflowService.cs`：打磨深度调试业务编排
 - `GrindCar/Services/Rail/Debug/GrindDepthAngleParser.cs`：角度输入解析
 - `GrindCar/Services/Rail/Debug/RepresentativePointsCsvExporter.cs`：代表点 CSV 导出
-- `GrindCar/Services/Rail/Debug/MedianSectionDebugWorkflowService.cs`：中位截面调试业务编排
-- `GrindCar/Services/Rail/Debug/MedianSectionCsvExporter.cs`：中位截面代表点 CSV 导出
+- `GrindCar/Services/Rail/Debug/MedianSectionDebugWorkflowService.cs`：代表截面调试业务编排（类型名保留 MedianSection）
+- `GrindCar/Services/Rail/Debug/MedianSectionCsvExporter.cs`：代表截面点 CSV 导出，首行输出 `RepresentativeY`
 - `GrindCar/Services/Rail/Debug/RepresentativeProfileComparisonService.cs`：代表轨面与标准轨面对齐、采样与绘图数据计算
 - `GrindCar/Services/Curve/CurveCsvReader.cs`：曲线旋转窗口的 CSV 读取与列识别
 - `GrindCar/Services/Curve/CurveRotationService.cs`：角度解析与二维旋转计算
-- `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、采集和文件导出
-- `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从在线点集或 CSV 提取中位截面二维点集
+- `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、3D 点云模式采集、采集参数写入和文件导出
+- `GrindCar/Models/PointCloud/PointCloudCaptureSettings.cs`：点云在线采集参数模型，包含小车速度、单次测量总条数和按 1 cm 间距计算的帧率
+- `GrindCar/Services/PointCloud/PointCloudCaptureSettingsStore.cs`：运行目录 `point-cloud-capture-settings.json` 的读写服务
+- `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从在线点集或 CSV 提取平均代表截面二维点集
 - `GrindCar/Services/Rail/Processing/PointCloudCsvReader.cs`：点云 CSV 解析（分隔符/表头/坐标列识别）
 - `GrindCar/Services/Rail/Processing/RepresentativeProfilePointProcessor.cs`：离群过滤、旋转、对称扩展和平移
 - `GrindCar/Services/Rail/Processing/QuickSelect.cs`：中位值快速选择算法
-- `GrindCar/Services/Rail/PointCloudMedianSectionCaptureService.cs`：在线采集单帧点云并输出中位截面提取结果（失败自动回退 CSV）
+- `GrindCar/Services/Rail/PointCloudMedianSectionCaptureService.cs`：在线采集单帧点云并输出平均代表截面提取结果（失败自动回退 CSV，类型名保留 MedianSection）
 - `GrindCar/Services/Rail/Core/StandardRailProfileSolver.cs`：标准轨面函数和切线 `b` 求解
 - `GrindCar/Services/Rail/Core/RepresentativeSectionCaptureService.cs`：代表截面点采集
 - `GrindCar/Services/Rail/Core/GrindingDepthBaselineStore.cs`：检测基线持久化
@@ -264,13 +289,16 @@ dotnet clean GrindCar.sln
 - `X`：轨面横向
 - `Y`：高度 `Z`
 
-### 中位截面定义
-- 先从单帧点云中读取全部有效点
-- 对全部 `Y` 坐标去重
-- 选择排序后偏左的中位 `Y`
-- 筛出该 `Y` 对应的全部点
-- 输出二维 `(X, Z)` 点集用于后续轨面计算
-- 当前实现会在提取代表点后按固定流程处理：
+### 平均代表截面定义
+- 先从单帧点云中读取全部点，并过滤 `X/Y/Z` 全为 `0` 的异常点
+- 按前进方向 `Y` 将点云拆成多条有效轮廓
+- 每条轮廓按 `X` 排序，丢弃点数不足或 `X` 范围无效的轮廓
+- 取所有有效轮廓 `X` 范围的公共交集
+- 从有效轮廓相邻 `X` 差值中取中位数作为统一 X 网格步长
+- 每条轮廓在统一 X 网格上对 `Z` 做线性插值
+- 对同一网格 X 上的所有插值 `Z` 做算术平均，输出二维 `(X, AverageZ)` 点集
+- `RepresentativeY` 表示参与平均代表截面的有效轮廓 `Y` 均值
+- 当前实现会在平均代表截面生成后按固定流程处理：
 - 先执行离群点过滤（局部拟合残差 + MAD 阈值）
 - 按设备侧别固定选择外侧 10 个点作为非工作面竖线候选点
 - 使用 PCA/TLS 拟合竖线，剔除离群候选点后重拟合
@@ -303,7 +331,7 @@ await plc.WriteSingleCoilAsync(104, true);
 plc.Disconnect();
 ```
 
-### 从 CSV 提取中位截面
+### 从 CSV 提取平均代表截面
 ```csharp
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail;
@@ -313,22 +341,24 @@ IPointCloudRepresentativeProfileService profileService = new PointCloudRepresent
 MedianSectionExtractionResult extractionResult =
     profileService.ExtractMedianSectionProfileFromCsv(@"D:\data\point-cloud.csv");
 
-double medianY = extractionResult.MedianY;
+double representativeY = extractionResult.RepresentativeY;
 IReadOnlyList<RailProfilePoint> profilePoints = extractionResult.ProfilePoints;
 ```
 
-### 采集单帧点云并提取截面
+### 采集单帧点云并提取平均代表截面
 ```csharp
+using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail;
 
 IPointCloudMedianSectionCaptureService captureService = new PointCloudMedianSectionCaptureService();
 
+var settings = new PointCloudCaptureSettings(speedKmPerHour: 9.0, profileCount: 256);
 PointCloudMedianSectionCaptureResult captureResult =
-    captureService.CaptureMedianSectionProfile("DEVICE_SERIAL_NUMBER");
+    captureService.CaptureMedianSectionProfile("DEVICE_SERIAL_NUMBER", PointCloudDeviceSide.Left, settings);
 
 string csvPath = captureResult.CsvPath;
-double medianY = captureResult.ExtractionResult.MedianY;
+double representativeY = captureResult.ExtractionResult.RepresentativeY;
 IReadOnlyList<RailProfilePoint> sectionPoints = captureResult.ExtractionResult.ProfilePoints;
 ```
 
@@ -361,13 +391,16 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 如果从“对外调用方式”理解 API，则当前主要通过以下服务类对外提供能力：
 
 - `IPlcClient`：PLC 连接、读取、写入
-- `PointCloudExportService`：点云设备枚举与文件导出
-- `IPointCloudRepresentativeProfileService`：从在线点集/CSV 提取中位截面
+- `PointCloudExportService`：点云设备枚举、3D 点云模式采集、采集参数写入与文件导出
+- `PointCloudCaptureSettingsStore`：点云在线采集参数持久化
+- `IPointCloudRepresentativeProfileService`：从在线点集/CSV 提取平均代表截面
 - `IPointCloudMedianSectionCaptureService`：采集点云并提取截面
 - `RailSurfaceService`：标准轨面、打磨深度、代表廓形 `b` 值、检测基线生成/持久化及已打磨深度检测
 
 ## 构建与兼容性说明
 - 当前命令行构建命令为 `dotnet build GrindCar.sln`
+- 当前单元测试命令为 `dotnet test GrindCar.sln`
+- `GrindCar.Tests` 已覆盖点云采集参数计算/持久化、点云设备参数范围校验、平均代表截面插值提取以及代表截面 CSV 导出头 `RepresentativeY`
 - 当前已知主要 NuGet 警告为 `NU1701`
 - 该警告主要来自 `NModbus4 3.0.0-alpha1` 对 `net6.0-windows` 的兼容性声明不完整
 - 如需进一步降低构建风险，优先评估替换或升级 Modbus 依赖
@@ -377,7 +410,10 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 
 ## 注意事项
 - 不要将 Modbus 地址、比例和单位散落到界面层或 code-behind 中
+- 在线点云采集默认使用 `ImageMode=4` 的 3D 点云模式；`Range=7` 深度图模式仅保留常量，不作为默认采集路径
+- 在线点云采集会按主界面保存的 `point-cloud-capture-settings.json` 写入 `AcquisitionFrameRate` 和 `Height`；配置不存在时会提示先设置并保存点云采集参数
 - 点云采集默认走在线提取，在线失败时会在运行目录 `Log/` 目录落盘 `CSV` 后回退处理
+- 代表截面调试导出的 CSV 首行为 `RepresentativeY,<value>`，默认文件名包含 `representative_section`
 - 代表点预处理逻辑会先离群点过滤，再按设备侧别识别外侧非工作面直线，并将非工作面顶部临界点平移对齐到标准轨面 `x=-35.4` 或 `x=35.4`
 - 点云设备侧别配置文件为运行目录下的 `point-cloud-devices.json`，未配置设备不会参与默认推断，会直接报错
 - 测量参数写入使用地址 `D1140/D1142`，比例 `/100000`，写入入口位于主界面参数区

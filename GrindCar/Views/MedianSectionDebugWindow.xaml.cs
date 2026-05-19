@@ -7,7 +7,7 @@ using Microsoft.Win32;
 namespace GrindCar.Views;
 
 /// <summary>
-/// 中位 Y 截面调试窗口。
+/// 代表截面调试窗口。
 /// </summary>
 public partial class MedianSectionDebugWindow : Window
 {
@@ -15,7 +15,7 @@ public partial class MedianSectionDebugWindow : Window
     private readonly MedianSectionDebugViewModel _viewModel = new();
 
     /// <summary>
-    /// 初始化中位截面调试窗口并绑定当前窗口为数据上下文。
+    /// 初始化代表截面调试窗口并绑定当前窗口为数据上下文。
     /// </summary>
     public MedianSectionDebugWindow()
     {
@@ -24,7 +24,7 @@ public partial class MedianSectionDebugWindow : Window
     }
 
     /// <summary>
-    /// 选择 CSV 文件并异步提取中位截面点集。
+    /// 选择 CSV 文件并异步提取代表截面点集。
     /// </summary>
     private async void ImportFile_Click(object sender, RoutedEventArgs e)
     {
@@ -54,7 +54,7 @@ public partial class MedianSectionDebugWindow : Window
         }
         catch (Exception ex)
         {
-            const string message = "提取中位 Y 截面时发生未处理异常。";
+            const string message = "提取平均代表截面时发生未处理异常。";
             _viewModel.SetErrorStatus($"{message} {ex.Message}");
             MessageBox.Show(this, $"{message}\n{ex.Message}", "提取失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }

@@ -181,7 +181,7 @@
                                 Click="OpenPointCloudExportWindow_Click" />
                         <Button Style="{StaticResource SecondaryButtonStyle}"
                                 Margin="0,0,8,8"
-                                Content="中位截面调试"
+                                Content="代表截面调试"
                                 Click="OpenMedianSectionDebugWindow_Click" />
                         <Button Style="{StaticResource SecondaryButtonStyle}"
                                 Margin="0,0,8,8"
@@ -241,6 +241,7 @@
                     Style="{StaticResource PanelCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -352,7 +353,77 @@
                         </Grid>
                     </StackPanel>
 
-                    <StackPanel Grid.Row="3"
+                    <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,14,12,0">
+                        <TextBlock Text="小车运行速度" Style="{StaticResource CaptionStyle}" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="CarSpeedTextBox"
+                                     Height="34"
+                                     Padding="8,4"
+                                     VerticalContentAlignment="Center"
+                                     Foreground="{StaticResource PrimaryTextBrush}"
+                                     Background="#0F1722"
+                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CarSpeedText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Text="km/h" />
+                        </Grid>
+                    </StackPanel>
+
+                    <Grid Grid.Row="3" Grid.Column="1" Margin="12,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock Text="单次测量总条数" Style="{StaticResource CaptionStyle}" />
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="ProfileCountTextBox"
+                                         Height="34"
+                                         Padding="8,4"
+                                         VerticalContentAlignment="Center"
+                                         Foreground="{StaticResource PrimaryTextBrush}"
+                                         Background="#0F1722"
+                                         BorderBrush="{StaticResource CardBorderBrush}"
+                                         IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                         Text="{Binding ElementName=MainWindowRoot, Path=Measurement.ProfileCountText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           Text="条" />
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="计算帧率" Style="{StaticResource CaptionStyle}" />
+                            <Border Margin="0,8,0,0"
+                                    Height="34"
+                                    Padding="8,4"
+                                    Background="#0F1722"
+                                    BorderBrush="{StaticResource CardBorderBrush}"
+                                    BorderThickness="1">
+                                <TextBlock VerticalAlignment="Center"
+                                           Foreground="{StaticResource PrimaryTextBrush}"
+                                           FontFamily="Consolas"
+                                           Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CalculatedFrameRateText}" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Grid.Row="4"
                                 Grid.ColumnSpan="2"
                                 Margin="0,16,0,0">
                         <StackPanel Orientation="Horizontal">
@@ -369,6 +440,13 @@
                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                     Content="写入打磨起止点"
                                     Click="WriteGrindingParameters_Click" />
+                            <Button x:Name="SavePointCloudCaptureSettingsButton"
+                                    Margin="10,0,0,0"
+                                    MinWidth="180"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
+                                    Content="保存点云采集参数"
+                                    Click="SavePointCloudCaptureSettings_Click" />
                             <Button x:Name="StartMeasurementMotionButton"
                                     Margin="10,0,0,0"
                                     MinWidth="180"

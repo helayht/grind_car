@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
+using GrindCar.Services.PointCloud;
 using GrindCar.Services.Rail.Core;
 
 namespace GrindCar.Services;
@@ -35,7 +37,8 @@ public static class RailSurfaceService
             return new GrindDepthCalculationResult(Array.Empty<GrindDepthResult>(), Array.Empty<RailProfilePoint>());
         }
 
-        IReadOnlyList<RailProfilePoint> representativeSectionPoints = CaptureRepresentativeSectionPoints();
+        PointCloudCaptureSettings captureSettings = LoadPointCloudCaptureSettings();
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints = CaptureRepresentativeSectionPoints(captureSettings);
         var results = new List<GrindDepthResult>(angles.Count);
 
         for (int index = 0; index < angles.Count; index++)
@@ -139,7 +142,8 @@ public static class RailSurfaceService
             throw new InvalidOperationException("基线角度列表为空。");
         }
 
-        IReadOnlyList<RailProfilePoint> representativePoints = CaptureRepresentativeSectionPoints();
+        PointCloudCaptureSettings captureSettings = LoadPointCloudCaptureSettings();
+        IReadOnlyList<RailProfilePoint> representativePoints = CaptureRepresentativeSectionPoints(captureSettings);
         IReadOnlyList<AngleBValue> currentBValues = CalculateBValues(baseline.Angles, representativePoints);
 
         var baselineMap = new Dictionary<int, double>(baseline.BaselineBValues.Count);
@@ -179,7 +183,16 @@ public static class RailSurfaceService
     /// </summary>
     public static IReadOnlyList<RailProfilePoint> CaptureRepresentativeSectionPoints()
     {
-        return RepresentativeSectionCaptureService.CaptureRepresentativeSectionPoints();
+        PointCloudCaptureSettings captureSettings = LoadPointCloudCaptureSettings();
+        return CaptureRepresentativeSectionPoints(captureSettings);
+    }
+
+    /// <summary>
+    /// 从所有可用点云设备按给定参数采集并合并代表截面点集。
+    /// </summary>
+    public static IReadOnlyList<RailProfilePoint> CaptureRepresentativeSectionPoints(PointCloudCaptureSettings captureSettings)
+    {
+        return RepresentativeSectionCaptureService.CaptureRepresentativeSectionPoints(captureSettings);
     }
 
     /// <summary>
@@ -210,5 +223,10 @@ public static class RailSurfaceService
     {
         double radians = angle * DegreesToRadiansFactor;
         return Math.Tan(radians);
+    }
+
+    private static PointCloudCaptureSettings LoadPointCloudCaptureSettings()
+    {
+        return new PointCloudCaptureSettingsStore().LoadRequired();
     }
 }

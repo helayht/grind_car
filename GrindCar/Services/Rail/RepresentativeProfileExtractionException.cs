@@ -3,7 +3,7 @@ using System;
 namespace GrindCar.Services.Rail;
 
 /// <summary>
-/// 表示代表截面或中位截面提取过程中发生的异常。
+/// 表示代表截面提取过程中发生的异常。
 /// </summary>
 public sealed class RepresentativeProfileExtractionException : Exception
 {
