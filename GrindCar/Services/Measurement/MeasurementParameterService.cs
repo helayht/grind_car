@@ -16,6 +16,17 @@ public class MeasurementParameterService : IMeasurementParameterService
     private const byte DefaultUnitId = 1;
     private const int DefaultPollIntervalMs = 300;
     private const double GrindingTimesDepthStep = 0.05;
+    private readonly Func<string, int, IPlcClient> _plcClientFactory;
+
+    public MeasurementParameterService()
+        : this(CreateDefaultPlcClient)
+    {
+    }
+
+    internal MeasurementParameterService(Func<string, int, IPlcClient> plcClientFactory)
+    {
+        _plcClientFactory = plcClientFactory ?? throw new ArgumentNullException(nameof(plcClientFactory));
+    }
 
     public static int CalculateGrindingTimes(double grindDepth)
     {
@@ -48,7 +59,7 @@ public class MeasurementParameterService : IMeasurementParameterService
             MotorParameterDefinitions.MeasurementEndPositionScale,
             MotorParameterDefinitions.MeasurementEndPositionName);
 
-        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
         plcClient.WriteInt32(MotorParameterDefinitions.MeasurementStartPositionAddress, startRawValue);
         plcClient.WriteInt32(MotorParameterDefinitions.MeasurementEndPositionAddress, endRawValue);
@@ -71,7 +82,7 @@ public class MeasurementParameterService : IMeasurementParameterService
             MotorParameterDefinitions.GrindingEndPositionScale,
             MotorParameterDefinitions.GrindingEndPositionName);
 
-        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
         plcClient.WriteInt32(MotorParameterDefinitions.GrindingStartPositionAddress, startRawValue);
         plcClient.WriteInt32(MotorParameterDefinitions.GrindingEndPositionAddress, endRawValue);
@@ -80,7 +91,7 @@ public class MeasurementParameterService : IMeasurementParameterService
 
     public async Task StartMeasurementMotionAsync(string ipAddress, int port)
     {
-        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
         await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.MeasurementMotionStartAddress, true)
             .ConfigureAwait(false);
@@ -89,7 +100,7 @@ public class MeasurementParameterService : IMeasurementParameterService
 
     public async Task StartGrindingMotionAsync(string ipAddress, int port)
     {
-        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
         await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.GrindingMotionStartAddress, true)
             .ConfigureAwait(false);
@@ -106,7 +117,7 @@ public class MeasurementParameterService : IMeasurementParameterService
             throw new InvalidOperationException("没有可写入的打磨次数。");
         }
 
-        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
 
         for (int index = 0; index < results.Count; index++)
@@ -117,8 +128,7 @@ public class MeasurementParameterService : IMeasurementParameterService
                 throw new InvalidOperationException($"角度 {result.Angle} 未配置打磨次数写入地址。");
             }
 
-            int grindingTimes = CalculateGrindingTimes(result.AverageGrindDepth);
-            plcClient.WriteInt32(address, grindingTimes);
+            plcClient.WriteInt32(address, result.GrindingTimes);
         }
 
         plcClient.Disconnect();
@@ -133,7 +143,7 @@ public class MeasurementParameterService : IMeasurementParameterService
         IReadOnlyList<int> angles = MotorParameterDefinitions.MeasurementGrindingAngles;
         var depthAccumulatorMap = CreateDepthAccumulatorMap(angles);
 
-        using IPlcClient plcClient = new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
+        using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
 
         Report(progress, "已连接 PLC，准备启动测量运行。");
@@ -252,6 +262,11 @@ public class MeasurementParameterService : IMeasurementParameterService
     private static void Report(IProgress<string>? progress, string message)
     {
         progress?.Report(message);
+    }
+
+    private static IPlcClient CreateDefaultPlcClient(string ipAddress, int port)
+    {
+        return new PlcModbusCommunicator(ipAddress, port, DefaultUnitId);
     }
 
     private sealed class DepthAccumulator

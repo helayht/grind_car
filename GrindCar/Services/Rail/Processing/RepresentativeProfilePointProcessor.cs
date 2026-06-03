@@ -799,14 +799,17 @@ internal static class RepresentativeProfilePointProcessor
             throw new ArgumentException("输入数组不能为空。", nameof(values));
         }
 
-        double[] sorted = values.OrderBy(value => value).ToArray();
-        int mid = sorted.Length / 2;
-        if (sorted.Length % 2 == 0)
+        double[] firstSelectionValues = values.ToArray();
+        int mid = firstSelectionValues.Length / 2;
+        if (firstSelectionValues.Length % 2 == 0)
         {
-            return (sorted[mid - 1] + sorted[mid]) / 2.0;
+            double[] secondSelectionValues = values.ToArray();
+            double lowerMedian = QuickSelect.SelectKthSmallest(firstSelectionValues, mid - 1);
+            double upperMedian = QuickSelect.SelectKthSmallest(secondSelectionValues, mid);
+            return (lowerMedian + upperMedian) / 2.0;
         }
 
-        return sorted[mid];
+        return QuickSelect.SelectKthSmallest(firstSelectionValues, mid);
     }
 
     private readonly record struct BoundaryLineFitResult(FittedLine Line, IReadOnlyList<RailProfilePoint> Inliers);

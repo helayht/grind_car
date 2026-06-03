@@ -19,8 +19,8 @@ public partial class PlcModbusCommunicator : IPlcClient
     private readonly byte _unitId;
     private bool _isConnected;
 
-    public bool _isCompleted1;
-    public bool _isCompleted2;
+    private volatile bool _isCompleted1;
+    private volatile bool _isCompleted2;
     public List<object> LeftValue { get; } = new();
     public List<object> RightValue { get; } = new();
 

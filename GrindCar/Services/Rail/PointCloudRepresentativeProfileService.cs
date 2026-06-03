@@ -11,7 +11,9 @@ namespace GrindCar.Services.Rail;
 /// X -> 轨面横向 X
 /// Y -> 高度 Z
 /// </summary>
-public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresentativeProfileService
+public sealed class PointCloudRepresentativeProfileService :
+    IPointCloudRepresentativeProfileService,
+    IPointCloudRepresentativeProfilePointExtractor
 {
     private const double Tolerance = 1e-7;
     private const int MinValidSectionCount = 2;
@@ -65,6 +67,13 @@ public sealed class PointCloudRepresentativeProfileService : IPointCloudRepresen
         PointCloudDeviceSide side)
     {
         return ExtractMedianSectionProfileCore(points, side);
+    }
+
+    MedianSectionExtractionResult IPointCloudRepresentativeProfilePointExtractor.ExtractMedianSectionProfileFromPoints(
+        IReadOnlyList<PointCloudPoint3D> points,
+        PointCloudDeviceSide side)
+    {
+        return ExtractMedianSectionProfileFromPoints(points, side);
     }
 
     private static MedianSectionExtractionResult ExtractMedianSectionProfileCore(

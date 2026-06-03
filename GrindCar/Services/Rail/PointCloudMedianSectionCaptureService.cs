@@ -17,7 +17,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
 {
     private const string DefaultLogDirectoryName = "Log";
     private const string CsvFilePrefix = "point-cloud";
-    private readonly PointCloudExportService _pointCloudExportService;
+    private readonly IPointCloudExportService _pointCloudExportService;
     private readonly IPointCloudRepresentativeProfileService _representativeProfileService;
     private readonly string _logDirectoryPath;
 
@@ -26,7 +26,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     /// </summary>
     public PointCloudMedianSectionCaptureService()
         : this(
-            new PointCloudExportService(),
+            new PointCloudExportServiceAdapter(new PointCloudExportService()),
             new PointCloudRepresentativeProfileService(),
             Path.Combine(Environment.CurrentDirectory, DefaultLogDirectoryName))
     {
@@ -40,6 +40,17 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     /// <param name="logDirectoryPath">CSV 回退模式的落盘目录。</param>
     public PointCloudMedianSectionCaptureService(
         PointCloudExportService pointCloudExportService,
+        IPointCloudRepresentativeProfileService representativeProfileService,
+        string logDirectoryPath)
+        : this(
+            new PointCloudExportServiceAdapter(pointCloudExportService),
+            representativeProfileService,
+            logDirectoryPath)
+    {
+    }
+
+    internal PointCloudMedianSectionCaptureService(
+        IPointCloudExportService pointCloudExportService,
         IPointCloudRepresentativeProfileService representativeProfileService,
         string logDirectoryPath)
     {
@@ -83,7 +94,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
             throw new ArgumentNullException(nameof(captureSettings));
         }
 
-        if (_representativeProfileService is PointCloudRepresentativeProfileService representativeProfileService)
+        if (_representativeProfileService is IPointCloudRepresentativeProfilePointExtractor representativeProfileService)
         {
             IReadOnlyList<PointCloudPoint3D>? points = null;
             try
@@ -95,11 +106,18 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
                 // 在线读取失败时自动回退到 CSV 方案，避免阻断业务流程。
             }
 
-            if (points != null)
+            if (points != null && points.Count > 0)
             {
-                MedianSectionExtractionResult onlineExtractionResult =
-                    representativeProfileService.ExtractMedianSectionProfileFromPoints(points, side);
-                return new PointCloudMedianSectionCaptureResult(string.Empty, onlineExtractionResult);
+                try
+                {
+                    MedianSectionExtractionResult onlineExtractionResult =
+                        representativeProfileService.ExtractMedianSectionProfileFromPoints(points, side);
+                    return new PointCloudMedianSectionCaptureResult(string.Empty, onlineExtractionResult);
+                }
+                catch (RepresentativeProfileExtractionException)
+                {
+                    // 在线提取失败时回退到 CSV，保留原有业务链路的可用性。
+                }
             }
         }
 

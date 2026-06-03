@@ -45,3 +45,5 @@ D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\Mv3dLpNet.dll
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.exe
 D:\工作\轨面打磨\GrindCar\GrindCar\bin\Debug\net6.0-windows\GrindCar.pdb
 D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\GrindCar.pdb
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDepthConfirmationWindow.baml
+D:\工作\轨面打磨\GrindCar\GrindCar\obj\Debug\net6.0-windows\Views\GrindDepthConfirmationWindow.g.cs

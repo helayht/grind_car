@@ -10,23 +10,7 @@ public static class MeasurementInputParser
 {
     public static double ParsePosition(string? rawValue, string parameterName)
     {
-        if (string.IsNullOrWhiteSpace(rawValue))
-        {
-            throw new InvalidOperationException($"{parameterName}不能为空。");
-        }
-
-        string text = rawValue.Trim();
-        if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value))
-        {
-            return value;
-        }
-
-        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
-        {
-            return value;
-        }
-
-        throw new InvalidOperationException($"{parameterName}格式无效。");
+        return ParseDouble(rawValue, parameterName);
     }
 
     public static double ParsePositiveDouble(string? rawValue, string parameterName)

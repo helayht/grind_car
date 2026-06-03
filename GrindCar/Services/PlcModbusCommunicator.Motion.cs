@@ -24,7 +24,7 @@ public partial class PlcModbusCommunicator
             catch (Exception ex)
             {
                 Debug.WriteLine($"MoveAndMonitorAsync: Connection failed: {ex.Message}");
-                return;
+                throw;
             }
         }
 
@@ -45,6 +45,9 @@ public partial class PlcModbusCommunicator
 
         _isCompleted1 = false;
         _isCompleted2 = false;
+        Debug.WriteLine($"MoveAndMonitorAsync: Completion flags reset. X={_isCompleted1}, Y={_isCompleted2}.");
+        bool xStarted = false;
+        bool yStarted = false;
 
         try
         {
@@ -53,12 +56,14 @@ public partial class PlcModbusCommunicator
             WriteFloat(ySpeedAddress, commonSpeed);
             Debug.WriteLine($"MoveAndMonitorAsync: Starting Y axis (Coil {yRunFlagAddress}).");
             await WriteSingleCoilAsync(yRunFlagAddress, true).ConfigureAwait(false);
+            yStarted = true;
 
             Debug.WriteLine($"MoveAndMonitorAsync: Setting X target to {xTarget}, speed to {commonSpeed}.");
             WriteFloat(xPositionAddress, xTarget);
             WriteFloat(xSpeedAddress, commonSpeed);
             Debug.WriteLine($"MoveAndMonitorAsync: Starting X axis (Coil {xRunFlagAddress}).");
             await WriteSingleCoilAsync(xRunFlagAddress, true).ConfigureAwait(false);
+            xStarted = true;
 
             Debug.WriteLine($"MoveAndMonitorAsync: Starting monitoring for X completion (Coil {xCompletionFlagAddress}).");
             StartContinuousCoilReading(xCompletionFlagAddress, 1, coilPollInterval);
@@ -71,6 +76,28 @@ public partial class PlcModbusCommunicator
             Debug.WriteLine($"MoveAndMonitorAsync: Error during movement/monitoring setup: {ex.Message}");
             StopContinuousCoilReading();
             StopContinuousCoilReading2();
+            await StopStartedAxisAsync(xRunFlagAddress, xStarted, "X").ConfigureAwait(false);
+            await StopStartedAxisAsync(yRunFlagAddress, yStarted, "Y").ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task StopStartedAxisAsync(ushort runFlagAddress, bool isStarted, string axisName)
+    {
+        if (!isStarted)
+        {
+            return;
+        }
+
+        try
+        {
+            Debug.WriteLine($"MoveAndMonitorAsync: Stopping {axisName} axis (Coil {runFlagAddress}).");
+            await WriteSingleCoilAsync(runFlagAddress, false).ConfigureAwait(false);
+        }
+        catch (Exception stopException)
+        {
+            Debug.WriteLine(
+                $"MoveAndMonitorAsync: Failed to stop {axisName} axis (Coil {runFlagAddress}): {stopException.Message}");
         }
     }
 

@@ -18,7 +18,7 @@ public partial class PlcModbusCommunicator
         IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
-            modbusMaster.WriteSingleCoil(1, coilAddress, value);
+            modbusMaster.WriteSingleCoil(_unitId, coilAddress, value);
             Debug.WriteLine($"Modbus: Wrote Coil {coilAddress}={value}");
         }
         catch (Exception ex)
@@ -40,7 +40,7 @@ public partial class PlcModbusCommunicator
         IModbusMaster modbusMaster = GetModbusMaster();
         try
         {
-            bool[] response = modbusMaster.ReadCoils(1, coilAddress, 1);
+            bool[] response = modbusMaster.ReadCoils(_unitId, coilAddress, 1);
             if (response != null && response.Length > 0)
             {
                 return response[0];
