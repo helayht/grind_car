@@ -144,7 +144,10 @@
                     <TextBlock Text="{Binding ConnectionStatus}" Style="{StaticResource SubHeaderText}" Margin="0,6,0,0" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding UsesSharedConnection, Converter={StaticResource InverseBoolToVisibility}}">
                     <TextBlock Text="IP" Margin="0,0,6,0" VerticalAlignment="Center" />
                     <TextBox Width="140"
                              Text="{Binding IpAddress, UpdateSourceTrigger=PropertyChanged}"

@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using GrindCar.Services;
 using GrindCar.Services.Measurement;
 using GrindCar.ViewModels;
 
@@ -12,10 +13,11 @@ public partial class MainWindow : Window
 {
     private const string DefaultMeasurementPlcIpAddress = "192.168.1.10";
     private const int DefaultMeasurementPlcPort = 502;
+    private const byte DefaultPlcUnitId = 1;
 
     private readonly MotorViewModel _viewModel = new();
-    private readonly MainWindowMeasurementViewModel _measurementViewModel =
-        new(new MeasurementParameterService(), DefaultMeasurementPlcIpAddress, DefaultMeasurementPlcPort);
+    private readonly SharedPlcConnectionService _plcConnection;
+    private readonly MainWindowMeasurementViewModel _measurementViewModel;
 
     public MainWindowMeasurementViewModel Measurement => _measurementViewModel;
 
@@ -24,6 +26,16 @@ public partial class MainWindow : Window
     /// </summary>
     public MainWindow()
     {
+        _plcConnection = new SharedPlcConnectionService(
+            DefaultMeasurementPlcIpAddress,
+            DefaultMeasurementPlcPort,
+            DefaultPlcUnitId);
+        _measurementViewModel = new MainWindowMeasurementViewModel(
+            new MeasurementParameterService((ipAddress, port) => _plcConnection.CreateClientLease()),
+            _plcConnection,
+            DefaultMeasurementPlcIpAddress,
+            DefaultMeasurementPlcPort);
+
         InitializeComponent();
         DataContext = _viewModel;
         _measurementViewModel.MeasurementEnded += MeasurementViewModel_MeasurementEnded;
@@ -37,6 +49,7 @@ public partial class MainWindow : Window
     {
         _measurementViewModel.MeasurementEnded -= MeasurementViewModel_MeasurementEnded;
         _viewModel.Shutdown();
+        _plcConnection.Dispose();
     }
 
     private void MeasurementViewModel_MeasurementEnded()
@@ -49,7 +62,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OpenMotorDebugWindow_Click(object sender, RoutedEventArgs e)
     {
-        var window = new MotorDebugWindow
+        var window = new MotorDebugWindow(_plcConnection)
         {
             Owner = this
         };
@@ -102,7 +115,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// 打开 PLC 连接设置窗口并应用配置。
     /// </summary>
-    private void OpenPlcConnectionSettings_Click(object sender, RoutedEventArgs e)
+    private async void OpenPlcConnectionSettings_Click(object sender, RoutedEventArgs e)
     {
         var window = new PlcConnectionSettingsWindow(Measurement.PlcIpAddress, Measurement.PlcPort)
         {
@@ -111,7 +124,15 @@ public partial class MainWindow : Window
 
         if (window.ShowDialog() == true)
         {
-            Measurement.UpdateEndpoint(window.SelectedIpAddress, window.SelectedPort);
+            try
+            {
+                await Measurement.ConnectPlcAsync(window.SelectedIpAddress, window.SelectedPort);
+            }
+            catch (Exception ex)
+            {
+                Measurement.SetErrorStatus($"PLC连接失败：{ex.Message}");
+                MessageBox.Show(this, ex.Message, "PLC连接失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 

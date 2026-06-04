@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using GrindCar.Definitions;
 using GrindCar.Models.PointCloud;
+using GrindCar.Services;
 using GrindCar.Services.Measurement;
 using GrindCar.Services.PointCloud;
 
@@ -21,6 +22,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     private const string ProfileCountParameterName = "单次测量总条数";
 
     private readonly IMeasurementParameterService _measurementParameterService;
+    private readonly SharedPlcConnectionService _plcConnection;
     private readonly PointCloudCaptureSettingsStore _pointCloudCaptureSettingsStore;
 
     private string _plcIpAddress;
@@ -36,14 +38,17 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 
     public MainWindowMeasurementViewModel(
         IMeasurementParameterService measurementParameterService,
+        SharedPlcConnectionService plcConnection,
         string defaultIpAddress,
         int defaultPort,
         PointCloudCaptureSettingsStore? pointCloudCaptureSettingsStore = null)
     {
         _measurementParameterService = measurementParameterService ?? throw new ArgumentNullException(nameof(measurementParameterService));
+        _plcConnection = plcConnection ?? throw new ArgumentNullException(nameof(plcConnection));
         _pointCloudCaptureSettingsStore = pointCloudCaptureSettingsStore ?? new PointCloudCaptureSettingsStore();
         _plcIpAddress = defaultIpAddress;
         _plcPort = defaultPort;
+        _plcConnection.PropertyChanged += PlcConnection_PropertyChanged;
         LoadPointCloudCaptureSettings();
     }
 
@@ -56,6 +61,8 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     public string PlcIpAddress => _plcIpAddress;
 
     public int PlcPort => _plcPort;
+
+    public string PlcConnectionStatus => _plcConnection.ConnectionStatus;
 
     public string StartPositionText
     {
@@ -198,14 +205,22 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 
     public bool CanOperate => !IsBusy;
 
-    public void UpdateEndpoint(string ipAddress, int port)
+    public async Task ConnectPlcAsync(string ipAddress, int port)
     {
-        _plcIpAddress = ipAddress;
-        _plcPort = port;
-        OnPropertyChanged(nameof(EndpointText));
-        OnPropertyChanged(nameof(PlcIpAddress));
-        OnPropertyChanged(nameof(PlcPort));
-        StatusMessage = $"PLC连接参数已更新：{EndpointText}";
+        try
+        {
+            IsBusy = true;
+            StatusMessage = $"正在连接 PLC：{ipAddress}:{port}";
+            await _plcConnection.ConnectAsync(ipAddress, port).ConfigureAwait(true);
+            _plcIpAddress = _plcConnection.IpAddress;
+            _plcPort = _plcConnection.Port;
+            NotifyEndpointChanged();
+            StatusMessage = $"PLC连接成功：{EndpointText}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public async Task WriteMeasurementParametersAsync()
@@ -388,6 +403,21 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         }
 
         uiContext.Post(_ => MeasurementEnded?.Invoke(), null);
+    }
+
+    private void PlcConnection_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SharedPlcConnectionService.ConnectionStatus))
+        {
+            OnPropertyChanged(nameof(PlcConnectionStatus));
+        }
+    }
+
+    private void NotifyEndpointChanged()
+    {
+        OnPropertyChanged(nameof(EndpointText));
+        OnPropertyChanged(nameof(PlcIpAddress));
+        OnPropertyChanged(nameof(PlcPort));
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

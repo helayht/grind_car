@@ -40,6 +40,9 @@ public class MotorViewModel : INotifyPropertyChanged
     private readonly DispatcherTimer _dashboardTimer;
     private readonly IReadOnlyDictionary<string, MotorParameterWriteSpec> _writeSpecs;
     private readonly IReadOnlyDictionary<string, double> _readScales;
+    private readonly bool _usesSharedConnection;
+    private readonly bool _ownsPlcConnection;
+    private readonly string? _sharedEndpointText;
 
     private CancellationTokenSource? _pollingCts;
     private Task? _pollingTask;
@@ -58,8 +61,27 @@ public class MotorViewModel : INotifyPropertyChanged
     /// 初始化电机调试视图模型，构建参数集合、命令和首页演示数据。
     /// </summary>
     public MotorViewModel()
+        : this(null, null, usesSharedConnection: false)
+    {
+    }
+
+    /// <summary>
+    /// 使用主界面共享 PLC 连接初始化电机调试视图模型。
+    /// </summary>
+    /// <param name="sharedPlcClient">共享 PLC 连接代理。</param>
+    /// <param name="sharedEndpointText">共享连接端点显示文本。</param>
+    public MotorViewModel(IPlcClient sharedPlcClient, string sharedEndpointText)
+        : this(sharedPlcClient, sharedEndpointText, usesSharedConnection: true)
+    {
+    }
+
+    private MotorViewModel(IPlcClient? sharedPlcClient, string? sharedEndpointText, bool usesSharedConnection)
     {
         _uiContext = SynchronizationContext.Current ?? new SynchronizationContext();
+        _usesSharedConnection = usesSharedConnection;
+        _ownsPlcConnection = !usesSharedConnection;
+        _sharedEndpointText = sharedEndpointText;
+        _plc = sharedPlcClient;
         _writeSpecs = MotorParameterSpecProvider.BuildWriteSpecs();
         _readScales = MotorParameterSpecProvider.BuildReadScales();
 
@@ -103,6 +125,15 @@ public class MotorViewModel : INotifyPropertyChanged
         };
         _dashboardTimer.Tick += DashboardTimerTick;
         _dashboardTimer.Start();
+
+        if (_usesSharedConnection)
+        {
+            IpAddress = string.Empty;
+            Port = string.Empty;
+            ConnectionStatus = sharedPlcClient?.IsConnected == true
+                ? $"已复用主界面 PLC 连接 {sharedEndpointText}"
+                : "请先在主界面连接 PLC";
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -118,6 +149,8 @@ public class MotorViewModel : INotifyPropertyChanged
     public ICommand ConnectCommand { get; }
 
     public ICommand DisconnectCommand { get; }
+
+    public bool UsesSharedConnection => _usesSharedConnection;
 
     public string IpAddress
     {
@@ -277,6 +310,22 @@ public class MotorViewModel : INotifyPropertyChanged
             return true;
         }
 
+        if (_usesSharedConnection)
+        {
+            if (_plc?.IsConnected != true)
+            {
+                PostStatus("请先在主界面连接 PLC");
+                IsConnected = false;
+                return false;
+            }
+
+            _pollingCts = new CancellationTokenSource();
+            _pollingTask = PollReadableParametersAsync(_plc, _parameters, pollIntervalMs, _pollingCts.Token);
+            IsConnected = true;
+            PostStatus($"已复用主界面 PLC 连接 {_sharedEndpointText}");
+            return true;
+        }
+
         _plc = new PlcModbusCommunicator(ipAddress, port, unitId);
         PostStatus($"连接中 {ipAddress}:{port} (Unit {unitId})");
 
@@ -309,14 +358,19 @@ public class MotorViewModel : INotifyPropertyChanged
 
         try
         {
-            _plc?.Disconnect();
+            if (_ownsPlcConnection)
+            {
+                _plc?.Disconnect();
+                _plc?.Dispose();
+                _plc = null;
+            }
         }
         catch
         {
             // 忽略断连异常，避免影响 UI 状态恢复。
         }
 
-        PostStatus("未连接");
+        PostStatus(_usesSharedConnection ? "已停止电机调试轮询" : "未连接");
         IsConnected = false;
         IsConnecting = false;
     }
@@ -328,6 +382,11 @@ public class MotorViewModel : INotifyPropertyChanged
     {
         _dashboardTimer.Stop();
         StopPolling();
+    }
+
+    public Task<bool> StartSharedPollingAsync()
+    {
+        return StartPollingAsync(string.Empty, 0, DefaultUnitId, DefaultPollIntervalMs);
     }
 
     /// <summary>

@@ -149,7 +149,7 @@
                                     <TextBlock Margin="7,0,0,0"
                                                VerticalAlignment="Center"
                                                Foreground="{StaticResource PrimaryTextBrush}"
-                                               Text="{Binding ConnectionStatus}" />
+                                               Text="{Binding ElementName=MainWindowRoot, Path=Measurement.PlcConnectionStatus}" />
                                 </StackPanel>
                             </Border>
 
