@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
+using System.Threading;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using GrindCar.Definitions;
@@ -47,6 +48,8 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public event Action? MeasurementEnded;
 
     public string EndpointText => $"{_plcIpAddress}:{_plcPort}";
 
@@ -280,11 +283,13 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
                 $"点云采集参数已保存，帧率 {captureSettings.FrameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz，正在启动测量流程...";
 
             var progress = new Progress<string>(message => StatusMessage = message);
+            SynchronizationContext? uiContext = SynchronizationContext.Current;
             MeasurementGrindingWorkflowResult result =
                 await _measurementParameterService.RunMeasurementWorkflowAsync(
                     _plcIpAddress,
                     _plcPort,
-                    progress).ConfigureAwait(true);
+                    progress,
+                    () => NotifyMeasurementEnded(uiContext)).ConfigureAwait(true);
 
             StatusMessage =
                 $"测量流程完成：累计 {result.SampleCount.ToString(CultureInfo.CurrentCulture)} 次测量，已生成 {result.Results.Count.ToString(CultureInfo.CurrentCulture)} 个角度的打磨深度。";
@@ -372,6 +377,17 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         {
             _statusMessage = $"点云采集参数加载失败：{ex.Message}";
         }
+    }
+
+    private void NotifyMeasurementEnded(SynchronizationContext? uiContext)
+    {
+        if (uiContext == null)
+        {
+            MeasurementEnded?.Invoke();
+            return;
+        }
+
+        uiContext.Post(_ => MeasurementEnded?.Invoke(), null);
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

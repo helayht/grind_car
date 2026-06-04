@@ -24,5 +24,6 @@ public interface IMeasurementParameterService
         string ipAddress,
         int port,
         IProgress<string>? progress = null,
+        Action? measurementEnded = null,
         CancellationToken cancellationToken = default);
 }

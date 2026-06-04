@@ -19,40 +19,16 @@ public static class RepresentativeSectionCaptureService
 
     public static IReadOnlyList<RailProfilePoint> CaptureRepresentativeSectionPoints(PointCloudCaptureSettings captureSettings)
     {
-        IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
-        PointCloudExportService pointCloudExportService = new PointCloudExportService();
-        PointCloudDeviceConfigurationStore configurationStore = new();
-
         if (captureSettings == null)
         {
             throw new ArgumentNullException(nameof(captureSettings));
         }
 
-        IReadOnlyList<PointCloudDeviceInfo> pointCloudDeviceInfos = pointCloudExportService.GetDevices();
-
-        if (pointCloudDeviceInfos.Count == 0)
-        {
-            throw new PointCloudSdkException("未找到任何点云设备。");
-        }
-
-        IReadOnlyDictionary<string, PointCloudDeviceSide> deviceSideMap = configurationStore.LoadDeviceSideMap();
+        IReadOnlyList<ConfiguredPointCloudDevice> configuredDevices = GetAvailableConfiguredDevicesInOrder();
         var mergedPoints = new List<RailProfilePoint>();
-        for (int index = 0; index < pointCloudDeviceInfos.Count; index++)
+        for (int index = 0; index < configuredDevices.Count; index++)
         {
-            PointCloudDeviceInfo pointCloudDeviceInfo = pointCloudDeviceInfos[index];
-            PointCloudDeviceSide side = PointCloudDeviceConfigurationStore.ResolveConfiguredSide(
-                deviceSideMap,
-                pointCloudDeviceInfo.SerialNumber);
-
-            PointCloudMedianSectionCaptureResult result =
-                medianSectionCaptureService.CaptureMedianSectionProfile(pointCloudDeviceInfo.SerialNumber, side, captureSettings);
-
-            if (result.ExtractionResult.ProfilePoints.Count == 0)
-            {
-                continue;
-            }
-
-            mergedPoints.AddRange(result.ExtractionResult.ProfilePoints);
+            mergedPoints.AddRange(CaptureRepresentativeSectionPoints(configuredDevices[index], captureSettings));
         }
 
         if (mergedPoints.Count == 0)
@@ -61,5 +37,59 @@ public static class RepresentativeSectionCaptureService
         }
 
         return mergedPoints;
+    }
+
+    public static IReadOnlyList<ConfiguredPointCloudDevice> GetAvailableConfiguredDevicesInOrder()
+    {
+        PointCloudExportService pointCloudExportService = new();
+        PointCloudDeviceConfigurationStore configurationStore = new();
+
+        IReadOnlyList<PointCloudDeviceInfo> pointCloudDeviceInfos = pointCloudExportService.GetDevices();
+        if (pointCloudDeviceInfos.Count == 0)
+        {
+            throw new PointCloudSdkException("未找到任何点云设备。");
+        }
+
+        var availableSerialNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int index = 0; index < pointCloudDeviceInfos.Count; index++)
+        {
+            availableSerialNumbers.Add(pointCloudDeviceInfos[index].SerialNumber);
+        }
+
+        IReadOnlyList<ConfiguredPointCloudDevice> configuredDevices = configurationStore.LoadDeviceConfigurations();
+        var availableConfiguredDevices = new List<ConfiguredPointCloudDevice>(configuredDevices.Count);
+        for (int index = 0; index < configuredDevices.Count; index++)
+        {
+            ConfiguredPointCloudDevice device = configuredDevices[index];
+            if (!availableSerialNumbers.Contains(device.SerialNumber))
+            {
+                throw new InvalidOperationException($"点云设备 {device.SerialNumber} 已配置但当前未找到。");
+            }
+
+            availableConfiguredDevices.Add(device);
+        }
+
+        return availableConfiguredDevices;
+    }
+
+    public static IReadOnlyList<RailProfilePoint> CaptureRepresentativeSectionPoints(
+        ConfiguredPointCloudDevice device,
+        PointCloudCaptureSettings captureSettings)
+    {
+        if (string.IsNullOrWhiteSpace(device.SerialNumber))
+        {
+            throw new InvalidOperationException("点云设备序列号为空，无法采集代表截面。");
+        }
+
+        if (captureSettings == null)
+        {
+            throw new ArgumentNullException(nameof(captureSettings));
+        }
+
+        IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
+        PointCloudMedianSectionCaptureResult result =
+            medianSectionCaptureService.CaptureMedianSectionProfile(device.SerialNumber, device.Side, captureSettings);
+
+        return result.ExtractionResult.ProfilePoints;
     }
 }

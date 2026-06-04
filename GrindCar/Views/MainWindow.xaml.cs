@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
+        _measurementViewModel.MeasurementEnded += MeasurementViewModel_MeasurementEnded;
         Unloaded += MainWindow_Unloaded;
     }
 
@@ -34,7 +35,13 @@ public partial class MainWindow : Window
     /// </summary>
     private void MainWindow_Unloaded(object sender, RoutedEventArgs e)
     {
+        _measurementViewModel.MeasurementEnded -= MeasurementViewModel_MeasurementEnded;
         _viewModel.Shutdown();
+    }
+
+    private void MeasurementViewModel_MeasurementEnded()
+    {
+        MessageBox.Show(this, "测量结束。", "测量流程", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     /// <summary>

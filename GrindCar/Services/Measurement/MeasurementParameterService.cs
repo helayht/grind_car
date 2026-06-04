@@ -4,7 +4,10 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using GrindCar.Definitions;
+using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
+using GrindCar.Services.PointCloud;
+using GrindCar.Services.Rail.Core;
 
 namespace GrindCar.Services.Measurement;
 
@@ -17,15 +20,28 @@ public class MeasurementParameterService : IMeasurementParameterService
     private const int DefaultPollIntervalMs = 300;
     private const double GrindingTimesDepthStep = 0.05;
     private readonly Func<string, int, IPlcClient> _plcClientFactory;
+    private readonly Func<IReadOnlyList<ConfiguredPointCloudDevice>> _configuredDeviceProvider;
+    private readonly Func<PointCloudCaptureSettings> _captureSettingsProvider;
+    private readonly Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, IReadOnlyList<RailProfilePoint>> _representativePointCapture;
+    private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult> _grindDepthCalculator;
 
     public MeasurementParameterService()
         : this(CreateDefaultPlcClient)
     {
     }
 
-    internal MeasurementParameterService(Func<string, int, IPlcClient> plcClientFactory)
+    internal MeasurementParameterService(
+        Func<string, int, IPlcClient> plcClientFactory,
+        Func<IReadOnlyList<ConfiguredPointCloudDevice>>? configuredDeviceProvider = null,
+        Func<PointCloudCaptureSettings>? captureSettingsProvider = null,
+        Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, IReadOnlyList<RailProfilePoint>>? representativePointCapture = null,
+        Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult>? grindDepthCalculator = null)
     {
         _plcClientFactory = plcClientFactory ?? throw new ArgumentNullException(nameof(plcClientFactory));
+        _configuredDeviceProvider = configuredDeviceProvider ?? RepresentativeSectionCaptureService.GetAvailableConfiguredDevicesInOrder;
+        _captureSettingsProvider = captureSettingsProvider ?? (() => new PointCloudCaptureSettingsStore().LoadRequired());
+        _representativePointCapture = representativePointCapture ?? RepresentativeSectionCaptureService.CaptureRepresentativeSectionPoints;
+        _grindDepthCalculator = grindDepthCalculator ?? RailSurfaceService.CalculateGrindDepths;
     }
 
     public static int CalculateGrindingTimes(double grindDepth)
@@ -138,10 +154,21 @@ public class MeasurementParameterService : IMeasurementParameterService
         string ipAddress,
         int port,
         IProgress<string>? progress = null,
+        Action? measurementEnded = null,
         CancellationToken cancellationToken = default)
     {
         IReadOnlyList<int> angles = MotorParameterDefinitions.MeasurementGrindingAngles;
+        PointCloudCaptureSettings captureSettings = _captureSettingsProvider();
+        IReadOnlyList<ConfiguredPointCloudDevice> configuredDevices = _configuredDeviceProvider();
+        if (configuredDevices.Count != 2)
+        {
+            throw new InvalidOperationException(
+                $"当前测量流程要求配置 2 台廓形仪，实际配置 {configuredDevices.Count.ToString(CultureInfo.InvariantCulture)} 台。");
+        }
+
         var depthAccumulatorMap = CreateDepthAccumulatorMap(angles);
+        var pendingRepresentativePoints = new List<RailProfilePoint>();
+        int nextDeviceIndex = 0;
 
         using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
@@ -151,7 +178,6 @@ public class MeasurementParameterService : IMeasurementParameterService
             .ConfigureAwait(false);
         Report(progress, "已写入测量运行启动信号，开始等待触发。");
 
-        bool previousCaptureTrigger = false;
         int sampleCount = 0;
 
         while (true)
@@ -161,28 +187,57 @@ public class MeasurementParameterService : IMeasurementParameterService
             bool measurementFinished = plcClient.ReadSingleCoil(MotorParameterDefinitions.MeasurementMotionFinishedAddress);
             if (measurementFinished)
             {
+                measurementEnded?.Invoke();
                 Report(progress, "检测到测量运行结束信号，开始汇总打磨深度。");
                 break;
             }
 
             bool captureTrigger = plcClient.ReadSingleCoil(MotorParameterDefinitions.MeasurementProfileCaptureStartAddress);
-            bool isRisingEdge = captureTrigger && !previousCaptureTrigger;
-            previousCaptureTrigger = captureTrigger;
-
-            if (!isRisingEdge)
+            if (!captureTrigger)
             {
                 await Task.Delay(DefaultPollIntervalMs, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            Report(progress, $"检测到单次测量触发，正在计算第 {sampleCount + 1} 次测量结果。");
-            GrindDepthCalculationResult calculationResult = RailSurfaceService.CalculateGrindDepths(angles);
-            AccumulateSingleMeasurement(depthAccumulatorMap, calculationResult.Results);
-            sampleCount++;
+            ConfiguredPointCloudDevice device = configuredDevices[nextDeviceIndex];
+            Report(
+                progress,
+                $"检测到廓形测量触发，正在采集第 {nextDeviceIndex + 1} 台廓形仪 ({device.Side})。");
+
+            IReadOnlyList<RailProfilePoint> devicePoints = _representativePointCapture(device, captureSettings);
+            if (devicePoints.Count > 0)
+            {
+                pendingRepresentativePoints.AddRange(devicePoints);
+            }
 
             await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.MeasurementCurrentProfileCompletedAddress, true)
                 .ConfigureAwait(false);
-            Report(progress, $"第 {sampleCount} 次测量完成，已写入单次完成信号。");
+            Report(progress, $"第 {nextDeviceIndex + 1} 台廓形仪测量完成，已写入当前廓形测量完成信号。");
+
+            nextDeviceIndex++;
+            if (nextDeviceIndex < configuredDevices.Count)
+            {
+                continue;
+            }
+
+            if (pendingRepresentativePoints.Count == 0)
+            {
+                throw new InvalidOperationException("本组测量未能从两台廓形仪提取到有效的代表截面点。");
+            }
+
+            Report(progress, $"两台廓形仪测量完成，正在计算第 {sampleCount + 1} 组打磨深度。");
+            GrindDepthCalculationResult calculationResult =
+                _grindDepthCalculator(angles, pendingRepresentativePoints);
+            AccumulateSingleMeasurement(depthAccumulatorMap, calculationResult.Results);
+            sampleCount++;
+            pendingRepresentativePoints.Clear();
+            nextDeviceIndex = 0;
+            Report(progress, $"第 {sampleCount} 组测量计算完成。");
+        }
+
+        if (nextDeviceIndex != 0)
+        {
+            Report(progress, "检测到未完成的半组测量数据，已忽略该半组。");
         }
 
         if (sampleCount == 0)

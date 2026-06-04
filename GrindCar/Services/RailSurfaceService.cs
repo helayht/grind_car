@@ -39,6 +39,31 @@ public static class RailSurfaceService
 
         PointCloudCaptureSettings captureSettings = LoadPointCloudCaptureSettings();
         IReadOnlyList<RailProfilePoint> representativeSectionPoints = CaptureRepresentativeSectionPoints(captureSettings);
+        return CalculateGrindDepths(angles, representativeSectionPoints);
+    }
+
+    /// <summary>
+    /// 基于已采集的代表截面点集批量计算打磨深度。
+    /// </summary>
+    public static GrindDepthCalculationResult CalculateGrindDepths(
+        IReadOnlyList<int> angles,
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints)
+    {
+        if (angles == null)
+        {
+            throw new ArgumentNullException(nameof(angles));
+        }
+
+        if (representativeSectionPoints == null)
+        {
+            throw new ArgumentNullException(nameof(representativeSectionPoints));
+        }
+
+        if (angles.Count == 0)
+        {
+            return new GrindDepthCalculationResult(Array.Empty<GrindDepthResult>(), representativeSectionPoints);
+        }
+
         var results = new List<GrindDepthResult>(angles.Count);
 
         for (int index = 0; index < angles.Count; index++)

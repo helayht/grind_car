@@ -29,6 +29,19 @@ public sealed class PointCloudDeviceConfigurationStore
 
     public IReadOnlyDictionary<string, PointCloudDeviceSide> LoadDeviceSideMap()
     {
+        IReadOnlyList<ConfiguredPointCloudDevice> devices = LoadDeviceConfigurations();
+        var result = new Dictionary<string, PointCloudDeviceSide>(StringComparer.OrdinalIgnoreCase);
+        for (int index = 0; index < devices.Count; index++)
+        {
+            ConfiguredPointCloudDevice device = devices[index];
+            result[device.SerialNumber] = device.Side;
+        }
+
+        return result;
+    }
+
+    public IReadOnlyList<ConfiguredPointCloudDevice> LoadDeviceConfigurations()
+    {
         if (!File.Exists(_configurationFilePath))
         {
             throw new InvalidOperationException($"点云设备配置文件不存在: {_configurationFilePath}");
@@ -55,7 +68,8 @@ public sealed class PointCloudDeviceConfigurationStore
             throw new InvalidOperationException("点云设备配置中未找到任何设备侧别。");
         }
 
-        var result = new Dictionary<string, PointCloudDeviceSide>(StringComparer.OrdinalIgnoreCase);
+        var serialNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<ConfiguredPointCloudDevice>(document.PointCloudDevices.Count);
         for (int index = 0; index < document.PointCloudDevices.Count; index++)
         {
             PointCloudDeviceConfigurationItem item = document.PointCloudDevices[index];
@@ -70,10 +84,12 @@ public sealed class PointCloudDeviceConfigurationStore
                 throw new InvalidOperationException($"点云设备 {item.SerialNumber} 的 Side 无效，应为 Left 或 Right。");
             }
 
-            if (!result.TryAdd(item.SerialNumber, side))
+            if (!serialNumbers.Add(item.SerialNumber))
             {
                 throw new InvalidOperationException($"点云设备配置中存在重复序列号: {item.SerialNumber}");
             }
+
+            result.Add(new ConfiguredPointCloudDevice(item.SerialNumber, side));
         }
 
         return result;
