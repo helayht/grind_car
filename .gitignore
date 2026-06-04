@@ -1,0 +1,14 @@
+bin/
+obj/
+.idea/
+*.user
+*.suo
+*_wpftmp.csproj
+*.log
+Image_26.csv
+Log/
+GrindCar/Log/
+tmp_obj/
+codex_obj/
+GrindCar/tmp_obj/
+GrindCar.Tests/codex_obj/

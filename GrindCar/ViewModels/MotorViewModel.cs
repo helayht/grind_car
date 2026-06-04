@@ -417,29 +417,29 @@ public class MotorViewModel : INotifyPropertyChanged
             return;
         }
 
-        string input = item.InputValue.Trim();
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            PostStatus("请输入有效数值/开关");
-            return;
-        }
-
         try
         {
             switch (spec.Kind)
             {
                 case MotorParameterDataKind.Bool:
-                    if (!MotorInputParser.TryParseBool(input, out bool boolValue))
+                    bool targetValue = !item.BoolValue;
+                    await _plc.WriteSingleCoilAsync(spec.Address, targetValue).ConfigureAwait(false);
+                    _uiContext.Post(_ =>
                     {
-                        PostStatus("布尔输入无效，请输入 true/false 或 1/0");
-                        return;
-                    }
-
-                    await _plc.WriteSingleCoilAsync(spec.Address, boolValue).ConfigureAwait(false);
+                        item.BoolValue = targetValue;
+                        ConnectionStatus = $"写入成功: {item.Name}";
+                    }, null);
                     break;
 
                 case MotorParameterDataKind.Int32:
-                    if (!MotorInputParser.TryParseNumber(input, out double int32Value))
+                    string int32Input = item.InputValue.Trim();
+                    if (string.IsNullOrWhiteSpace(int32Input))
+                    {
+                        PostStatus("请输入有效数值");
+                        return;
+                    }
+
+                    if (!MotorInputParser.TryParseNumber(int32Input, out double int32Value))
                     {
                         PostStatus("数值输入无效");
                         return;
@@ -453,10 +453,22 @@ public class MotorViewModel : INotifyPropertyChanged
                     }
 
                     _plc.WriteInt32(spec.Address, (int)Math.Round(int32Raw));
+                    _uiContext.Post(_ =>
+                    {
+                        ConnectionStatus = $"写入成功: {item.Name}";
+                        item.InputValue = string.Empty;
+                    }, null);
                     break;
 
                 case MotorParameterDataKind.Int16:
-                    if (!MotorInputParser.TryParseNumber(input, out double int16Value))
+                    string int16Input = item.InputValue.Trim();
+                    if (string.IsNullOrWhiteSpace(int16Input))
+                    {
+                        PostStatus("请输入有效数值");
+                        return;
+                    }
+
+                    if (!MotorInputParser.TryParseNumber(int16Input, out double int16Value))
                     {
                         PostStatus("数值输入无效");
                         return;
@@ -470,18 +482,17 @@ public class MotorViewModel : INotifyPropertyChanged
                     }
 
                     _plc.WriteInt16(spec.Address, (short)Math.Round(int16Raw));
+                    _uiContext.Post(_ =>
+                    {
+                        ConnectionStatus = $"写入成功: {item.Name}";
+                        item.InputValue = string.Empty;
+                    }, null);
                     break;
 
                 default:
                     PostStatus("不支持的数据类型");
                     return;
             }
-
-            _uiContext.Post(_ =>
-            {
-                ConnectionStatus = $"写入成功: {item.Name}";
-                item.InputValue = string.Empty;
-            }, null);
         }
         catch (Exception ex)
         {
@@ -503,7 +514,9 @@ public class MotorViewModel : INotifyPropertyChanged
 
     private void AddWriteOnly(string name)
     {
-        _items.Add(new MotorParameterItemViewModel(name, isReadOnly: false, GetUnit(name)));
+        bool isBoolWrite = _writeSpecs.TryGetValue(name, out MotorParameterWriteSpec spec)
+            && spec.Kind == MotorParameterDataKind.Bool;
+        _items.Add(new MotorParameterItemViewModel(name, isReadOnly: false, GetUnit(name), isBoolWrite));
     }
 
     private static string GetUnit(string name)

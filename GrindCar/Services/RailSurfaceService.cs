@@ -26,7 +26,7 @@ public static class RailSurfaceService
     /// 批量计算打磨深度，并返回过程中使用的代表截面点集。
     /// </summary>
     public static GrindDepthCalculationResult CalculateGrindDepths(IReadOnlyList<int> angles)
-    {
+    { 
         if (angles == null)
         {
             throw new ArgumentNullException(nameof(angles));

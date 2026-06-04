@@ -117,7 +117,7 @@
                         <ColumnDefinition Width="100" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="参数名称" FontWeight="Bold" />
-                    <TextBlock Grid.Column="1" Text="参数值 / 输入" FontWeight="Bold" />
+                    <TextBlock Grid.Column="1" Text="参数值 / 输入 / 切换" FontWeight="Bold" />
                     <TextBlock Grid.Column="2" Text="单位" FontWeight="Bold" />
                 </Grid>
 
@@ -148,7 +148,16 @@
                                                  Text="{Binding InputValue, UpdateSourceTrigger=PropertyChanged}"
                                                  Width="180"
                                                  VerticalAlignment="Center"
-                                                 Visibility="{Binding IsReadOnly, Converter={StaticResource InverseBoolToVisibility}}" />
+                                                 Visibility="{Binding IsValueWrite, Converter={StaticResource BoolToVisibility}}" />
+
+                                        <Button Grid.Column="1"
+                                                Content="{Binding BoolToggleText}"
+                                                Width="72"
+                                                Height="28"
+                                                HorizontalAlignment="Left"
+                                                Visibility="{Binding IsBoolWrite, Converter={StaticResource BoolToVisibility}}"
+                                                Command="{Binding DataContext.ModifyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}" />
 
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding Unit}"
@@ -160,7 +169,7 @@
                                                 Width="72"
                                                 Height="28"
                                                 HorizontalAlignment="Left"
-                                                Visibility="{Binding IsReadOnly, Converter={StaticResource InverseBoolToVisibility}}"
+                                                Visibility="{Binding IsValueWrite, Converter={StaticResource BoolToVisibility}}"
                                                 Command="{Binding DataContext.ModifyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}" />
                                     </Grid>

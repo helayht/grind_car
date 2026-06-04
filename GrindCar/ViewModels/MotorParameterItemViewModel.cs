@@ -10,6 +10,7 @@ public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
 {
     private string _value = string.Empty;
     private string _inputValue = string.Empty;
+    private bool _boolValue;
 
     /// <summary>
     /// 初始化参数项视图模型。
@@ -17,16 +18,33 @@ public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
     /// <param name="name">参数名称。</param>
     /// <param name="isReadOnly">是否为只读参数。</param>
     /// <param name="unit">参数显示单位。</param>
-    public MotorParameterItemViewModel(string name, bool isReadOnly, string unit)
+    /// <param name="isBoolWrite">是否为布尔写入参数。</param>
+    public MotorParameterItemViewModel(string name, bool isReadOnly, string unit, bool isBoolWrite = false)
     {
         Name = name;
         IsReadOnly = isReadOnly;
         Unit = unit;
+        IsBoolWrite = isBoolWrite;
     }
 
     public string Name { get; }
     public bool IsReadOnly { get; }
     public string Unit { get; }
+    public bool IsBoolWrite { get; }
+    public bool IsValueWrite => !IsReadOnly && !IsBoolWrite;
+    public string BoolToggleText => _boolValue ? "复位" : "置位";
+
+    public bool BoolValue
+    {
+        get => _boolValue;
+        set
+        {
+            if (_boolValue == value) return;
+            _boolValue = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(BoolToggleText));
+        }
+    }
 
     public string Value
     {
