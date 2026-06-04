@@ -59,6 +59,71 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="18" />
         </Style>
+
+        <Style x:Key="BoolSwitchButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="58" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Width="{TemplateBinding Width}"
+                                Height="{TemplateBinding Height}"
+                                Background="Transparent">
+                            <Grid Width="56"
+                                  Height="28"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center">
+                                <Border x:Name="Track"
+                                        CornerRadius="14"
+                                        Background="#D8E0E5"
+                                        BorderBrush="#C4CED6"
+                                        BorderThickness="1" />
+                                <Grid Margin="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border x:Name="Thumb"
+                                            Grid.Column="0"
+                                            Width="24"
+                                            Height="24"
+                                            CornerRadius="12"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Background="#FFFFFF"
+                                            BorderBrush="#B6C0C8"
+                                            BorderThickness="1" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding BoolValue}" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{StaticResource Accent}" />
+                                <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Accent}" />
+                                <Setter TargetName="Thumb" Property="Grid.Column" Value="1" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#0B5F55" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Thumb" Property="Opacity" Value="0.86" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Cursor" Value="Arrow" />
+                                <Setter TargetName="Track" Property="Opacity" Value="0.55" />
+                                <Setter TargetName="Thumb" Property="Opacity" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="16">
@@ -151,9 +216,7 @@
                                                  Visibility="{Binding IsValueWrite, Converter={StaticResource BoolToVisibility}}" />
 
                                         <Button Grid.Column="1"
-                                                Content="{Binding BoolToggleText}"
-                                                Width="72"
-                                                Height="28"
+                                                Style="{StaticResource BoolSwitchButtonStyle}"
                                                 HorizontalAlignment="Left"
                                                 Visibility="{Binding IsBoolWrite, Converter={StaticResource BoolToVisibility}}"
                                                 Command="{Binding DataContext.ModifyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
