@@ -143,8 +143,8 @@ public class Motor
     // 砂轮旋转速度
     public short WheelRotationSpeed { get; set; }
 
-    // 砂轮质量控制
-    public short WheelQualityControl { get; set; }
+    // 砂轮运行指令
+    public short WheelRunCommand { get; set; }
 }
 
 

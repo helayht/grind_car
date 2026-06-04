@@ -193,10 +193,14 @@ public static class MotorParameterSpecProvider
                 MotorParameterDefinitions.WheelRotationSpeedAddress,
                 MotorParameterDataKind.Int16,
                 MotorParameterDefinitions.WheelRotationSpeedScale),
-            [MotorParameterDefinitions.WheelQualityControlName] = new(
-                MotorParameterDefinitions.WheelQualityControlAddress,
+            [MotorParameterDefinitions.WheelRunCommandName] = new(
+                MotorParameterDefinitions.WheelRunCommandAddress,
                 MotorParameterDataKind.Int16,
-                MotorParameterDefinitions.WheelQualityControlScale)
+                MotorParameterDefinitions.WheelRunCommandScale),
+            [MotorParameterDefinitions.WheelRunExecutionName] = new(
+                MotorParameterDefinitions.WheelRunExecutionAddress,
+                MotorParameterDataKind.Bool,
+                MotorParameterDefinitions.BoolScale)
         };
     }
 }

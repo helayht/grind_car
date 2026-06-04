@@ -194,7 +194,7 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="280" />
-                                            <ColumnDefinition Width="220" />
+                                            <ColumnDefinition Width="360" />
                                             <ColumnDefinition Width="80" />
                                             <ColumnDefinition Width="100" />
                                         </Grid.ColumnDefinitions>
@@ -221,6 +221,26 @@
                                                 Visibility="{Binding IsBoolWrite, Converter={StaticResource BoolToVisibility}}"
                                                 Command="{Binding DataContext.ModifyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}" />
+
+                                        <ItemsControl Grid.Column="1"
+                                                      ItemsSource="{Binding CommandOptions}"
+                                                      Visibility="{Binding HasCommandOptions, Converter={StaticResource BoolToVisibility}}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="{Binding DisplayName}"
+                                                            Width="72"
+                                                            Height="28"
+                                                            Margin="0,0,8,0"
+                                                            Command="{Binding DataContext.CommandOptionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
 
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding Unit}"

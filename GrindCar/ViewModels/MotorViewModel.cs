@@ -84,6 +84,16 @@ public class MotorViewModel : INotifyPropertyChanged
             },
             canExecute: parameter => parameter is MotorParameterItemViewModel item && !item.IsReadOnly);
 
+        CommandOptionCommand = new RelayCommand(
+            execute: parameter =>
+            {
+                if (parameter is MotorParameterCommandOption option)
+                {
+                    ExecuteCommandOption(option);
+                }
+            },
+            canExecute: parameter => parameter is MotorParameterCommandOption);
+
         ConnectCommand = new RelayCommand(_ => _ = ConnectAsync(), _ => !IsConnected && !IsConnecting);
         DisconnectCommand = new RelayCommand(_ => Disconnect(), _ => IsConnected || IsConnecting);
 
@@ -102,6 +112,8 @@ public class MotorViewModel : INotifyPropertyChanged
     public ObservableCollection<MotorParameterItemViewModel> Parameters => _items;
 
     public ICommand ModifyCommand { get; }
+
+    public ICommand CommandOptionCommand { get; }
 
     public ICommand ConnectCommand { get; }
 
@@ -403,6 +415,39 @@ public class MotorViewModel : INotifyPropertyChanged
         StopPolling();
     }
 
+    private void ExecuteCommandOption(MotorParameterCommandOption option)
+    {
+        if (!_writeSpecs.TryGetValue(option.ParameterName, out MotorParameterWriteSpec spec))
+        {
+            PostStatus($"未找到参数映射: {option.ParameterName}");
+            return;
+        }
+
+        if (_plc == null || !_plc.IsConnected)
+        {
+            PostStatus("未连接，无法写入");
+            return;
+        }
+
+        if (spec.Kind != MotorParameterDataKind.Int16)
+        {
+            PostStatus("固定指令仅支持 Int16 写入");
+            return;
+        }
+
+        try
+        {
+            _plc.WriteInt16(spec.Address, option.Value);
+            _uiContext.Post(
+                _ => ConnectionStatus = $"写入成功: {option.ParameterName} - {option.DisplayName}",
+                null);
+        }
+        catch (Exception ex)
+        {
+            HandleException($"写入失败: {ex.Message}", ex);
+        }
+    }
+
     private async Task ExecuteModifyAsync(MotorParameterItemViewModel item)
     {
         if (!_writeSpecs.TryGetValue(item.Name, out MotorParameterWriteSpec spec))
@@ -516,7 +561,28 @@ public class MotorViewModel : INotifyPropertyChanged
     {
         bool isBoolWrite = _writeSpecs.TryGetValue(name, out MotorParameterWriteSpec spec)
             && spec.Kind == MotorParameterDataKind.Bool;
-        _items.Add(new MotorParameterItemViewModel(name, isReadOnly: false, GetUnit(name), isBoolWrite));
+        _items.Add(new MotorParameterItemViewModel(
+            name,
+            isReadOnly: false,
+            GetUnit(name),
+            isBoolWrite,
+            GetCommandOptions(name)));
+    }
+
+    private static IReadOnlyList<MotorParameterCommandOption> GetCommandOptions(string name)
+    {
+        if (name != MotorParameterDefinitions.WheelRunCommandName)
+        {
+            return Array.Empty<MotorParameterCommandOption>();
+        }
+
+        return new[]
+        {
+            new MotorParameterCommandOption(name, "旋转", 1),
+            new MotorParameterCommandOption(name, "自由停机", 5),
+            new MotorParameterCommandOption(name, "减速停机", 6),
+            new MotorParameterCommandOption(name, "故障复位", 7)
+        };
     }
 
     private static string GetUnit(string name)

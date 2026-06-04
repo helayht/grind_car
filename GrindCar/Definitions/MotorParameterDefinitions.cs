@@ -67,7 +67,8 @@ public static class MotorParameterDefinitions
     public const string ProfilerFaultResetName = "廓形仪故障复位";
 
     public const string WheelRotationSpeedName = "砂轮旋转速度";
-    public const string WheelQualityControlName = "砂轮质量控制";
+    public const string WheelRunCommandName = "砂轮运行指令";
+    public const string WheelRunExecutionName = "砂轮运行执行";
     public const string MeasurementStartPositionName = "测量起点位置";
     public const string MeasurementEndPositionName = "测量终点位置";
     public const string GrindingStartPositionName = "打磨起点位置";
@@ -134,7 +135,8 @@ public static class MotorParameterDefinitions
     public const ushort ProfilerFaultResetAddress = (ushort)(609 + MAddressOffset);
 
     public const ushort WheelRotationSpeedAddress = 1150;
-    public const ushort WheelQualityControlAddress = 1152;
+    public const ushort WheelRunCommandAddress = 1152;
+    public const ushort WheelRunExecutionAddress = (ushort)(710 + MAddressOffset);
     public const ushort MeasurementStartPositionAddress = 1140;
     public const ushort MeasurementEndPositionAddress = 1142;
     public const ushort GrindingStartPositionAddress = 1180;
@@ -169,7 +171,7 @@ public static class MotorParameterDefinitions
     public const double ProfilerPositionSpeedScale = 100.0;
 
     public const double WheelRotationSpeedScale = 1.0 / 0.3;
-    public const double WheelQualityControlScale = 1.0;
+    public const double WheelRunCommandScale = 1.0;
     public const double MeasurementStartPositionScale = 100000.0;
     public const double MeasurementEndPositionScale = 100000.0;
     public const double GrindingStartPositionScale = 100000.0;
@@ -233,7 +235,8 @@ public static class MotorParameterDefinitions
         ProfilerFaultResetName,
 
         WheelRotationSpeedName,
-        WheelQualityControlName
+        WheelRunCommandName,
+        WheelRunExecutionName
     };
 
     public static IReadOnlyDictionary<string, string> ParameterUnits { get; } = new Dictionary<string, string>
@@ -293,9 +296,10 @@ public static class MotorParameterDefinitions
         [ProfilerHomeName] = string.Empty,
         [ProfilerFaultResetName] = string.Empty,
 
-        // 砂轮旋转速度 / 质量控制
+        // 砂轮旋转速度 / 运行控制
         [WheelRotationSpeedName] = UnitRadianPerMinute,
-        [WheelQualityControlName] = string.Empty
+        [WheelRunCommandName] = string.Empty,
+        [WheelRunExecutionName] = string.Empty
     };
 
     public static IReadOnlyList<int> MeasurementGrindingAngles { get; } = new List<int>

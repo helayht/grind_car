@@ -1,4 +1,6 @@
+using System;
 using System.ComponentModel;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace GrindCar.ViewModels;
@@ -19,19 +21,28 @@ public sealed class MotorParameterItemViewModel : INotifyPropertyChanged
     /// <param name="isReadOnly">是否为只读参数。</param>
     /// <param name="unit">参数显示单位。</param>
     /// <param name="isBoolWrite">是否为布尔写入参数。</param>
-    public MotorParameterItemViewModel(string name, bool isReadOnly, string unit, bool isBoolWrite = false)
+    /// <param name="commandOptions">固定指令按钮选项。</param>
+    public MotorParameterItemViewModel(
+        string name,
+        bool isReadOnly,
+        string unit,
+        bool isBoolWrite = false,
+        IReadOnlyList<MotorParameterCommandOption>? commandOptions = null)
     {
         Name = name;
         IsReadOnly = isReadOnly;
         Unit = unit;
         IsBoolWrite = isBoolWrite;
+        CommandOptions = commandOptions ?? Array.Empty<MotorParameterCommandOption>();
     }
 
     public string Name { get; }
     public bool IsReadOnly { get; }
     public string Unit { get; }
     public bool IsBoolWrite { get; }
-    public bool IsValueWrite => !IsReadOnly && !IsBoolWrite;
+    public IReadOnlyList<MotorParameterCommandOption> CommandOptions { get; }
+    public bool HasCommandOptions => CommandOptions.Count > 0;
+    public bool IsValueWrite => !IsReadOnly && !IsBoolWrite && !HasCommandOptions;
     public string BoolToggleText => _boolValue ? "复位" : "置位";
 
     public bool BoolValue
