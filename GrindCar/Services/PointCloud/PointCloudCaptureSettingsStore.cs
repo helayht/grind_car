@@ -11,6 +11,9 @@ namespace GrindCar.Services.PointCloud;
 public sealed class PointCloudCaptureSettingsStore
 {
     private const string DefaultFileName = "point-cloud-capture-settings.json";
+    private const double MetersPerKilometer = 1000.0;
+    private const double MinutesPerHour = 60.0;
+    private static readonly string LegacySpeedPropertyName = "Speed" + "KmPerHour";
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     private readonly string _configurationFilePath;
@@ -52,7 +55,11 @@ public sealed class PointCloudCaptureSettingsStore
             throw new InvalidOperationException($"点云采集参数配置文件格式无效: {_configurationFilePath}");
         }
 
-        return new PointCloudCaptureSettings(document.SpeedKmPerHour, document.ProfileCount);
+        double speedMetersPerMinute = document.SpeedMetersPerMinute > 0.0
+            ? document.SpeedMetersPerMinute
+            : ReadLegacySpeed(json) * MetersPerKilometer / MinutesPerHour;
+
+        return new PointCloudCaptureSettings(speedMetersPerMinute, document.ProfileCount);
     }
 
     public PointCloudCaptureSettings LoadRequired()
@@ -81,7 +88,7 @@ public sealed class PointCloudCaptureSettingsStore
 
         var document = new PointCloudCaptureSettingsDocument
         {
-            SpeedKmPerHour = settings.SpeedKmPerHour,
+            SpeedMetersPerMinute = settings.SpeedMetersPerMinute,
             ProfileCount = settings.ProfileCount
         };
         string json = JsonSerializer.Serialize(document, SerializerOptions);
@@ -90,8 +97,19 @@ public sealed class PointCloudCaptureSettingsStore
 
     private sealed class PointCloudCaptureSettingsDocument
     {
-        public double SpeedKmPerHour { get; set; }
+        public double SpeedMetersPerMinute { get; set; }
 
         public int ProfileCount { get; set; }
+    }
+
+    private static double ReadLegacySpeed(string json)
+    {
+        using JsonDocument document = JsonDocument.Parse(json);
+        if (document.RootElement.TryGetProperty(LegacySpeedPropertyName, out JsonElement legacySpeed))
+        {
+            return legacySpeed.GetDouble();
+        }
+
+        return 0.0;
     }
 }

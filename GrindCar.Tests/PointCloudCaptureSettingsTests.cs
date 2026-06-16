@@ -12,9 +12,9 @@ namespace GrindCar.Tests;
 public class PointCloudCaptureSettingsTests
 {
     [Fact]
-    public void CalculateFrameRateHz_WithNineKmPerHour_ReturnsTwoHundredFifty()
+    public void CalculateFrameRateHz_WithOneHundredFiftyMetersPerMinute_ReturnsTwoHundredFifty()
     {
-        double frameRate = PointCloudCaptureSettings.CalculateFrameRateHz(9.0);
+        double frameRate = PointCloudCaptureSettings.CalculateFrameRateHz(150.0);
 
         Assert.Equal(250.0, frameRate, 6);
     }
@@ -22,12 +22,12 @@ public class PointCloudCaptureSettingsTests
     [Theory]
     [InlineData(0.0, 100)]
     [InlineData(-1.0, 100)]
-    [InlineData(9.0, 0)]
-    [InlineData(9.0, -1)]
-    public void Constructor_WithInvalidValue_Throws(double speedKmPerHour, int profileCount)
+    [InlineData(150.0, 0)]
+    [InlineData(150.0, -1)]
+    public void Constructor_WithInvalidValue_Throws(double speedMetersPerMinute, int profileCount)
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            new PointCloudCaptureSettings(speedKmPerHour, profileCount));
+            new PointCloudCaptureSettings(speedMetersPerMinute, profileCount));
 
         Assert.True(
             exception.Message.Contains("小车运行速度") ||
@@ -39,13 +39,35 @@ public class PointCloudCaptureSettingsTests
     {
         string filePath = Path.Combine(Path.GetTempPath(), "grindcar-tests", Guid.NewGuid().ToString("N"), "point-cloud-capture-settings.json");
         var store = new PointCloudCaptureSettingsStore(filePath);
-        var settings = new PointCloudCaptureSettings(9.0, 400);
+        var settings = new PointCloudCaptureSettings(150.0, 400);
 
         store.Save(settings);
         PointCloudCaptureSettings? loaded = store.Load();
 
         Assert.NotNull(loaded);
-        Assert.Equal(9.0, loaded.SpeedKmPerHour, 6);
+        Assert.Equal(150.0, loaded.SpeedMetersPerMinute, 6);
+        Assert.Equal(400, loaded.ProfileCount);
+        Assert.Equal(250.0, loaded.FrameRateHz, 6);
+    }
+
+    [Fact]
+    public void Store_LoadLegacySpeedUnit_ConvertsToMetersPerMinute()
+    {
+        string filePath = Path.Combine(Path.GetTempPath(), "grindcar-tests", Guid.NewGuid().ToString("N"), "point-cloud-capture-settings.json");
+        string legacySpeedPropertyName = "Speed" + "KmPerHour";
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        File.WriteAllText(
+            filePath,
+            "{\n" +
+            $"  \"{legacySpeedPropertyName}\": 9.0,\n" +
+            "  \"ProfileCount\": 400\n" +
+            "}");
+        var store = new PointCloudCaptureSettingsStore(filePath);
+
+        PointCloudCaptureSettings? loaded = store.Load();
+
+        Assert.NotNull(loaded);
+        Assert.Equal(150.0, loaded.SpeedMetersPerMinute, 6);
         Assert.Equal(400, loaded.ProfileCount);
         Assert.Equal(250.0, loaded.FrameRateHz, 6);
     }

@@ -7,11 +7,11 @@ namespace GrindCar.Models.PointCloud;
 /// </summary>
 public sealed class PointCloudCaptureSettings
 {
-    private const double FrameRateFactorForOneCentimeter = 250.0 / 9.0;
+    private const double FrameRateFactorForOneCentimeter = 100.0 / 60.0;
 
-    public PointCloudCaptureSettings(double speedKmPerHour, int profileCount)
+    public PointCloudCaptureSettings(double speedMetersPerMinute, int profileCount)
     {
-        if (speedKmPerHour <= 0.0)
+        if (speedMetersPerMinute <= 0.0)
         {
             throw new InvalidOperationException("小车运行速度必须大于 0。");
         }
@@ -21,24 +21,24 @@ public sealed class PointCloudCaptureSettings
             throw new InvalidOperationException("单次测量总条数必须为正整数。");
         }
 
-        SpeedKmPerHour = speedKmPerHour;
+        SpeedMetersPerMinute = speedMetersPerMinute;
         ProfileCount = profileCount;
-        FrameRateHz = CalculateFrameRateHz(speedKmPerHour);
+        FrameRateHz = CalculateFrameRateHz(speedMetersPerMinute);
     }
 
-    public double SpeedKmPerHour { get; }
+    public double SpeedMetersPerMinute { get; }
 
     public int ProfileCount { get; }
 
     public double FrameRateHz { get; }
 
-    public static double CalculateFrameRateHz(double speedKmPerHour)
+    public static double CalculateFrameRateHz(double speedMetersPerMinute)
     {
-        if (speedKmPerHour <= 0.0)
+        if (speedMetersPerMinute <= 0.0)
         {
             throw new InvalidOperationException("小车运行速度必须大于 0。");
         }
 
-        return speedKmPerHour * FrameRateFactorForOneCentimeter;
+        return speedMetersPerMinute * FrameRateFactorForOneCentimeter;
     }
 }

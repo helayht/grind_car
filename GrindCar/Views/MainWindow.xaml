@@ -369,7 +369,7 @@
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource SecondaryTextBrush}"
-                                       Text="km/h" />
+                                       Text="m/min" />
                         </Grid>
                     </StackPanel>
 

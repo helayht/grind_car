@@ -76,12 +76,12 @@ GrindCar.sln
 
 ### 4. 点云在线采集参数
 - 主界面“测量参数配置”区域支持配置“小车运行速度”和“单次测量总条数”
-- 计算帧率按固定 1 cm 采样间距自动计算：`AcquisitionFrameRate = speedKmH * 250 / 9`
+- 计算帧率按固定 1 cm 采样间距自动计算：`AcquisitionFrameRate = speedMetersPerMinute * 100 / 60`
 - 配置会保存到运行目录 `point-cloud-capture-settings.json`，下次启动自动恢复
 - 启动主界面测量流程前会自动校验并保存点云采集参数，避免遗漏手动保存
 - 所有在线点云采集会在 `StartMeasure` 前写入：
   - `ImageMode = 4`
-  - `AcquisitionFrameRate = speedKmH * 250 / 9`
+  - `AcquisitionFrameRate = speedMetersPerMinute * 100 / 60`
   - `Height = profileCount`
 - 写入前会读取设备 `AcquisitionFrameRate` 和 `Height` 支持范围；超出范围或不满足 `Height` 步进时直接报错，不自动回退到深度图模式
 - “点云导出”窗口的手动导出流程不读取主界面点云采集参数，只负责手动选择设备和格式导出
@@ -209,7 +209,7 @@ dotnet clean GrindCar.sln
 3. 点击“写入测量起止点”，系统将工程量按 `/100000` 比例换算后写入 PLC。
 4. 测量参数地址：`D1140`（测量起点位置）、`D1142`（测量终点位置）。
 5. 打磨参数地址：`D1180`（打磨起点位置）、`D1182`（打磨终点位置）。
-6. 输入“小车运行速度(km/h)”和“单次测量总条数”，确认只读显示的“计算帧率(Hz)”。
+6. 输入“小车运行速度(m/min)”和“单次测量总条数”，确认只读显示的“计算帧率(Hz)”。
 7. 点击“保存点云采集参数”会保存到运行目录 `point-cloud-capture-settings.json`。
 8. 点击“测量运动启动”后，系统会再次校验并保存点云采集参数，然后进入测量运行流程并在结束后写回打磨次数。
 
@@ -251,7 +251,7 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Rail/Debug/RepresentativePointsCsvExporter.cs`：代表点 CSV 导出
 - `GrindCar/Services/Rail/Debug/RepresentativeProfileComparisonService.cs`：代表轨面与标准轨面对齐、采样与绘图数据计算
 - `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、3D 点云模式采集、采集参数写入和文件导出
-- `GrindCar/Models/PointCloud/PointCloudCaptureSettings.cs`：点云在线采集参数模型，包含小车速度、单次测量总条数和按 1 cm 间距计算的帧率
+- `GrindCar/Models/PointCloud/PointCloudCaptureSettings.cs`：点云在线采集参数模型，包含小车速度(m/min)、单次测量总条数和按 1 cm 间距计算的帧率
 - `GrindCar/Services/PointCloud/PointCloudCaptureSettingsStore.cs`：运行目录 `point-cloud-capture-settings.json` 的读写服务
 - `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从在线点集或 CSV 提取平均代表截面二维点集
 - `GrindCar/Services/Rail/Processing/PointCloudCsvReader.cs`：点云 CSV 解析（分隔符/表头/坐标列识别）
@@ -338,7 +338,7 @@ using GrindCar.Services.Rail;
 
 IPointCloudMedianSectionCaptureService captureService = new PointCloudMedianSectionCaptureService();
 
-var settings = new PointCloudCaptureSettings(speedKmPerHour: 9.0, profileCount: 256);
+var settings = new PointCloudCaptureSettings(speedMetersPerMinute: 150.0, profileCount: 256);
 PointCloudMedianSectionCaptureResult captureResult =
     captureService.CaptureMedianSectionProfile("DEVICE_SERIAL_NUMBER", PointCloudDeviceSide.Left, settings);
 

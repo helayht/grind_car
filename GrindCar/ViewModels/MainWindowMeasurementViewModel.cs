@@ -161,8 +161,8 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         {
             try
             {
-                double speedKmPerHour = MeasurementInputParser.ParsePositiveDouble(CarSpeedText, CarSpeedParameterName);
-                double frameRateHz = PointCloudCaptureSettings.CalculateFrameRateHz(speedKmPerHour);
+                double speedMetersPerMinute = MeasurementInputParser.ParsePositiveDouble(CarSpeedText, CarSpeedParameterName);
+                double frameRateHz = PointCloudCaptureSettings.CalculateFrameRateHz(speedMetersPerMinute);
                 return $"{frameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz";
             }
             catch
@@ -256,7 +256,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         PointCloudCaptureSettings settings = CreatePointCloudCaptureSettingsFromInput();
         _pointCloudCaptureSettingsStore.Save(settings);
         StatusMessage =
-            $"点云采集参数已保存：速度 {settings.SpeedKmPerHour.ToString("0.###", CultureInfo.CurrentCulture)} km/h，单次 {settings.ProfileCount.ToString(CultureInfo.CurrentCulture)} 条，帧率 {settings.FrameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz";
+            $"点云采集参数已保存：速度 {settings.SpeedMetersPerMinute.ToString("0.###", CultureInfo.CurrentCulture)} m/min，单次 {settings.ProfileCount.ToString(CultureInfo.CurrentCulture)} 条，帧率 {settings.FrameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz";
     }
 
     public async Task WriteGrindingParametersAsync()
@@ -368,9 +368,9 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 
     private PointCloudCaptureSettings CreatePointCloudCaptureSettingsFromInput()
     {
-        double speedKmPerHour = MeasurementInputParser.ParsePositiveDouble(CarSpeedText, CarSpeedParameterName);
+        double speedMetersPerMinute = MeasurementInputParser.ParsePositiveDouble(CarSpeedText, CarSpeedParameterName);
         int profileCount = MeasurementInputParser.ParsePositiveInt32(ProfileCountText, ProfileCountParameterName);
-        return new PointCloudCaptureSettings(speedKmPerHour, profileCount);
+        return new PointCloudCaptureSettings(speedMetersPerMinute, profileCount);
     }
 
     private void LoadPointCloudCaptureSettings()
@@ -383,10 +383,10 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
                 return;
             }
 
-            _carSpeedText = settings.SpeedKmPerHour.ToString("0.###", CultureInfo.CurrentCulture);
+            _carSpeedText = settings.SpeedMetersPerMinute.ToString("0.###", CultureInfo.CurrentCulture);
             _profileCountText = settings.ProfileCount.ToString(CultureInfo.CurrentCulture);
             _statusMessage =
-                $"已加载点云采集参数：速度 {_carSpeedText} km/h，单次 {_profileCountText} 条。";
+                $"已加载点云采集参数：速度 {_carSpeedText} m/min，单次 {_profileCountText} 条。";
         }
         catch (Exception ex)
         {
