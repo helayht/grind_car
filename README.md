@@ -6,9 +6,8 @@ GrindCar 是一个基于 `.NET 6 + WPF` 的轨面打磨设备上位机项目，�
 - 驾驶舱首页展示电量、速度、连接状态等运行信息
 - 电机调试窗口通过 `Modbus TCP` 与 PLC 建立连接，完成参数轮询、写入和调试
 - 点云调试链路支持设备枚举、3D 点云模式单帧导出、在线点云平均代表截面提取（失败时自动回退 CSV）、需要打磨深度计算与已打磨深度检测
-- 提供曲线旋转调试窗口，可导入 `CSV(x,y)` 并按指定角度旋转后可视化散点
 - 主界面内置参数设置，可写入“测量起点位置/测量终点位置”与“打磨起点位置/打磨终点位置”，并可配置点云在线采集速度、单次测量总条数和计算帧率；PLC 连接参数通过独立窗口维护
-- 主界面支持测量运行流程：按 `M31/M60/M61/M62` 交互，累计多次测量后计算平均打磨深度并写回各角度打磨次数；并支持独立写入打磨运动启动 `M32`
+- 主界面支持测量运行流程：按 `M31/M60/M61/M62` 交互，两台廓形仪按顺序采集并合并为一组测量，累计多组后计算平均打磨深度并写回各角度打磨次数；并支持独立写入打磨运动启动 `M32`
 - 轨面服务层提供标准轨面函数、代表截面提取、多角度打磨深度计算和按角度计算代表廓形 `b` 值的能力
 
 该项目当前不依赖 Web 服务，也不依赖环境变量配置，主要作为本地运行的 HMI/调试工具使用。
@@ -52,8 +51,7 @@ GrindCar.sln
 - 启动后默认进入首页
 - 展示电量、速度、连接状态和当前时间
 - 首页中的电量和速度当前为“未接入数据”占位展示
-- 可从首页进入点云导出、代表截面调试、打磨深度调试和电机调试窗口
-- 可从首页进入曲线旋转调试窗口进行角度校准可视化
+- 可从首页进入点云导出、打磨深度调试、点云算法验证和电机调试窗口
 - 首页参数区可直接设置“测量起点位置/测量终点位置”并写入 PLC
 - 测量参数与测量运行流程共用独立的“PLC连接设置”窗口维护 IP/Port
 
@@ -160,7 +158,7 @@ dotnet clean GrindCar.sln
 ### 首页入口
 1. 启动应用后进入“轨面打磨驾驶舱”首页。
 2. 通过右上角按钮可打开对应功能窗口。
-3. 当前可进入的窗口包括：`点云导出`、`代表截面调试`、`曲线旋转调试`、`打磨深度调试`、`电机调试`。
+3. 当前可进入的窗口包括：`点云导出`、`打磨深度调试`、`点云算法验证`、`电机调试`。
 4. 首页下方参数区可直接设置并写入：`测量起点位置`、`测量终点位置`、`打磨起点位置`、`打磨终点位置`。
 5. 点击“设置PLC连接”可打开独立窗口维护测量参数写入用的 `IP/Port`。
 
@@ -182,10 +180,9 @@ dotnet clean GrindCar.sln
 ### 点云调试流程
 1. 在运行目录创建 `point-cloud-devices.json`，按点云设备序列号配置 `Left` / `Right` 侧别。
 2. 打开“点云导出”窗口，选择设备并导出单帧点云文件。
-3. 打开“代表截面调试”窗口，验证从 `CSV` 中提取的平均代表截面点集。
-4. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。
-5. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
-6. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
+3. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。
+4. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
+5. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
 
 点云设备侧别配置示例：
 
@@ -218,31 +215,23 @@ dotnet clean GrindCar.sln
 
 ### 主界面测量运行流程
 1. 点击“测量运动启动”，系统写入 `M31=1` 并开始轮询测量状态位。
-2. 轮询期间监听 `M60`（启动当前廓形测量），按上升沿触发一次单次测量计算。
-3. 单次测量触发后，系统加载点云采集参数，按 3D 点云模式设置 `ImageMode`、`AcquisitionFrameRate` 和 `Height`，采集点云并计算平均代表截面。
-4. 每次单次测量只缓存各角度打磨深度结果，不立即写打磨次数结果区。
-5. 单次测量完成后写入 `M61=1`；`M61` 由 PLC 负责清零。
-6. 当读取到 `M62=1`（测量运行结束）后，系统对各角度做平均打磨深度计算。
+2. 轮询期间监听 `M60`（启动当前廓形测量），按上升沿触发一次廓形仪采集。
+3. 每次 `M60` 上升沿触发后，系统加载点云采集参数，按采集参数设置点云设备，采集单台廓形仪点云并计算平均代表截面。
+4. 当前测量流程要求配置 2 台廓形仪；两台廓形仪按配置顺序分别采集，每采完一台写入 `M62=1` 表示当前廓形测量完成，`M62` 由 PLC 负责清零。
+5. 两台廓形仪都完成后，系统合并代表截面点并计算一组各角度打磨深度；每组结果只缓存，不立即写打磨次数结果区。
+6. 当读取到 `M61=1`（测量定位完成/测量运行结束）后，系统对已累计的各组测量结果做平均打磨深度计算。
 7. 打磨次数计算公式：`打磨次数 = ceil(平均打磨深度 / 0.05)`。
-8. 最终将打磨次数写入 `D1800 + (N-1)`（`N=1..19`，对应 19 个角度）。
-
-### 曲线旋转调试流程
-1. 打开“曲线旋转调试”窗口。
-2. 导入包含 `x,y` 坐标列的 CSV 文件（支持有/无表头）。
-3. 输入旋转角度并点击“应用旋转”，窗口仅以散点方式展示旋转结果。
+8. 用户在确认窗口确认打磨深度后，最终将打磨次数写入 `D1800 + (N-1) * 2`（`N=1..19`，对应 19 个角度）。
 
 ## 关键模块说明
 - `GrindCar/Views/MainWindow.xaml`：驾驶舱首页
 - `GrindCar/Views/MotorDebugWindow.xaml`：电机调试窗口
 - `GrindCar/Views/PointCloudExportWindow.xaml`：点云导出窗口
-- `GrindCar/Views/MedianSectionDebugWindow.xaml`：代表截面调试窗口（类型名保留 MedianSection）
-- `GrindCar/Views/CurveRotationDebugWindow.xaml`：曲线旋转调试窗口
 - `GrindCar/Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
 - `GrindCar/Views/PlcConnectionSettingsWindow.xaml`：PLC连接设置窗口（供首页参数区写入测量参数使用）
 - `GrindCar/ViewModels/MotorViewModel.cs`：PLC 连接、轮询、写入、首页演示数据和状态文本管理
 - `GrindCar/ViewModels/MainWindowMeasurementViewModel.cs`：主界面测量参数区状态与操作编排
 - `GrindCar/ViewModels/GrindDepthDebugViewModel.cs`：打磨深度调试窗口状态与命令编排
-- `GrindCar/ViewModels/MedianSectionDebugViewModel.cs`：代表截面调试窗口状态与导入导出编排（类型名保留 MedianSection）
 - `GrindCar/ViewModels/PointCloudExportViewModel.cs`：点云导出窗口设备刷新、导出状态与流程编排
 - `GrindCar/ViewModels/RepresentativeProfileComparisonViewModel.cs`：代表轨面与标准轨面对比窗口状态与绘图数据编排
 - `GrindCar/Services/Motor/MotorParameterSpecProvider.cs`：电机读写参数映射与比例定义提供者
@@ -260,11 +249,7 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Rail/Debug/GrindDepthDebugWorkflowService.cs`：打磨深度调试业务编排
 - `GrindCar/Services/Rail/Debug/GrindDepthAngleParser.cs`：角度输入解析
 - `GrindCar/Services/Rail/Debug/RepresentativePointsCsvExporter.cs`：代表点 CSV 导出
-- `GrindCar/Services/Rail/Debug/MedianSectionDebugWorkflowService.cs`：代表截面调试业务编排（类型名保留 MedianSection）
-- `GrindCar/Services/Rail/Debug/MedianSectionCsvExporter.cs`：代表截面点 CSV 导出，首行输出 `RepresentativeY`
 - `GrindCar/Services/Rail/Debug/RepresentativeProfileComparisonService.cs`：代表轨面与标准轨面对齐、采样与绘图数据计算
-- `GrindCar/Services/Curve/CurveCsvReader.cs`：曲线旋转窗口的 CSV 读取与列识别
-- `GrindCar/Services/Curve/CurveRotationService.cs`：角度解析与二维旋转计算
 - `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、3D 点云模式采集、采集参数写入和文件导出
 - `GrindCar/Models/PointCloud/PointCloudCaptureSettings.cs`：点云在线采集参数模型，包含小车速度、单次测量总条数和按 1 cm 间距计算的帧率
 - `GrindCar/Services/PointCloud/PointCloudCaptureSettingsStore.cs`：运行目录 `point-cloud-capture-settings.json` 的读写服务
@@ -400,7 +385,7 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 ## 构建与兼容性说明
 - 当前命令行构建命令为 `dotnet build GrindCar.sln`
 - 当前单元测试命令为 `dotnet test GrindCar.sln`
-- `GrindCar.Tests` 已覆盖点云采集参数计算/持久化、点云设备参数范围校验、平均代表截面插值提取以及代表截面 CSV 导出头 `RepresentativeY`
+- `GrindCar.Tests` 已覆盖点云采集参数计算/持久化、点云设备参数范围校验以及平均代表截面插值提取
 - 当前已知主要 NuGet 警告为 `NU1701`
 - 该警告主要来自 `NModbus4 3.0.0-alpha1` 对 `net6.0-windows` 的兼容性声明不完整
 - 如需进一步降低构建风险，优先评估替换或升级 Modbus 依赖
@@ -413,14 +398,13 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 - 在线点云采集默认使用 `ImageMode=4` 的 3D 点云模式；`Range=7` 深度图模式仅保留常量，不作为默认采集路径
 - 在线点云采集会按主界面保存的 `point-cloud-capture-settings.json` 写入 `AcquisitionFrameRate` 和 `Height`；配置不存在时会提示先设置并保存点云采集参数
 - 点云采集默认走在线提取，在线失败时会在运行目录 `Log/` 目录落盘 `CSV` 后回退处理
-- 代表截面调试导出的 CSV 首行为 `RepresentativeY,<value>`，默认文件名包含 `representative_section`
 - 代表点预处理逻辑会先离群点过滤，再按设备侧别识别外侧非工作面直线，并将非工作面顶部临界点平移对齐到标准轨面 `x=-35.4` 或 `x=35.4`
 - 点云设备侧别配置文件为运行目录下的 `point-cloud-devices.json`，未配置设备不会参与默认推断，会直接报错
 - 测量参数写入使用地址 `D1140/D1142`，比例 `/100000`，写入入口位于主界面参数区
 - 打磨参数写入使用地址 `D1180/D1182`，比例 `/100000`，写入入口位于主界面参数区
-- 主界面测量运行流程使用地址 `M31`（启动）、`M60`（单次触发）、`M61`（单次完成）、`M62`（运行结束）
+- 主界面测量运行流程使用地址 `M31`（启动）、`M60`（当前廓形测量启动触发）、`M61`（测量定位完成/测量运行结束）、`M62`（当前廓形测量完成）
 - 主界面支持打磨运动启动地址 `M32`（启动）
-- 打磨次数结果写回区为 `D1800~D1818`（步长 1，对应 19 个固定测算角度，`D1800 + (N-1)`）
+- 打磨次数结果写回区为 `D1800~D1836`（步长 2，对应 19 个固定测算角度，`D1800 + (N-1) * 2`）
 - 打磨深度检测基线默认保存在 `Log/grind-depth-baseline.json`
 - `bin/`、`obj/`、`tmp_obj/` 等构建产物不应提交到版本库
 - 首页电量与速度当前为占位显示，不等同于实时设备遥测

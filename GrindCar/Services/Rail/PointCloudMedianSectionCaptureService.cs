@@ -5,6 +5,7 @@ using System.IO;
 using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
+using GrindCar.Services.Rail.Core;
 using GrindCar.Services.Rail.Processing;
 
 namespace GrindCar.Services.Rail;
@@ -82,7 +83,8 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     public PointCloudMedianSectionCaptureResult CaptureMedianSectionProfile(
         string serialNumber,
         PointCloudDeviceSide side,
-        PointCloudCaptureSettings captureSettings)
+        PointCloudCaptureSettings captureSettings,
+        MeasurementPointCloudArchiveContext? archiveContext = null)
     {
         if (string.IsNullOrWhiteSpace(serialNumber))
         {
@@ -108,6 +110,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
 
             if (points != null && points.Count > 0)
             {
+                MeasurementPointCloudArchiveService.QueueArchive(archiveContext, points);
                 try
                 {
                     MedianSectionExtractionResult onlineExtractionResult =

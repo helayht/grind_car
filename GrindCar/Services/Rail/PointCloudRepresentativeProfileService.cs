@@ -17,6 +17,10 @@ public sealed class PointCloudRepresentativeProfileService :
 {
     private const double Tolerance = 1e-7;
     private const int MinValidSectionCount = 2;
+    private const int MinOutlierFilteredAverageValueCount = 5;
+    private const double MadScaleFactor = 1.4826;
+    private const double ZOutlierSigmaFactor = 3.0;
+    private const double MinZOutlierThreshold = 0.001;
 
     /// <summary>
     /// 从点云 CSV 文件中提取所有有效截面的算术平均二维 X/Z 点集。
@@ -100,9 +104,14 @@ public sealed class PointCloudRepresentativeProfileService :
 
         List<RailProfilePoint> filteredSectionPoints =
             RepresentativeProfilePointProcessor.FilterOutlierRepresentativePoints(sectionPoints);
-        List<RailProfilePoint> profilePoints = side.HasValue
-            ? RepresentativeProfilePointProcessor.AlignRepresentativePointsToStandardBoundary(filteredSectionPoints, side.Value)
-            : filteredSectionPoints;
+        List<RailProfilePoint> profilePoints = filteredSectionPoints;
+        if (side.HasValue)
+        {
+            List<RailProfilePoint> mirroredSectionPoints =
+                RepresentativeProfilePointProcessor.MirrorRepresentativePointsAcrossSideAxis(filteredSectionPoints, side.Value);
+            profilePoints =
+                RepresentativeProfilePointProcessor.AlignRepresentativePointsToStandardBoundary(mirroredSectionPoints, side.Value);
+        }
 
         return new MedianSectionExtractionResult(representativeY, profilePoints);
     }
@@ -185,20 +194,9 @@ public sealed class PointCloudRepresentativeProfileService :
                 x = maxCommonX;
             }
 
-            double sumZ = 0.0;
-            int interpolatedCount = 0;
-            for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+            if (TryCreateAverageSectionPoint(sections, x, out RailProfilePoint sectionPoint))
             {
-                if (TryInterpolateZ(sections[sectionIndex], x, out double z))
-                {
-                    sumZ += z;
-                    interpolatedCount++;
-                }
-            }
-
-            if (interpolatedCount > 0)
-            {
-                sectionPoints.Add(new RailProfilePoint(x, sumZ / interpolatedCount));
+                sectionPoints.Add(sectionPoint);
             }
 
             if (Math.Abs(x - maxCommonX) <= Tolerance)
@@ -212,24 +210,77 @@ public sealed class PointCloudRepresentativeProfileService :
         if (sectionPoints.Count == 0 ||
             Math.Abs(sectionPoints[^1].X - maxCommonX) > Tolerance)
         {
-            double sumZ = 0.0;
-            int interpolatedCount = 0;
-            for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+            if (TryCreateAverageSectionPoint(sections, maxCommonX, out RailProfilePoint sectionPoint))
             {
-                if (TryInterpolateZ(sections[sectionIndex], maxCommonX, out double z))
-                {
-                    sumZ += z;
-                    interpolatedCount++;
-                }
-            }
-
-            if (interpolatedCount > 0)
-            {
-                sectionPoints.Add(new RailProfilePoint(maxCommonX, sumZ / interpolatedCount));
+                sectionPoints.Add(sectionPoint);
             }
         }
 
         return sectionPoints;
+    }
+
+    private static bool TryCreateAverageSectionPoint(
+        IReadOnlyList<List<SectionPoint>> sections,
+        double x,
+        out RailProfilePoint sectionPoint)
+    {
+        var zValues = new List<double>(sections.Count);
+        for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
+        {
+            if (TryInterpolateZ(sections[sectionIndex], x, out double z))
+            {
+                zValues.Add(z);
+            }
+        }
+
+        if (zValues.Count == 0)
+        {
+            sectionPoint = default;
+            return false;
+        }
+
+        double averageZ = CalculateOutlierFilteredAverage(zValues);
+        sectionPoint = new RailProfilePoint(x, averageZ);
+        return true;
+    }
+
+    private static double CalculateOutlierFilteredAverage(IReadOnlyList<double> values)
+    {
+        if (values.Count == 0)
+        {
+            throw new ArgumentException("平均值输入不能为空。", nameof(values));
+        }
+
+        if (values.Count < MinOutlierFilteredAverageValueCount)
+        {
+            return Average(values);
+        }
+
+        double median = Median(values);
+        double[] absoluteDeviations = new double[values.Count];
+        for (int index = 0; index < values.Count; index++)
+        {
+            absoluteDeviations[index] = Math.Abs(values[index] - median);
+        }
+
+        double mad = Median(absoluteDeviations);
+        double robustSigma = MadScaleFactor * mad;
+        double threshold = Math.Max(MinZOutlierThreshold, ZOutlierSigmaFactor * robustSigma);
+
+        double filteredSum = 0.0;
+        int filteredCount = 0;
+        for (int index = 0; index < values.Count; index++)
+        {
+            if (Math.Abs(values[index] - median) <= threshold)
+            {
+                filteredSum += values[index];
+                filteredCount++;
+            }
+        }
+
+        return filteredCount > 0
+            ? filteredSum / filteredCount
+            : median;
     }
 
     private static List<List<SectionPoint>> BuildValidSections(IReadOnlyList<PointCloudPoint3D> points)
@@ -385,6 +436,47 @@ public sealed class PointCloudRepresentativeProfileService :
         double ratio = (x - leftPoint.X) / span;
         z = leftPoint.Z + (rightPoint.Z - leftPoint.Z) * ratio;
         return true;
+    }
+
+    private static double Average(IReadOnlyList<double> values)
+    {
+        double sum = 0.0;
+        for (int index = 0; index < values.Count; index++)
+        {
+            sum += values[index];
+        }
+
+        return sum / values.Count;
+    }
+
+    private static double Median(IReadOnlyList<double> values)
+    {
+        if (values.Count == 0)
+        {
+            throw new ArgumentException("中位数输入不能为空。", nameof(values));
+        }
+
+        int mid = values.Count / 2;
+        double[] firstSelectionValues = new double[values.Count];
+        for (int index = 0; index < values.Count; index++)
+        {
+            firstSelectionValues[index] = values[index];
+        }
+
+        if (values.Count % 2 == 0)
+        {
+            double[] secondSelectionValues = new double[values.Count];
+            for (int index = 0; index < values.Count; index++)
+            {
+                secondSelectionValues[index] = values[index];
+            }
+
+            double lowerMedian = QuickSelect.SelectKthSmallest(firstSelectionValues, mid - 1);
+            double upperMedian = QuickSelect.SelectKthSmallest(secondSelectionValues, mid);
+            return (lowerMedian + upperMedian) / 2.0;
+        }
+
+        return QuickSelect.SelectKthSmallest(firstSelectionValues, mid);
     }
 
     private static bool IsZeroPoint(PointCloudPoint3D point)

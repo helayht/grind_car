@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail.Core;
@@ -16,10 +17,15 @@ internal static class RepresentativeProfilePointProcessor
     private const double BoundaryLineSigmaFactor = 3.0;
     private const double MinBoundaryDistanceThreshold = 0.05;
     private const double BoundaryWorkSurfaceExclusionDistance = 0.5;
-    private const double MaxBoundaryVerticalAngleDegrees = 35.0;
-    private const double MaxRotatedBoundaryVerticalAngleDegrees = 2.0;
+    private const double MaxBoundaryVerticalAngleDegrees = 60.0;
+    private const double MaxRotatedBoundaryVerticalAngleDegrees = 15.0;
     private const double MinCorrectSideRatio = 0.85;
     private const double WorkSurfaceFitTolerance = -0.001;
+    private const double WorkSurfaceFitLowerPercentile = 0.05;
+    private const int MinDiffOutlierFilterCount = 5;
+    private const double DiffOutlierSigmaFactor = 3.0;
+    private const double MinDiffOutlierThreshold = 0.001;
+    private const double MadScaleFactor = 1.4826;
     private const double RadiansToDegreesFactor = 180.0 / Math.PI;
     private const int OutlierFilterWindowSize = 15;
     private const int OutlierFilterPassCount = 2;
@@ -65,6 +71,34 @@ internal static class RepresentativeProfilePointProcessor
         }
 
         return SelectBestRotatedAlignment(points, side).AlignedPoints;
+    }
+
+    public static List<RailProfilePoint> MirrorRepresentativePointsAcrossSideAxis(
+        IReadOnlyList<RailProfilePoint> points,
+        PointCloudDeviceSide side)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (points.Count == 0)
+        {
+            return new List<RailProfilePoint>();
+        }
+
+        double axisX = side == PointCloudDeviceSide.Left
+            ? points.Max(point => point.X)
+            : points.Min(point => point.X);
+
+        var mirroredPoints = new List<RailProfilePoint>(points.Count);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            mirroredPoints.Add(new RailProfilePoint(2.0 * axisX - point.X, point.Y));
+        }
+
+        return mirroredPoints;
     }
 
     public static List<RailProfilePoint> FilterOutlierRepresentativePoints(IReadOnlyList<RailProfilePoint> points)
@@ -277,18 +311,33 @@ internal static class RepresentativeProfilePointProcessor
         double[] candidateAngles = Math.Abs(rotationAngle) < 1e-12
             ? new[] { 0.0 }
             : new[] { rotationAngle, -rotationAngle };
+        var failureReasons = new List<string>(candidateAngles.Length);
 
         for (int index = 0; index < candidateAngles.Length; index++)
         {
-            if (TryCreateAlignmentCandidate(points, side, rotationCenter, candidateAngles[index], out AlignmentCandidate candidate))
+            double candidateAngle = candidateAngles[index];
+            if (TryCreateAlignmentCandidate(
+                    points,
+                    side,
+                    rotationCenter,
+                    candidateAngle,
+                    out AlignmentCandidate candidate,
+                    out string failureReason))
             {
                 candidates.Add(candidate);
+                continue;
             }
+
+            failureReasons.Add(
+                $"Side={side}, 候选角度={FormatDegrees(candidateAngle)}°：{failureReason}");
         }
 
         if (candidates.Count == 0)
         {
-            throw new InvalidOperationException("旋转对齐失败，未找到满足垂直边界和工作面贴合要求的候选结果。");
+            string detailMessage = failureReasons.Count == 0
+                ? string.Empty
+                : Environment.NewLine + "候选失败详情：" + Environment.NewLine + string.Join(Environment.NewLine, failureReasons);
+            throw new InvalidOperationException($"旋转对齐失败，未找到满足垂直边界和工作面贴合要求的候选结果。{detailMessage}");
         }
 
         return candidates
@@ -302,9 +351,11 @@ internal static class RepresentativeProfilePointProcessor
         PointCloudDeviceSide side,
         RailProfilePoint rotationCenter,
         double rotationAngle,
-        out AlignmentCandidate candidate)
+        out AlignmentCandidate candidate,
+        out string failureReason)
     {
         candidate = default;
+        failureReason = string.Empty;
 
         try
         {
@@ -317,12 +368,15 @@ internal static class RepresentativeProfilePointProcessor
             double correctSideRatio = CalculateCorrectSideRatio(rotatedPoints, rotatedBoundaryLine, side);
             if (correctSideRatio < MinCorrectSideRatio)
             {
+                failureReason =
+                    $"工作面正确侧比例 {correctSideRatio.ToString("0.###", CultureInfo.InvariantCulture)}，低于要求 {MinCorrectSideRatio.ToString("0.###", CultureInfo.InvariantCulture)}";
                 return false;
             }
 
             List<RailProfilePoint> alignedPoints = AlignByTranslation(rotatedPoints, rotatedBoundaryLine, side);
             if (!ValidateWorkSurfaceFit(alignedPoints, side))
             {
+                failureReason = "工作面贴合标准轨廓失败";
                 return false;
             }
 
@@ -332,8 +386,9 @@ internal static class RepresentativeProfilePointProcessor
                 correctSideRatio);
             return true;
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
+            failureReason = ex.Message;
             return false;
         }
     }
@@ -586,6 +641,12 @@ internal static class RepresentativeProfilePointProcessor
         return angleFromVerticalRadians * RadiansToDegreesFactor;
     }
 
+    private static string FormatDegrees(double radians)
+    {
+        double degrees = radians * RadiansToDegreesFactor;
+        return degrees.ToString("0.###", CultureInfo.InvariantCulture);
+    }
+
     private static double CalculateRotationAngleToVertical(FittedLine line)
     {
         double directionX = line.DirectionX;
@@ -665,7 +726,7 @@ internal static class RepresentativeProfilePointProcessor
 
     private static bool ValidateWorkSurfaceFit(IReadOnlyList<RailProfilePoint> alignedPoints, PointCloudDeviceSide side)
     {
-        int checkedCount = 0;
+        var diffs = new List<double>();
         for (int index = 0; index < alignedPoints.Count; index++)
         {
             RailProfilePoint point = alignedPoints[index];
@@ -683,21 +744,18 @@ internal static class RepresentativeProfilePointProcessor
                 continue;
             }
 
-            checkedCount++;
-            if (point.Y - standardY < WorkSurfaceFitTolerance)
-            {
-                return false;
-            }
+            diffs.Add(point.Y - standardY);
         }
 
-        return checkedCount > 0;
+        return diffs.Count > 0 &&
+               CalculateRobustLowerDiff(diffs) >= WorkSurfaceFitTolerance;
     }
 
     private static double CalculateStandardUpperOffsetY(
         IReadOnlyList<RailProfilePoint> xAlignedPoints,
         FittedLine xAlignedBoundaryLine)
     {
-        double minDiff = double.PositiveInfinity;
+        var diffs = new List<double>();
         for (int index = 0; index < xAlignedPoints.Count; index++)
         {
             RailProfilePoint point = xAlignedPoints[index];
@@ -712,19 +770,74 @@ internal static class RepresentativeProfilePointProcessor
                 continue;
             }
 
-            double diff = point.Y - standardY;
-            if (diff < minDiff)
-            {
-                minDiff = diff;
-            }
+            diffs.Add(point.Y - standardY);
         }
 
-        if (double.IsPositiveInfinity(minDiff))
+        if (diffs.Count == 0)
         {
             throw new InvalidOperationException("无法基于标准曲线完成 Y 方向对齐，未找到有效工作面点。");
         }
 
-        return -minDiff;
+        return -CalculateRobustLowerDiff(diffs);
+    }
+
+    private static double CalculateRobustLowerDiff(IReadOnlyList<double> diffs)
+    {
+        IReadOnlyList<double> filteredDiffs = FilterDiffOutliersByMad(diffs);
+        IReadOnlyList<double> sourceDiffs = filteredDiffs.Count > 0 ? filteredDiffs : diffs;
+        return Percentile(sourceDiffs, WorkSurfaceFitLowerPercentile);
+    }
+
+    private static IReadOnlyList<double> FilterDiffOutliersByMad(IReadOnlyList<double> diffs)
+    {
+        if (diffs.Count < MinDiffOutlierFilterCount)
+        {
+            return diffs;
+        }
+
+        double median = Median(diffs);
+        double[] centeredAbsoluteDiffs = new double[diffs.Count];
+        for (int index = 0; index < diffs.Count; index++)
+        {
+            centeredAbsoluteDiffs[index] = Math.Abs(diffs[index] - median);
+        }
+
+        double mad = Median(centeredAbsoluteDiffs);
+        double robustSigma = MadScaleFactor * mad;
+        double threshold = Math.Max(MinDiffOutlierThreshold, DiffOutlierSigmaFactor * robustSigma);
+        var filteredDiffs = new List<double>(diffs.Count);
+        for (int index = 0; index < diffs.Count; index++)
+        {
+            if (Math.Abs(diffs[index] - median) <= threshold)
+            {
+                filteredDiffs.Add(diffs[index]);
+            }
+        }
+
+        return filteredDiffs;
+    }
+
+    private static double Percentile(IReadOnlyList<double> values, double percentile)
+    {
+        if (values.Count == 0)
+        {
+            throw new ArgumentException("输入数组不能为空。", nameof(values));
+        }
+
+        double clampedPercentile = Math.Min(1.0, Math.Max(0.0, percentile));
+        double[] sortedValues = values.ToArray();
+        Array.Sort(sortedValues);
+
+        double position = (sortedValues.Length - 1) * clampedPercentile;
+        int lowerIndex = (int)Math.Floor(position);
+        int upperIndex = (int)Math.Ceiling(position);
+        if (lowerIndex == upperIndex)
+        {
+            return sortedValues[lowerIndex];
+        }
+
+        double weight = position - lowerIndex;
+        return sortedValues[lowerIndex] * (1.0 - weight) + sortedValues[upperIndex] * weight;
     }
 
     private static List<RailProfilePoint> TranslatePoints(

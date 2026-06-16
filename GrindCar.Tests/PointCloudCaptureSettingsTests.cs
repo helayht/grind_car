@@ -62,12 +62,23 @@ public class PointCloudCaptureSettingsTests
     }
 
     [Fact]
-    public void EnsureFrameRateInRange_WithOutOfRangeValue_Throws()
+    public void PointCloudExportService_UsesVendorCaptureParameterNodeNames()
     {
-        PointCloudSdkException exception = Assert.Throws<PointCloudSdkException>(() =>
-            PointCloudExportService.EnsureFrameRateInRange(500.0, 1.0, 300.0));
+        Assert.Equal("AcquisitionFrameRateEnable", PointCloudExportService.AcquisitionFrameRateEnableKey);
+        Assert.Equal("AcquisitionFrameRate", PointCloudExportService.AcquisitionFrameRateKey);
+        Assert.Equal("LSLRangeImgHeight", PointCloudExportService.RangeImageHeightKey);
+    }
 
-        Assert.Contains("计算帧率 500Hz 超出设备支持范围 1~300Hz", exception.Message);
+    [Fact]
+    public void PointCloudExportService_UsesRangeImageCaptureMode()
+    {
+        Assert.Equal(7U, PointCloudExportService.CaptureImageModeValue);
+    }
+
+    [Fact]
+    public void PointCloudExportService_UsesSixtySecondImageTimeout()
+    {
+        Assert.Equal(60000U, PointCloudExportService.DefaultGetImageTimeoutMs);
     }
 
     [Fact]
@@ -76,7 +87,7 @@ public class PointCloudCaptureSettingsTests
         PointCloudSdkException exception = Assert.Throws<PointCloudSdkException>(() =>
             PointCloudExportService.EnsureProfileCountInRange(400, 1, 256, 1));
 
-        Assert.Contains("单次测量总条数 400 超出设备 Height 支持范围 1~256", exception.Message);
+        Assert.Contains("Y方向行数 400 超出设备支持范围 1~256", exception.Message);
     }
 
     [Fact]
@@ -85,7 +96,7 @@ public class PointCloudCaptureSettingsTests
         PointCloudSdkException exception = Assert.Throws<PointCloudSdkException>(() =>
             PointCloudExportService.EnsureProfileCountInRange(7, 1, 100, 4));
 
-        Assert.Contains("不满足设备 Height 步进 4", exception.Message);
+        Assert.Contains("不满足设备步进 4", exception.Message);
     }
 
     [Fact]

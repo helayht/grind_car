@@ -89,30 +89,6 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 打开代表截面调试窗口。
-    /// </summary>
-    private void OpenMedianSectionDebugWindow_Click(object sender, RoutedEventArgs e)
-    {
-        var window = new MedianSectionDebugWindow
-        {
-            Owner = this
-        };
-        window.Show();
-    }
-
-    /// <summary>
-    /// 打开曲线旋转调试窗口。
-    /// </summary>
-    private void OpenCurveRotationDebugWindow_Click(object sender, RoutedEventArgs e)
-    {
-        var window = new CurveRotationDebugWindow
-        {
-            Owner = this
-        };
-        window.Show();
-    }
-
-    /// <summary>
     /// 打开 PLC 连接设置窗口并应用配置。
     /// </summary>
     private async void OpenPlcConnectionSettings_Click(object sender, RoutedEventArgs e)
@@ -142,6 +118,18 @@ public partial class MainWindow : Window
     private void OpenGrindDepthDebugWindow_Click(object sender, RoutedEventArgs e)
     {
         var window = new GrindDepthDebugWindow
+        {
+            Owner = this
+        };
+        window.Show();
+    }
+
+    /// <summary>
+    /// 打开 Left/Right 原始点云算法验证窗口。
+    /// </summary>
+    private void OpenPointCloudGrindDepthDebugWindow_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new PointCloudGrindDepthDebugWindow
         {
             Owner = this
         };

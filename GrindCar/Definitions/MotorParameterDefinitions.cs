@@ -143,8 +143,8 @@ public static class MotorParameterDefinitions
     public const ushort GrindingEndPositionAddress = 1182;
     public const ushort MeasurementMotionStartAddress = (ushort)(31 + MAddressOffset);
     public const ushort MeasurementProfileCaptureStartAddress = (ushort)(60 + MAddressOffset);
-    public const ushort MeasurementCurrentProfileCompletedAddress = (ushort)(61 + MAddressOffset);
-    public const ushort MeasurementMotionFinishedAddress = (ushort)(62 + MAddressOffset);
+    public const ushort MeasurementPositionCompletedAddress = (ushort)(61 + MAddressOffset);
+    public const ushort MeasurementCurrentProfileCompletedAddress = (ushort)(62 + MAddressOffset);
     public const ushort GrindingMotionStartAddress = (ushort)(32 + MAddressOffset);
     public const ushort GrindingTimesResultStartAddress = 1800;
     public const ushort GrindingTimesResultAddressStep = 2;

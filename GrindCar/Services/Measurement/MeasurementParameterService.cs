@@ -22,7 +22,7 @@ public class MeasurementParameterService : IMeasurementParameterService
     private readonly Func<string, int, IPlcClient> _plcClientFactory;
     private readonly Func<IReadOnlyList<ConfiguredPointCloudDevice>> _configuredDeviceProvider;
     private readonly Func<PointCloudCaptureSettings> _captureSettingsProvider;
-    private readonly Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, IReadOnlyList<RailProfilePoint>> _representativePointCapture;
+    private readonly Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, IReadOnlyList<RailProfilePoint>> _representativePointCapture;
     private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult> _grindDepthCalculator;
 
     public MeasurementParameterService()
@@ -34,7 +34,7 @@ public class MeasurementParameterService : IMeasurementParameterService
         Func<string, int, IPlcClient> plcClientFactory,
         Func<IReadOnlyList<ConfiguredPointCloudDevice>>? configuredDeviceProvider = null,
         Func<PointCloudCaptureSettings>? captureSettingsProvider = null,
-        Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, IReadOnlyList<RailProfilePoint>>? representativePointCapture = null,
+        Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, IReadOnlyList<RailProfilePoint>>? representativePointCapture = null,
         Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult>? grindDepthCalculator = null)
     {
         _plcClientFactory = plcClientFactory ?? throw new ArgumentNullException(nameof(plcClientFactory));
@@ -179,32 +179,44 @@ public class MeasurementParameterService : IMeasurementParameterService
         Report(progress, "已写入测量运行启动信号，开始等待触发。");
 
         int sampleCount = 0;
+        bool lastCaptureTrigger = false;
 
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            bool measurementFinished = plcClient.ReadSingleCoil(MotorParameterDefinitions.MeasurementMotionFinishedAddress);
-            if (measurementFinished)
+            bool positionCompleted = plcClient.ReadSingleCoil(MotorParameterDefinitions.MeasurementPositionCompletedAddress);
+            if (positionCompleted)
             {
                 measurementEnded?.Invoke();
-                Report(progress, "检测到测量运行结束信号，开始汇总打磨深度。");
+                Report(progress, "检测到测量定位完成信号，开始汇总打磨深度。");
                 break;
             }
 
             bool captureTrigger = plcClient.ReadSingleCoil(MotorParameterDefinitions.MeasurementProfileCaptureStartAddress);
-            if (!captureTrigger)
+            if (!captureTrigger || lastCaptureTrigger)
             {
+                lastCaptureTrigger = captureTrigger;
                 await Task.Delay(DefaultPollIntervalMs, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
+            lastCaptureTrigger = captureTrigger;
             ConfiguredPointCloudDevice device = configuredDevices[nextDeviceIndex];
             Report(
                 progress,
-                $"检测到廓形测量触发，正在采集第 {nextDeviceIndex + 1} 台廓形仪 ({device.Side})。");
+                $"检测到当前廓形测量启动上升沿，正在采集第 {nextDeviceIndex + 1} 台廓形仪 ({device.Side})。");
 
-            IReadOnlyList<RailProfilePoint> devicePoints = _representativePointCapture(device, captureSettings);
+            var archiveContext = new MeasurementPointCloudArchiveContext(
+                sampleCount + 1,
+                nextDeviceIndex + 1,
+                device.SerialNumber,
+                device.Side,
+                progress);
+            IReadOnlyList<RailProfilePoint> devicePoints = _representativePointCapture(
+                device,
+                captureSettings,
+                archiveContext);
             if (devicePoints.Count > 0)
             {
                 pendingRepresentativePoints.AddRange(devicePoints);
@@ -212,7 +224,7 @@ public class MeasurementParameterService : IMeasurementParameterService
 
             await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.MeasurementCurrentProfileCompletedAddress, true)
                 .ConfigureAwait(false);
-            Report(progress, $"第 {nextDeviceIndex + 1} 台廓形仪测量完成，已写入当前廓形测量完成信号。");
+            Report(progress, $"第 {nextDeviceIndex + 1} 台廓形仪测量完成，已写入当前段廓形测量完成信号。");
 
             nextDeviceIndex++;
             if (nextDeviceIndex < configuredDevices.Count)

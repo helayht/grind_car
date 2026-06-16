@@ -13,11 +13,14 @@ namespace GrindCar.Services.PointCloud;
 /// </summary>
 public sealed class PointCloudExportService
 {
-    private const uint DefaultGetImageTimeoutMs = 3000;
+    internal const uint DefaultGetImageTimeoutMs = 60000;
     private const uint OriginImageModeValue = 1;
-    private const uint PointCloudImageModeValue = 4;
-    private const uint RangeImageModeValue = 7;
+    internal const uint CaptureImageModeValue = 7;
     private const uint IntensityImageModeValue = 10;
+    internal const string AcquisitionFrameRateEnableKey = "AcquisitionFrameRateEnable";
+    internal const string AcquisitionFrameRateKey = "AcquisitionFrameRate";
+    internal const string RangeImageHeightKey = "LSLRangeImgHeight";
+    private const int BooleanTrueValue = 1;
     private const int PointCoordinateCount = 3;
     private const int FloatPointSizeInBytes = sizeof(float) * PointCoordinateCount;
     private const int Int16PointSizeInBytes = sizeof(short) * PointCoordinateCount;
@@ -99,15 +102,16 @@ public sealed class PointCloudExportService
 
             using var imageModeParam = new MV3D_LP_PARAM();
             using var imageModeValue = new MV3D_LP_ENUMPARAM();
+            using var depthImage = new MV3D_LP_IMAGE_DATA();
             using var pointCloudImage = new MV3D_LP_IMAGE_DATA();
 
             try
             {
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_OpenDeviceBySN(ref deviceHandle, serialNumber), $"打开设备失败，SN: {serialNumber}");
 
-                imageModeValue.nCurValue = PointCloudImageModeValue;
+                imageModeValue.nCurValue = CaptureImageModeValue;
                 imageModeParam.set_enumparam(imageModeValue);
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam), "设置 3D 点云模式失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam), "设置深度图模式失败。");
 
                 if (captureSettings != null)
                 {
@@ -117,7 +121,8 @@ public sealed class PointCloudExportService
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_StartMeasure(deviceHandle), "启动测量失败。");
                 measurementStarted = true;
 
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, pointCloudImage, DefaultGetImageTimeoutMs), "获取点云数据失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, depthImage, DefaultGetImageTimeoutMs), "获取深度图数据失败。");
+                MapDepthImageToPointCloud(depthImage, pointCloudImage);
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_SaveImage(pointCloudImage, ToSdkFileType(exportFormat), sdkOutputPath), "导出点云文件失败。");
             }
             finally
@@ -176,24 +181,26 @@ public sealed class PointCloudExportService
             bool measurementStarted = false;
             using var imageModeParam = new MV3D_LP_PARAM();
             using var imageModeValue = new MV3D_LP_ENUMPARAM();
+            using var depthImage = new MV3D_LP_IMAGE_DATA();
             using var pointCloudImage = new MV3D_LP_IMAGE_DATA();
 
             try
             {
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_OpenDeviceBySN(ref deviceHandle, serialNumber), $"打开设备失败，SN: {serialNumber}");
 
-                imageModeValue.nCurValue = PointCloudImageModeValue;
+                imageModeValue.nCurValue = CaptureImageModeValue;
                 imageModeParam.set_enumparam(imageModeValue);
                 EnsureSuccess(
                     Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_ENUM_IMAGEMODE, imageModeParam),
-                    "设置 3D 点云模式失败。");
+                    "设置深度图模式失败。");
 
                 ApplyCaptureSettings(deviceHandle, captureSettings);
 
                 EnsureSuccess(Mv3dLpSDK.MV3D_LP_StartMeasure(deviceHandle), "启动测量失败。");
                 measurementStarted = true;
 
-                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, pointCloudImage, DefaultGetImageTimeoutMs), "获取点云数据失败。");
+                EnsureSuccess(Mv3dLpSDK.MV3D_LP_GetImage(deviceHandle, depthImage, DefaultGetImageTimeoutMs), "获取深度图数据失败。");
+                MapDepthImageToPointCloud(depthImage, pointCloudImage);
 
                 return DecodePointCloudImage(pointCloudImage);
             }
@@ -214,26 +221,25 @@ public sealed class PointCloudExportService
 
     private static void ApplyCaptureSettings(IntPtr deviceHandle, PointCloudCaptureSettings captureSettings)
     {
-        using var frameRateReadParam = new MV3D_LP_PARAM();
-        EnsureSuccess(
-            Mv3dLpSDK.MV3D_LP_GetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_FLOAT_FRAMERATE, frameRateReadParam),
-            "读取采集帧率范围失败。");
-        MV3D_LP_FLOATPARAM frameRateRange = frameRateReadParam.get_floatparam();
-        EnsureFrameRateInRange(captureSettings.FrameRateHz, frameRateRange.fMin, frameRateRange.fMax);
-
         using var heightReadParam = new MV3D_LP_PARAM();
         EnsureSuccess(
-            Mv3dLpSDK.MV3D_LP_GetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_INT_HEIGHT, heightReadParam),
-            "读取单次测量总条数范围失败。");
+            Mv3dLpSDK.MV3D_LP_GetParam(deviceHandle, RangeImageHeightKey, heightReadParam),
+            "读取Y方向行数范围失败。");
         MV3D_LP_INTPARAM heightRange = heightReadParam.get_intparam();
         EnsureProfileCountInRange(captureSettings.ProfileCount, heightRange.nMin, heightRange.nMax, heightRange.nInc);
+
+        using var frameRateEnableParam = new MV3D_LP_PARAM();
+        frameRateEnableParam.set_boolparam(BooleanTrueValue);
+        EnsureSuccess(
+            Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, AcquisitionFrameRateEnableKey, frameRateEnableParam),
+            "设置采集帧率控制使能失败。");
 
         using var frameRateWriteParam = new MV3D_LP_PARAM();
         using var frameRateValue = new MV3D_LP_FLOATPARAM();
         frameRateValue.fCurValue = (float)captureSettings.FrameRateHz;
         frameRateWriteParam.set_floatparam(frameRateValue);
         EnsureSuccess(
-            Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_FLOAT_FRAMERATE, frameRateWriteParam),
+            Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, AcquisitionFrameRateKey, frameRateWriteParam),
             "设置采集帧率失败。");
 
         using var heightWriteParam = new MV3D_LP_PARAM();
@@ -241,17 +247,8 @@ public sealed class PointCloudExportService
         heightValue.nCurValue = captureSettings.ProfileCount;
         heightWriteParam.set_intparam(heightValue);
         EnsureSuccess(
-            Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, Mv3dLpSDK.MV3D_LP_INT_HEIGHT, heightWriteParam),
-            "设置单次测量总条数失败。");
-    }
-
-    internal static void EnsureFrameRateInRange(double frameRateHz, double minFrameRateHz, double maxFrameRateHz)
-    {
-        if (frameRateHz < minFrameRateHz || frameRateHz > maxFrameRateHz)
-        {
-            throw new PointCloudSdkException(
-                $"计算帧率 {FormatNumber(frameRateHz)}Hz 超出设备支持范围 {FormatNumber(minFrameRateHz)}~{FormatNumber(maxFrameRateHz)}Hz。");
-        }
+            Mv3dLpSDK.MV3D_LP_SetParam(deviceHandle, RangeImageHeightKey, heightWriteParam),
+            "设置Y方向行数失败。");
     }
 
     internal static void EnsureProfileCountInRange(int profileCount, long minProfileCount, long maxProfileCount, long increment)
@@ -259,19 +256,14 @@ public sealed class PointCloudExportService
         if (profileCount < minProfileCount || profileCount > maxProfileCount)
         {
             throw new PointCloudSdkException(
-                $"单次测量总条数 {profileCount.ToString(CultureInfo.InvariantCulture)} 超出设备 Height 支持范围 {minProfileCount.ToString(CultureInfo.InvariantCulture)}~{maxProfileCount.ToString(CultureInfo.InvariantCulture)}。");
+                $"Y方向行数 {profileCount.ToString(CultureInfo.InvariantCulture)} 超出设备支持范围 {minProfileCount.ToString(CultureInfo.InvariantCulture)}~{maxProfileCount.ToString(CultureInfo.InvariantCulture)}。");
         }
 
         if (increment > 1 && (profileCount - minProfileCount) % increment != 0)
         {
             throw new PointCloudSdkException(
-                $"单次测量总条数 {profileCount.ToString(CultureInfo.InvariantCulture)} 不满足设备 Height 步进 {increment.ToString(CultureInfo.InvariantCulture)}。");
+                $"Y方向行数 {profileCount.ToString(CultureInfo.InvariantCulture)} 不满足设备步进 {increment.ToString(CultureInfo.InvariantCulture)}。");
         }
-    }
-
-    private static string FormatNumber(double value)
-    {
-        return value.ToString("0.###", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -397,6 +389,13 @@ public sealed class PointCloudExportService
         return decodeFormat.Kind == PointCloudCoordinateFormat.Float
             ? DecodeFloatPointCloud(pointCloudImage, decodeFormat.PointCount)
             : DecodeInt16PointCloud(pointCloudImage, decodeFormat.PointCount);
+    }
+
+    private static void MapDepthImageToPointCloud(MV3D_LP_IMAGE_DATA depthImage, MV3D_LP_IMAGE_DATA pointCloudImage)
+    {
+        EnsureSuccess(
+            Mv3dLpSDK.MV3D_LP_MapDepthToPointCloud(depthImage, pointCloudImage),
+            "深度图转换点云失败。");
     }
 
     private static DecodeFormat ResolveDecodeFormat(int dataLength, ulong pointCountByShape)

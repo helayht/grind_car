@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail;
+using GrindCar.Services.Rail.Core;
 using GrindCar.Services.Rail.Processing;
 using Xunit;
 
@@ -56,6 +59,43 @@ public class PointCloudMedianSectionCaptureServiceTests
         Assert.Equal(1, representativeService.PointExtractionCallCount);
         Assert.Equal(1, representativeService.CsvExtractionCallCount);
         Assert.False(string.IsNullOrWhiteSpace(result.CsvPath));
+    }
+
+    [Fact]
+    public async Task CaptureMedianSectionProfile_OnlineExtractionSucceeds_ArchivesRawPointCloud()
+    {
+        var exportService = new FakePointCloudExportService(new[]
+        {
+            new PointCloudPoint3D(1.0, 2.0, 3.0)
+        });
+        var representativeService = new FakeRepresentativeProfileService();
+        var service = new PointCloudMedianSectionCaptureService(
+            exportService,
+            representativeService,
+            CreateLogDirectoryPath());
+        var progressSource = new TaskCompletionSource<string>();
+        var progress = new Progress<string>(message => progressSource.TrySetResult(message));
+        var archiveContext = new MeasurementPointCloudArchiveContext(
+            1,
+            1,
+            "SN-001",
+            PointCloudDeviceSide.Left,
+            progress);
+
+        PointCloudMedianSectionCaptureResult result = service.CaptureMedianSectionProfile(
+            "SN-001",
+            PointCloudDeviceSide.Left,
+            new PointCloudCaptureSettings(1.0, 10),
+            archiveContext);
+
+        Task completedTask = await Task.WhenAny(progressSource.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+        Assert.Same(progressSource.Task, completedTask);
+        string progressMessage = await progressSource.Task;
+        string outputPath = progressMessage["点云留档完成：".Length..];
+        Assert.True(File.Exists(outputPath));
+        Assert.Equal(string.Empty, result.CsvPath);
+        Assert.Equal(1, representativeService.PointExtractionCallCount);
+        Assert.Equal(0, representativeService.CsvExtractionCallCount);
     }
 
     private static string CreateLogDirectoryPath()

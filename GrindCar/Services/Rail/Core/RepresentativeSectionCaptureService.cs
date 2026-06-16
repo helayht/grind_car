@@ -74,7 +74,8 @@ public static class RepresentativeSectionCaptureService
 
     public static IReadOnlyList<RailProfilePoint> CaptureRepresentativeSectionPoints(
         ConfiguredPointCloudDevice device,
-        PointCloudCaptureSettings captureSettings)
+        PointCloudCaptureSettings captureSettings,
+        MeasurementPointCloudArchiveContext? archiveContext = null)
     {
         if (string.IsNullOrWhiteSpace(device.SerialNumber))
         {
@@ -88,7 +89,11 @@ public static class RepresentativeSectionCaptureService
 
         IPointCloudMedianSectionCaptureService medianSectionCaptureService = new PointCloudMedianSectionCaptureService();
         PointCloudMedianSectionCaptureResult result =
-            medianSectionCaptureService.CaptureMedianSectionProfile(device.SerialNumber, device.Side, captureSettings);
+            medianSectionCaptureService.CaptureMedianSectionProfile(
+                device.SerialNumber,
+                device.Side,
+                captureSettings,
+                archiveContext);
 
         return result.ExtractionResult.ProfilePoints;
     }

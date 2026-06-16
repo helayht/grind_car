@@ -33,6 +33,53 @@ public class PointCloudRepresentativeProfileServiceTests
     }
 
     [Fact]
+    public void ExtractMedianSectionProfileFromPoints_WithOutlierZValues_AveragesAfterRemovingOutlier()
+    {
+        var points = CreateFlatSectionsAtZ(
+            (10.0, 10.0),
+            (20.0, 10.1),
+            (30.0, 9.9),
+            (40.0, 10.0),
+            (50.0, 50.0));
+        var service = new PointCloudRepresentativeProfileService();
+
+        var result = service.ExtractMedianSectionProfileFromPoints(points);
+
+        Assert.Equal(10.0, result.ProfilePoints.Single(point => point.X == 1.0).Y, 6);
+    }
+
+    [Fact]
+    public void ExtractMedianSectionProfileFromPoints_WithFewZValues_KeepsArithmeticAverage()
+    {
+        var points = CreateFlatSectionsAtZ(
+            (10.0, 10.0),
+            (20.0, 10.0),
+            (30.0, 10.0),
+            (40.0, 50.0));
+        var service = new PointCloudRepresentativeProfileService();
+
+        var result = service.ExtractMedianSectionProfileFromPoints(points);
+
+        Assert.Equal(20.0, result.ProfilePoints.Single(point => point.X == 1.0).Y, 6);
+    }
+
+    [Fact]
+    public void ExtractMedianSectionProfileFromPoints_WithOutlierAtMaxCommonX_AveragesAfterRemovingOutlier()
+    {
+        var points = new List<PointCloudPoint3D>();
+        AddThreePointSection(points, 10.0, 10.0);
+        AddThreePointSection(points, 20.0, 10.0);
+        AddThreePointSection(points, 30.0, 10.2);
+        AddThreePointSection(points, 40.0, 9.8);
+        AddThreePointSection(points, 50.0, 70.0);
+        var service = new PointCloudRepresentativeProfileService();
+
+        var result = service.ExtractMedianSectionProfileFromPoints(points);
+
+        Assert.Equal(10.0, result.ProfilePoints.Single(point => point.X == 1.0).Y, 6);
+    }
+
+    [Fact]
     public void ExtractMedianSectionProfileFromPoints_WithOnlyZeroPoints_Throws()
     {
         var points = new List<PointCloudPoint3D>
@@ -64,5 +111,26 @@ public class PointCloudRepresentativeProfileServiceTests
             service.ExtractMedianSectionProfileFromPoints(points));
 
         Assert.Contains("没有公共 X 范围", exception.Message);
+    }
+
+    private static List<PointCloudPoint3D> CreateFlatSectionsAtZ(params (double Y, double Z)[] sections)
+    {
+        var points = new List<PointCloudPoint3D>();
+        for (int index = 0; index < sections.Length; index++)
+        {
+            (double y, double z) = sections[index];
+            points.Add(new PointCloudPoint3D(0.0, y, z));
+            points.Add(new PointCloudPoint3D(1.0, y, z));
+            points.Add(new PointCloudPoint3D(2.0, y, z));
+        }
+
+        return points;
+    }
+
+    private static void AddThreePointSection(ICollection<PointCloudPoint3D> points, double y, double maxCommonZ)
+    {
+        points.Add(new PointCloudPoint3D(0.0, y, 10.0));
+        points.Add(new PointCloudPoint3D(0.6, y, 10.0));
+        points.Add(new PointCloudPoint3D(1.0, y, maxCommonZ));
     }
 }
