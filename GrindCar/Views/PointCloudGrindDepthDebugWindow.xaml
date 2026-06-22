@@ -1,0 +1,186 @@
+<Window x:Class="GrindCar.Views.PointCloudGrindDepthDebugWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="点云算法验证"
+        Width="1120"
+        Height="760"
+        MinWidth="900"
+        MinHeight="680"
+        WindowStartupLocation="CenterOwner"
+        Background="#F4F6F8">
+    <Window.Resources>
+        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="CardBorder" Color="#DCE3E8" />
+        <SolidColorBrush x:Key="Ink" Color="#1E2A32" />
+        <SolidColorBrush x:Key="Muted" Color="#61727D" />
+        <SolidColorBrush x:Key="Accent" Color="#0F7A6C" />
+        <SolidColorBrush x:Key="AccentSoft" Color="#E8F6F3" />
+
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBackground}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="18" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock FontSize="24"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Ink}"
+                               Text="点云算法验证" />
+                    <TextBlock Margin="0,6,0,0"
+                               Foreground="{StaticResource Muted}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <Button Width="130"
+                            Height="34"
+                            Margin="0,0,10,0"
+                            Content="选择 Left CSV"
+                            IsEnabled="{Binding CanSelectFiles}"
+                            Click="SelectLeftCsv_Click" />
+                    <Button Width="130"
+                            Height="34"
+                            Margin="0,0,10,0"
+                            Content="选择 Right CSV"
+                            IsEnabled="{Binding CanSelectFiles}"
+                            Click="SelectRightCsv_Click" />
+                    <Button Width="130"
+                            Height="34"
+                            Margin="0,0,10,0"
+                            Content="计算打磨深度"
+                            IsEnabled="{Binding CanCalculate}"
+                            Click="Calculate_Click" />
+                    <Button Width="88"
+                            Height="34"
+                            Content="关闭"
+                            Click="Close_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1"
+              Margin="0,14,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.2*" />
+                <ColumnDefinition Width="1.2*" />
+                <ColumnDefinition Width="1.6*" />
+                <ColumnDefinition Width="180" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Style="{StaticResource CardBorderStyle}"
+                    Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Foreground="{StaticResource Muted}"
+                               Text="Left 原始点云" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Ink}"
+                               TextWrapping="Wrap"
+                               Text="{Binding LeftFilePath}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{StaticResource Muted}"
+                               Text="{Binding LeftSummaryText}" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Style="{StaticResource CardBorderStyle}"
+                    Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Foreground="{StaticResource Muted}"
+                               Text="Right 原始点云" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Ink}"
+                               TextWrapping="Wrap"
+                               Text="{Binding RightFilePath}" />
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{StaticResource Muted}"
+                               Text="{Binding RightSummaryText}" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Style="{StaticResource CardBorderStyle}"
+                    Margin="0,0,12,0">
+                <StackPanel>
+                    <TextBlock Foreground="{StaticResource Muted}"
+                               Text="打磨角度输入" />
+                    <TextBox Margin="0,8,0,0"
+                             MinHeight="84"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top"
+                             IsEnabled="{Binding CanSelectFiles}"
+                             Text="{Binding AnglesInput, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+            </Border>
+            
+        </Grid>
+
+        <Border Grid.Row="2"
+                Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock FontSize="20"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource Ink}"
+                           Text="需要打磨深度" />
+
+                <DataGrid Grid.Row="1"
+                          Margin="0,14,0,0"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          HeadersVisibility="Column"
+                          ItemsSource="{Binding Results}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Width="*"
+                                            Header="角度"
+                                            Binding="{Binding Angle}" />
+                        <DataGridTextColumn Width="*"
+                                            Header="打磨深度"
+                                            Binding="{Binding GrindDepth, StringFormat=F6}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="3"
+                Margin="0,14,0,0"
+                Style="{StaticResource CardBorderStyle}">
+            <TextBlock Foreground="{StaticResource Muted}"
+                       Text="{Binding StatusMessage}"
+                       TextWrapping="Wrap" />
+        </Border>
+    </Grid>
+</Window>

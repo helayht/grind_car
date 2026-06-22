@@ -1,0 +1,396 @@
+<Window x:Class="GrindCar.Views.ProfileRegistrationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="代表廓形配准"
+        Width="1180"
+        Height="780"
+        MinWidth="980"
+        MinHeight="680"
+        WindowStartupLocation="CenterOwner"
+        Background="#F4F6F8">
+    <Window.Resources>
+        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="CardBorder" Color="#DCE3E8" />
+        <SolidColorBrush x:Key="Ink" Color="#1E2A32" />
+        <SolidColorBrush x:Key="Muted" Color="#61727D" />
+        <SolidColorBrush x:Key="StandardBrush" Color="#D96C06" />
+        <SolidColorBrush x:Key="LeftBrush" Color="#1769AA" />
+        <SolidColorBrush x:Key="RightBrush" Color="#0F7A6C" />
+
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBackground}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16" />
+        </Style>
+
+        <Style x:Key="CaptionStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Style="{StaticResource CardBorderStyle}"
+                Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock FontSize="24"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource Ink}"
+                               Text="代表廓形手动配准" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{Binding FeedbackBrush}"
+                               Text="{Binding FeedbackText}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Width="88"
+                        Height="34"
+                        Content="关闭"
+                        Click="Close_Click" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Style="{StaticResource CardBorderStyle}"
+                            Margin="0,0,12,12">
+                        <StackPanel>
+                            <TextBlock FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource Ink}"
+                                       Text="数据源" />
+
+                            <Button Margin="0,14,0,0"
+                                    Height="34"
+                                    Content="选择 Left CSV"
+                                    Click="SelectLeftCsv_Click" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{StaticResource Ink}"
+                                       Text="{Binding LeftFilePath}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Style="{StaticResource CaptionStyle}"
+                                       Text="{Binding LeftSummaryText}" />
+
+                            <Button Margin="0,16,0,0"
+                                    Height="34"
+                                    Content="选择 Right CSV"
+                                    Click="SelectRightCsv_Click" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{StaticResource Ink}"
+                                       Text="{Binding RightFilePath}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Style="{StaticResource CaptionStyle}"
+                                       Text="{Binding RightSummaryText}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}"
+                            Margin="0,0,12,12">
+                        <StackPanel>
+                            <TextBlock FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource LeftBrush}"
+                                       Text="Left 设备调节" />
+                            <CheckBox Margin="0,12,0,0"
+                                      Content="向右镜像"
+                                      IsChecked="{Binding PendingLeftIsMirrored, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="82" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionStyle}"
+                                           Text="{Binding PendingLeftDx, StringFormat=X轴平移: {0:F2}}" />
+                                <TextBox Grid.Column="1"
+                                         Height="26"
+                                         HorizontalContentAlignment="Right"
+                                         ToolTip="范围：-200 到 200"
+                                         Text="{Binding PendingLeftDx, StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <Slider Minimum="-200"
+                                    Maximum="200"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="False"
+                                    Value="{Binding PendingLeftDx, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="82" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionStyle}"
+                                           Text="{Binding PendingLeftDy, StringFormat=Y轴平移: {0:F2}}" />
+                                <TextBox Grid.Column="1"
+                                         Height="26"
+                                         HorizontalContentAlignment="Right"
+                                         ToolTip="范围：-200 到 200"
+                                         Text="{Binding PendingLeftDy, StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <Slider Minimum="-200"
+                                    Maximum="200"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="False"
+                                    Value="{Binding PendingLeftDy, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="82" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionStyle}"
+                                           Text="{Binding PendingLeftRotationDegrees, StringFormat=旋转角度: {0:F2}°}" />
+                                <TextBox Grid.Column="1"
+                                         Height="26"
+                                         HorizontalContentAlignment="Right"
+                                         ToolTip="范围：-360° 到 360°"
+                                         Text="{Binding PendingLeftRotationDegrees, StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <Slider Minimum="-360"
+                                    Maximum="360"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="False"
+                                    Value="{Binding PendingLeftRotationDegrees, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}"
+                            Margin="0,0,12,12">
+                        <StackPanel>
+                            <TextBlock FontSize="17"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource RightBrush}"
+                                       Text="Right 设备调节" />
+                            <CheckBox Margin="0,12,0,0"
+                                      Content="向左镜像"
+                                      IsChecked="{Binding PendingRightIsMirrored, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="82" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionStyle}"
+                                           Text="{Binding PendingRightDx, StringFormat=X轴平移: {0:F2}}" />
+                                <TextBox Grid.Column="1"
+                                         Height="26"
+                                         HorizontalContentAlignment="Right"
+                                         ToolTip="范围：-200 到 200"
+                                         Text="{Binding PendingRightDx, StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <Slider Minimum="-200"
+                                    Maximum="200"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="False"
+                                    Value="{Binding PendingRightDx, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="82" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionStyle}"
+                                           Text="{Binding PendingRightDy, StringFormat=Y轴平移: {0:F2}}" />
+                                <TextBox Grid.Column="1"
+                                         Height="26"
+                                         HorizontalContentAlignment="Right"
+                                         ToolTip="范围：-200 到 200"
+                                         Text="{Binding PendingRightDy, StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <Slider Minimum="-200"
+                                    Maximum="200"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="False"
+                                    Value="{Binding PendingRightDy, UpdateSourceTrigger=PropertyChanged}" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="82" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionStyle}"
+                                           Text="{Binding PendingRightRotationDegrees, StringFormat=旋转角度: {0:F2}°}" />
+                                <TextBox Grid.Column="1"
+                                         Height="26"
+                                         HorizontalContentAlignment="Right"
+                                         ToolTip="范围：-360° 到 360°"
+                                         Text="{Binding PendingRightRotationDegrees, StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <Slider Minimum="-360"
+                                    Maximum="360"
+                                    TickFrequency="0.1"
+                                    IsSnapToTickEnabled="False"
+                                    Value="{Binding PendingRightRotationDegrees, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CardBorderStyle}"
+                            Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Width="132"
+                                    Height="34"
+                                    Margin="0,0,8,0"
+                                    Content="重置参数"
+                                    Click="Reset_Click" />
+                            <Button Width="96"
+                                    Height="34"
+                                    Margin="0,0,8,0"
+                                    Content="确认调整"
+                                    Click="Apply_Click" />
+                            <Button Width="96"
+                                    Height="34"
+                                    Content="保存参数"
+                                    Click="Save_Click" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Column="1"
+                    Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="0,0,20,0">
+                            <Rectangle Width="24"
+                                       Height="4"
+                                       Fill="{StaticResource StandardBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Margin="7,0,0,0"
+                                       Style="{StaticResource CaptionStyle}"
+                                       Text="标准参考线" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="0,0,20,0">
+                            <Rectangle Width="24"
+                                       Height="4"
+                                       Fill="{StaticResource LeftBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Margin="7,0,0,0"
+                                       Style="{StaticResource CaptionStyle}"
+                                       Text="Left 点云" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="24"
+                                       Height="4"
+                                       Fill="{StaticResource RightBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Margin="7,0,0,0"
+                                       Style="{StaticResource CaptionStyle}"
+                                       Text="Right 点云" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Canvas x:Name="PlotCanvas"
+                            Grid.Row="1"
+                            Background="#FCFDFD"
+                            SizeChanged="PlotCanvas_SizeChanged">
+                        <Line Stroke="#B9C6CE"
+                              StrokeThickness="1"
+                              StrokeDashArray="4,4"
+                              X1="{Binding XAxisX1}"
+                              X2="{Binding XAxisX2}"
+                              Y1="{Binding XAxisY1}"
+                              Y2="{Binding XAxisY2}" />
+                        <Line Stroke="#B9C6CE"
+                              StrokeThickness="1"
+                              StrokeDashArray="4,4"
+                              X1="{Binding YAxisX1}"
+                              X2="{Binding YAxisX2}"
+                              Y1="{Binding YAxisY1}"
+                              Y2="{Binding YAxisY2}" />
+                        <Path Stroke="{StaticResource StandardBrush}"
+                              StrokeThickness="2.5"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Data="{Binding StandardCurveGeometry}" />
+                        <Path Stroke="{StaticResource LeftBrush}"
+                              StrokeThickness="2.5"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Data="{Binding LeftCurveGeometry}" />
+                        <Path Stroke="{StaticResource RightBrush}"
+                              StrokeThickness="2.5"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Data="{Binding RightCurveGeometry}" />
+
+                        <ItemsControl ItemsSource="{Binding LeftPointItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                    <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Ellipse Width="5"
+                                             Height="5"
+                                             Fill="{StaticResource LeftBrush}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <ItemsControl ItemsSource="{Binding RightPointItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                    <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Ellipse Width="5"
+                                             Height="5"
+                                             Fill="{StaticResource RightBrush}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Canvas>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
