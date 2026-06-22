@@ -5,7 +5,7 @@ GrindCar 是一个基于 `.NET 6 + WPF` 的轨面打磨设备上位机项目，�
 
 - 驾驶舱首页展示电量、速度、连接状态等运行信息
 - 电机调试窗口通过 `Modbus TCP` 与 PLC 建立连接，完成参数轮询、写入和调试
-- 点云调试链路支持设备枚举、3D 点云模式单帧导出、在线点云平均代表截面提取（失败时自动回退 CSV）、需要打磨深度计算与已打磨深度检测
+- 点云调试链路支持设备枚举、深度图转点云单帧导出、在线点云平均代表截面提取（失败时自动回退 CSV）、需要打磨深度计算与已打磨深度检测
 - 主界面内置参数设置，可写入“测量起点位置/测量终点位置”与“打磨起点位置/打磨终点位置”，并可配置点云在线采集速度、单次测量总条数和计算帧率；PLC 连接参数通过独立窗口维护
 - 主界面支持测量运行流程：按 `M31/M60/M61/M62` 交互，两台廓形仪按顺序采集并合并为一组测量，累计多组后计算平均打磨深度并写回各角度打磨次数；并支持独立写入打磨运动启动 `M32`
 - 轨面服务层提供标准轨面函数、代表截面提取、多角度打磨深度计算和按角度计算代表廓形 `b` 值的能力
@@ -51,7 +51,7 @@ GrindCar.sln
 - 启动后默认进入首页
 - 展示电量、速度、连接状态和当前时间
 - 首页中的电量和速度当前为“未接入数据”占位展示
-- 可从首页进入点云导出、打磨深度调试、点云算法验证和电机调试窗口
+- 可从首页进入点云导出、打磨深度调试、点云算法验证、代表廓形配准和电机调试窗口
 - 首页参数区可直接设置“测量起点位置/测量终点位置”并写入 PLC
 - 测量参数与测量运行流程共用独立的“PLC连接设置”窗口维护 IP/Port
 
@@ -63,12 +63,13 @@ GrindCar.sln
 - 写入映射逻辑集中在 `Services/Motor/MotorParameterSpecProvider.cs`
 
 ### 3. 点云导出与截面提取
-- `PointCloudExportService` 用于枚举设备、设置 3D 点云模式并导出单帧点云
+- `PointCloudExportService` 用于枚举设备、设置 Range 深度图模式并导出单帧点云
 - 支持点云导出格式：`CSV`、`PLY`、`OBJ`
 - 点云 SDK 图像模式集中定义在 `PointCloudExportService`：`Origin=1`、`PointCloud=4`、`Range=7`、`Intensity=10`
-- 当前默认采集使用 `ImageMode=4`（3D 点云模式），直接 `GetImage` 获取点云数据，不再走深度图 `ImageMode=7` + `MapDepthToPointCloud` 转换
+- 当前默认采集使用 `ImageMode=7`（Range 深度图模式），先通过 `GetImage` 获取深度图，再调用 `MapDepthToPointCloud` 转换为点云
 - `PointCloudRepresentativeProfileService` 支持从在线点云点集或 `CSV` 提取平均代表截面二维点集
-- 代表点提取后会执行固定流程：离群点过滤 -> 外侧非工作面竖线旋转对齐 -> 标准边界 X 对齐 -> 工作面 Y 贴合
+- 带 `Left` / `Right` 侧别的代表点提取会执行固定流程：离群点过滤 -> 按已保存的 `IsMirrored` 执行手动镜像 -> 应用已保存的手动配准平移/旋转参数
+- 手动配准参数保存在运行目录 `point-cloud-profile-registration.json`；未保存参数时，后续测量和点云算法验证会直接提示先完成代表廓形手动配准
 - `PointCloudMedianSectionCaptureService` 提供一条串联流程（在线优先）：
   `SDK 单帧采集 -> 内存点集提取平均代表截面`
 - 在线链路异常时会自动回退：
@@ -80,10 +81,10 @@ GrindCar.sln
 - 配置会保存到运行目录 `point-cloud-capture-settings.json`，下次启动自动恢复
 - 启动主界面测量流程前会自动校验并保存点云采集参数，避免遗漏手动保存
 - 所有在线点云采集会在 `StartMeasure` 前写入：
-  - `ImageMode = 4`
+  - `ImageMode = 7`
   - `AcquisitionFrameRate = speedMetersPerMinute * 100 / 60`
-  - `Height = profileCount`
-- 写入前会读取设备 `AcquisitionFrameRate` 和 `Height` 支持范围；超出范围或不满足 `Height` 步进时直接报错，不自动回退到深度图模式
+  - `LSLRangeImgHeight = profileCount`
+- 写入前会读取设备 `AcquisitionFrameRate` 和 `LSLRangeImgHeight` 支持范围；超出范围或不满足 `LSLRangeImgHeight` 步进时直接报错
 - “点云导出”窗口的手动导出流程不读取主界面点云采集参数，只负责手动选择设备和格式导出
 
 ### 5. 打磨深度计算
@@ -158,7 +159,7 @@ dotnet clean GrindCar.sln
 ### 首页入口
 1. 启动应用后进入“轨面打磨驾驶舱”首页。
 2. 通过右上角按钮可打开对应功能窗口。
-3. 当前可进入的窗口包括：`点云导出`、`打磨深度调试`、`点云算法验证`、`电机调试`。
+3. 当前可进入的窗口包括：`点云导出`、`打磨深度调试`、`点云算法验证`、`代表廓形配准`、`电机调试`。
 4. 首页下方参数区可直接设置并写入：`测量起点位置`、`测量终点位置`、`打磨起点位置`、`打磨终点位置`。
 5. 点击“设置PLC连接”可打开独立窗口维护测量参数写入用的 `IP/Port`。
 
@@ -179,10 +180,12 @@ dotnet clean GrindCar.sln
 
 ### 点云调试流程
 1. 在运行目录创建 `point-cloud-devices.json`，按点云设备序列号配置 `Left` / `Right` 侧别。
-2. 打开“点云导出”窗口，选择设备并导出单帧点云文件。
-3. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。
-4. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
-5. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
+2. 打开“点云导出”窗口，选择设备并导出 Left / Right 原始点云 CSV。
+3. 打开“代表廓形配准”窗口，分别选择 Left / Right CSV，通过 X/Y 平移、旋转与镜像选项将两侧代表廓形对齐到标准参考线。
+4. 参数编辑后点击“确认调整”刷新预览，确认无误后点击“保存参数”，系统会将 Left / Right 配准参数保存到运行目录 `point-cloud-profile-registration.json`。
+5. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。
+6. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
+7. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
 
 点云设备侧别配置示例：
 
@@ -201,7 +204,7 @@ dotnet clean GrindCar.sln
 }
 ```
 
-`Left` 设备的非工作面会对齐标准轨面 `x=-35.4` 临界点；`Right` 设备会对齐 `x=35.4` 临界点。枚举到未配置侧别的设备时，系统会直接报错。
+`Left` / `Right` 侧别用于选择对应的手动配准参数。枚举到未配置侧别的设备时，系统会直接报错；已配置侧别但未保存代表廓形配准参数时，系统会提示先完成手动配准。
 
 ### 主界面参数设置流程
 1. 在首页参数区点击“设置PLC连接”，配置写入测量参数使用的 PLC `IP/Port`。
@@ -228,11 +231,13 @@ dotnet clean GrindCar.sln
 - `GrindCar/Views/MotorDebugWindow.xaml`：电机调试窗口
 - `GrindCar/Views/PointCloudExportWindow.xaml`：点云导出窗口
 - `GrindCar/Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
+- `GrindCar/Views/ProfileRegistrationWindow.xaml`：代表廓形手动配准窗口
 - `GrindCar/Views/PlcConnectionSettingsWindow.xaml`：PLC连接设置窗口（供首页参数区写入测量参数使用）
 - `GrindCar/ViewModels/MotorViewModel.cs`：PLC 连接、轮询、写入、首页演示数据和状态文本管理
 - `GrindCar/ViewModels/MainWindowMeasurementViewModel.cs`：主界面测量参数区状态与操作编排
 - `GrindCar/ViewModels/GrindDepthDebugViewModel.cs`：打磨深度调试窗口状态与命令编排
 - `GrindCar/ViewModels/PointCloudExportViewModel.cs`：点云导出窗口设备刷新、导出状态与流程编排
+- `GrindCar/ViewModels/ProfileRegistrationViewModel.cs`：代表廓形手动配准、误差反馈和参数保存
 - `GrindCar/ViewModels/RepresentativeProfileComparisonViewModel.cs`：代表轨面与标准轨面对比窗口状态与绘图数据编排
 - `GrindCar/Services/Motor/MotorParameterSpecProvider.cs`：电机读写参数映射与比例定义提供者
 - `GrindCar/Services/Motor/PlcConnectionSettingsValidator.cs`：PLC 连接参数校验
@@ -249,11 +254,13 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Rail/Debug/GrindDepthDebugWorkflowService.cs`：打磨深度调试业务编排
 - `GrindCar/Services/Rail/Debug/GrindDepthAngleParser.cs`：角度输入解析
 - `GrindCar/Services/Rail/Debug/RepresentativePointsCsvExporter.cs`：代表点 CSV 导出
-- `GrindCar/Services/Rail/Debug/RepresentativeProfileComparisonService.cs`：代表轨面与标准轨面对齐、采样与绘图数据计算
-- `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、3D 点云模式采集、采集参数写入和文件导出
+- `GrindCar/Services/Rail/Debug/RepresentativeProfileComparisonService.cs`：代表轨面与标准轨面对比、采样与绘图数据计算
+- `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、Range 深度图采集、深度图转点云、采集参数写入和文件导出
 - `GrindCar/Models/PointCloud/PointCloudCaptureSettings.cs`：点云在线采集参数模型，包含小车速度(m/min)、单次测量总条数和按 1 cm 间距计算的帧率
 - `GrindCar/Services/PointCloud/PointCloudCaptureSettingsStore.cs`：运行目录 `point-cloud-capture-settings.json` 的读写服务
-- `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从在线点集或 CSV 提取平均代表截面二维点集
+- `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从在线点集或 CSV 提取平均代表截面二维点集，并按侧别应用手动配准参数
+- `GrindCar/Services/Rail/Core/ProfileRegistrationSettingsStore.cs`：运行目录 `point-cloud-profile-registration.json` 的读写与校验服务
+- `GrindCar/Services/Rail/Core/ProfileRegistrationTransformService.cs`：二维刚体平移/旋转变换与标准轨面贴合误差计算
 - `GrindCar/Services/Rail/Processing/PointCloudCsvReader.cs`：点云 CSV 解析（分隔符/表头/坐标列识别）
 - `GrindCar/Services/Rail/Processing/RepresentativeProfilePointProcessor.cs`：离群过滤、旋转、对称扩展和平移
 - `GrindCar/Services/Rail/Processing/QuickSelect.cs`：中位值快速选择算法
@@ -285,12 +292,11 @@ dotnet clean GrindCar.sln
 - `RepresentativeY` 表示参与平均代表截面的有效轮廓 `Y` 均值
 - 当前实现会在平均代表截面生成后按固定流程处理：
 - 先执行离群点过滤（局部拟合残差 + MAD 阈值）
-- 按设备侧别固定选择外侧 10 个点作为非工作面竖线候选点
-- 使用 PCA/TLS 拟合竖线，剔除离群候选点后重拟合
-- 当竖线偏离垂直方向不超过 35° 时，自动尝试正反方向旋转，使竖线接近垂直
-- 旋转后要求竖线残余倾角不超过 2°，且至少 85% 的点云主体位于正确侧
-- 再将左侧边界对齐到 `x=-35.4`、右侧边界对齐到 `x=35.4`
-- 最后按工作面点相对标准轨面的最小高度差完成 Y 方向贴合
+- 读取运行目录 `point-cloud-profile-registration.json` 中对应侧别的 `Dx`、`Dy`、`RotationDegrees`、`IsMirrored`
+- 当 `IsMirrored=true` 时先执行 X 方向镜像：Left 以当前点集 `MaxX` 为轴向右镜像，Right 以当前点集 `MinX` 为轴向左镜像
+- 镜像后按当前侧代表点云质心 `(cx, cy)` 执行二维刚体变换：`x' = (x-cx)*cos(θ) - (y-cy)*sin(θ) + cx + dx`，`y' = (x-cx)*sin(θ) + (y-cy)*cos(θ) + cy + dy`
+- 配置文件格式不保存质心；旧配置缺少 `IsMirrored` 时默认按 `false` 处理。已有非零旋转角度或需要镜像的旧配准参数，建议重新打开“代表廓形配准”窗口校准并保存
+- 若缺少手动配准参数，带侧别的代表廓形提取会直接报错，不再回退到旧的自动边界对齐
 
 ### 打磨深度计算说明
 - 输入角度以“度”为单位
@@ -376,7 +382,7 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 如果从“对外调用方式”理解 API，则当前主要通过以下服务类对外提供能力：
 
 - `IPlcClient`：PLC 连接、读取、写入
-- `PointCloudExportService`：点云设备枚举、3D 点云模式采集、采集参数写入与文件导出
+- `PointCloudExportService`：点云设备枚举、Range 深度图采集、深度图转点云、采集参数写入与文件导出
 - `PointCloudCaptureSettingsStore`：点云在线采集参数持久化
 - `IPointCloudRepresentativeProfileService`：从在线点集/CSV 提取平均代表截面
 - `IPointCloudMedianSectionCaptureService`：采集点云并提取截面
@@ -395,10 +401,11 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 
 ## 注意事项
 - 不要将 Modbus 地址、比例和单位散落到界面层或 code-behind 中
-- 在线点云采集默认使用 `ImageMode=4` 的 3D 点云模式；`Range=7` 深度图模式仅保留常量，不作为默认采集路径
-- 在线点云采集会按主界面保存的 `point-cloud-capture-settings.json` 写入 `AcquisitionFrameRate` 和 `Height`；配置不存在时会提示先设置并保存点云采集参数
+- 在线点云采集默认使用 `ImageMode=7` 的 Range 深度图模式；采集后通过 `MapDepthToPointCloud` 转换为点云
+- 在线点云采集会按主界面保存的 `point-cloud-capture-settings.json` 写入 `AcquisitionFrameRate` 和 `LSLRangeImgHeight`；配置不存在时会提示先设置并保存点云采集参数
 - 点云采集默认走在线提取，在线失败时会在运行目录 `Log/` 目录落盘 `CSV` 后回退处理
-- 代表点预处理逻辑会先离群点过滤，再按设备侧别识别外侧非工作面直线，并将非工作面顶部临界点平移对齐到标准轨面 `x=-35.4` 或 `x=35.4`
+- 带侧别的代表点预处理逻辑会先离群点过滤，再按 `point-cloud-profile-registration.json` 中保存的 `IsMirrored` 手动镜像状态与平移/旋转参数输出标准坐标系代表点
+- 后续测量必须先完成代表廓形手动配准并保存参数；缺少 `point-cloud-profile-registration.json` 时不会执行自动对齐兜底
 - 点云设备侧别配置文件为运行目录下的 `point-cloud-devices.json`，未配置设备不会参与默认推断，会直接报错
 - 测量参数写入使用地址 `D1140/D1142`，比例 `/100000`，写入入口位于主界面参数区
 - 打磨参数写入使用地址 `D1180/D1182`，比例 `/100000`，写入入口位于主界面参数区

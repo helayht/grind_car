@@ -137,6 +137,18 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 打开代表廓形手动配准窗口。
+    /// </summary>
+    private void OpenProfileRegistrationWindow_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new ProfileRegistrationWindow
+        {
+            Owner = this
+        };
+        window.Show();
+    }
+
+    /// <summary>
     /// 将主界面中的测量起点和终点参数写入 PLC。
     /// </summary>
     private async void WriteMeasurementParameters_Click(object sender, RoutedEventArgs e)

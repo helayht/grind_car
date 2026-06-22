@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GrindCar.Models.Rail;
+using GrindCar.Services.Rail.Core;
 using GrindCar.Services.Rail.Processing;
 
 namespace GrindCar.Services.Rail;
@@ -21,6 +22,21 @@ public sealed class PointCloudRepresentativeProfileService :
     private const double MadScaleFactor = 1.4826;
     private const double ZOutlierSigmaFactor = 3.0;
     private const double MinZOutlierThreshold = 0.001;
+    private readonly ProfileRegistrationSettingsStore _registrationSettingsStore;
+    private readonly ProfileRegistrationTransformService _registrationTransformService;
+
+    public PointCloudRepresentativeProfileService()
+        : this(new ProfileRegistrationSettingsStore(), new ProfileRegistrationTransformService())
+    {
+    }
+
+    internal PointCloudRepresentativeProfileService(
+        ProfileRegistrationSettingsStore registrationSettingsStore,
+        ProfileRegistrationTransformService? registrationTransformService = null)
+    {
+        _registrationSettingsStore = registrationSettingsStore ?? throw new ArgumentNullException(nameof(registrationSettingsStore));
+        _registrationTransformService = registrationTransformService ?? new ProfileRegistrationTransformService();
+    }
 
     /// <summary>
     /// 从点云 CSV 文件中提取所有有效截面的算术平均二维 X/Z 点集。
@@ -80,7 +96,7 @@ public sealed class PointCloudRepresentativeProfileService :
         return ExtractMedianSectionProfileFromPoints(points, side);
     }
 
-    private static MedianSectionExtractionResult ExtractMedianSectionProfileCore(
+    private MedianSectionExtractionResult ExtractMedianSectionProfileCore(
         IReadOnlyList<PointCloudPoint3D> points,
         PointCloudDeviceSide? side)
     {
@@ -107,10 +123,12 @@ public sealed class PointCloudRepresentativeProfileService :
         List<RailProfilePoint> profilePoints = filteredSectionPoints;
         if (side.HasValue)
         {
-            List<RailProfilePoint> mirroredSectionPoints =
-                RepresentativeProfilePointProcessor.MirrorRepresentativePointsAcrossSideAxis(filteredSectionPoints, side.Value);
-            profilePoints =
-                RepresentativeProfilePointProcessor.AlignRepresentativePointsToStandardBoundary(mirroredSectionPoints, side.Value);
+            ProfileRegistrationSettings registrationSettings = _registrationSettingsStore.LoadRequired();
+            profilePoints = new List<RailProfilePoint>(
+                _registrationTransformService.Transform(
+                    filteredSectionPoints,
+                    registrationSettings.GetParameters(side.Value),
+                    side.Value));
         }
 
         return new MedianSectionExtractionResult(representativeY, profilePoints);

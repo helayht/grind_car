@@ -17,7 +17,7 @@ public interface IPointCloudRepresentativeProfileService
     MedianSectionExtractionResult ExtractMedianSectionProfileFromCsv(string csvPath);
 
     /// <summary>
-    /// 从点云 CSV 文件中提取所有有效截面的算术平均二维 X/Z 点集，并按设备侧别对齐到标准轨面边界。
+    /// 从点云 CSV 文件中提取所有有效截面的算术平均二维 X/Z 点集，并按设备侧别应用已保存的手动配准参数。
     /// </summary>
     /// <param name="csvPath">点云 CSV 文件路径。</param>
     /// <param name="side">点云设备对应的轨面半边。</param>

@@ -1,6 +1,10 @@
 using System.Collections.Generic;
+using System;
+using System.IO;
 using System.Linq;
+using GrindCar.Models.Rail;
 using GrindCar.Services.Rail;
+using GrindCar.Services.Rail.Core;
 using GrindCar.Services.Rail.Processing;
 using Xunit;
 
@@ -113,6 +117,56 @@ public class PointCloudRepresentativeProfileServiceTests
         Assert.Contains("没有公共 X 范围", exception.Message);
     }
 
+    [Fact]
+    public void ExtractMedianSectionProfileFromPoints_WithSideAndMissingRegistration_Throws()
+    {
+        var service = new PointCloudRepresentativeProfileService(
+            new ProfileRegistrationSettingsStore(BuildTempRegistrationPath()));
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            service.ExtractMedianSectionProfileFromPoints(CreateTwoSections(), PointCloudDeviceSide.Left));
+
+        Assert.Contains("请先完成代表廓形手动配准并保存参数", exception.Message);
+    }
+
+    [Fact]
+    public void ExtractMedianSectionProfileFromPoints_WithSide_AppliesSavedRegistration()
+    {
+        string registrationPath = BuildTempRegistrationPath();
+        var store = new ProfileRegistrationSettingsStore(registrationPath);
+        store.Save(new ProfileRegistrationSettings
+        {
+            Left = new ProfileRegistrationParameters(1.0, 2.0, 0.0),
+            Right = new ProfileRegistrationParameters(0.0, 0.0, 0.0)
+        });
+        var service = new PointCloudRepresentativeProfileService(store);
+
+        var result = service.ExtractMedianSectionProfileFromPoints(CreateTwoSections(), PointCloudDeviceSide.Left);
+
+        Assert.Contains(result.ProfilePoints, point => NearlyEqual(point.X, 2.0) && NearlyEqual(point.Y, 12.0));
+        Assert.Contains(result.ProfilePoints, point => NearlyEqual(point.X, 3.0) && NearlyEqual(point.Y, 22.0));
+        Assert.Contains(result.ProfilePoints, point => NearlyEqual(point.X, 4.0) && NearlyEqual(point.Y, 32.0));
+    }
+
+    [Fact]
+    public void ExtractMedianSectionProfileFromPoints_WithSideAndMirror_AppliesSavedMirrorBeforeRegistration()
+    {
+        string registrationPath = BuildTempRegistrationPath();
+        var store = new ProfileRegistrationSettingsStore(registrationPath);
+        store.Save(new ProfileRegistrationSettings
+        {
+            Left = new ProfileRegistrationParameters(1.0, 2.0, 0.0, true),
+            Right = new ProfileRegistrationParameters(0.0, 0.0, 0.0)
+        });
+        var service = new PointCloudRepresentativeProfileService(store);
+
+        var result = service.ExtractMedianSectionProfileFromPoints(CreateTwoSections(), PointCloudDeviceSide.Left);
+
+        Assert.Contains(result.ProfilePoints, point => NearlyEqual(point.X, 6.0) && NearlyEqual(point.Y, 12.0));
+        Assert.Contains(result.ProfilePoints, point => NearlyEqual(point.X, 5.0) && NearlyEqual(point.Y, 22.0));
+        Assert.Contains(result.ProfilePoints, point => NearlyEqual(point.X, 4.0) && NearlyEqual(point.Y, 32.0));
+    }
+
     private static List<PointCloudPoint3D> CreateFlatSectionsAtZ(params (double Y, double Z)[] sections)
     {
         var points = new List<PointCloudPoint3D>();
@@ -132,5 +186,30 @@ public class PointCloudRepresentativeProfileServiceTests
         points.Add(new PointCloudPoint3D(0.0, y, 10.0));
         points.Add(new PointCloudPoint3D(0.6, y, 10.0));
         points.Add(new PointCloudPoint3D(1.0, y, maxCommonZ));
+    }
+
+    private static List<PointCloudPoint3D> CreateTwoSections()
+    {
+        var points = new List<PointCloudPoint3D>
+        {
+            new(1.0, 10.0, 10.0),
+            new(2.0, 10.0, 20.0),
+            new(3.0, 10.0, 30.0),
+            new(1.0, 20.0, 10.0),
+            new(2.0, 20.0, 20.0),
+            new(3.0, 20.0, 30.0)
+        };
+
+        return points;
+    }
+
+    private static string BuildTempRegistrationPath()
+    {
+        return Path.Combine(Path.GetTempPath(), "grindcar-tests", Guid.NewGuid().ToString("N"), "point-cloud-profile-registration.json");
+    }
+
+    private static bool NearlyEqual(double left, double right)
+    {
+        return Math.Abs(left - right) < 1e-6;
     }
 }

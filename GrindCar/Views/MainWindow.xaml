@@ -189,6 +189,10 @@
                                 Click="OpenPointCloudGrindDepthDebugWindow_Click" />
                         <Button Style="{StaticResource SecondaryButtonStyle}"
                                 Margin="0,0,8,8"
+                                Content="代表廓形配准"
+                                Click="OpenProfileRegistrationWindow_Click" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,8"
                                 Content="电机调试"
                                 Click="OpenMotorDebugWindow_Click" />
                     </WrapPanel>
