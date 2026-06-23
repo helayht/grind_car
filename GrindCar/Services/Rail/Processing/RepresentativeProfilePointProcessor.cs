@@ -27,7 +27,8 @@ internal static class RepresentativeProfilePointProcessor
     private const double MinDiffOutlierThreshold = 0.001;
     private const double MadScaleFactor = 1.4826;
     private const double RadiansToDegreesFactor = 180.0 / Math.PI;
-    private const int OutlierFilterWindowSize = 15;
+    private const int MaxOutlierFilterWindowSize = 15;
+    private const int MinOutlierFilterWindowSize = 5;
     private const int OutlierFilterPassCount = 2;
     private const int MinNeighborCount = 6;
     private const double OutlierSigmaFactor = 2.2;
@@ -230,7 +231,11 @@ internal static class RepresentativeProfilePointProcessor
     private static List<RailProfilePoint> FilterOutlierRepresentativePointsSinglePass(IReadOnlyList<RailProfilePoint> sortedPoints)
     {
         int count = sortedPoints.Count;
-        int halfWindow = OutlierFilterWindowSize / 2;
+        // 根据总点数自适应窗口大小：min(MaxWindow, max(MinWindow, count/5))
+        // 避免小廓形下窗口覆盖过大比例导致局部直线拟合过于平滑，丢失真实特征
+        int windowSize = Math.Min(MaxOutlierFilterWindowSize,
+            Math.Max(MinOutlierFilterWindowSize, count / 5));
+        int halfWindow = windowSize / 2;
         var residuals = new double[count];
 
         for (int index = 0; index < count; index++)

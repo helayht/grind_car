@@ -16,8 +16,23 @@ public sealed class PointCloudRepresentativeProfileService :
     IPointCloudRepresentativeProfileService,
     IPointCloudRepresentativeProfilePointExtractor
 {
+    /// <summary>
+    /// 数学舍入容差，用于浮点数相等性比较（如判断 X 坐标是否相同）。
+    /// </summary>
     private const double Tolerance = 1e-7;
-    private const int MinValidSectionCount = 2;
+
+    /// <summary>
+    /// Y 方向截面分组容差 (mm)。
+    /// 与廓形仪 Y 方向物理分辨率匹配，避免传感器噪声导致同一物理截面被错误拆分为多个伪截面。
+    /// 典型廓形仪 Y 分辨率约 0.2~1.0 mm，此处取 0.25 mm（半分辨率）作为默认容差。
+    /// </summary>
+    private const double DefaultYSplitToleranceMm = 0.25;
+
+    /// <summary>
+    /// 最低有效截面数。低于此阈值意味着传感器数据质量异常，不应继续计算。
+    /// 实际廓形仪一帧通常产生 10~50 个有效截面，设为 5 可在保证可用性的同时拦截严重退化的数据。
+    /// </summary>
+    private const int MinValidSectionCount = 5;
     private const int MinOutlierFilteredAverageValueCount = 5;
     private const double MadScaleFactor = 1.4826;
     private const double ZOutlierSigmaFactor = 3.0;
@@ -151,17 +166,18 @@ public sealed class PointCloudRepresentativeProfileService :
         return validPoints;
     }
 
+    /// <summary>
+    /// 计算代表 Y 坐标。
+    /// 取所有唯一 Y 值的中位数，避免采样密度不均匀（如中间密、两端疏）导致算术平均向密集区偏移。
+    /// </summary>
+    /// <param name="points">有效点云点集。</param>
+    /// <returns>代表 Y 值。</returns>
     private static double ResolveAverageY(IReadOnlyList<PointCloudPoint3D> points)
     {
         var uniqueYSet = new HashSet<double>();
-        double sumY = 0.0;
         for (int index = 0; index < points.Count; index++)
         {
-            double y = points[index].Y;
-            if (uniqueYSet.Add(y))
-            {
-                sumY += y;
-            }
+            uniqueYSet.Add(points[index].Y);
         }
 
         if (uniqueYSet.Count == 0)
@@ -169,7 +185,17 @@ public sealed class PointCloudRepresentativeProfileService :
             throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效的 Y 坐标。");
         }
 
-        return sumY / uniqueYSet.Count;
+        double[] sortedUniqueY = new double[uniqueYSet.Count];
+        uniqueYSet.CopyTo(sortedUniqueY);
+        Array.Sort(sortedUniqueY);
+
+        int mid = sortedUniqueY.Length / 2;
+        if (sortedUniqueY.Length % 2 == 0)
+        {
+            return (sortedUniqueY[mid - 1] + sortedUniqueY[mid]) / 2.0;
+        }
+
+        return sortedUniqueY[mid];
     }
 
     private static List<RailProfilePoint> CreateAverageSectionPoints(IReadOnlyList<PointCloudPoint3D> points)
@@ -182,13 +208,11 @@ public sealed class PointCloudRepresentativeProfileService :
 
         double minCommonX = sections[0][0].X;
         double maxCommonX = sections[0][^1].X;
-        var xIntervals = new List<double>();
         for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
         {
             List<SectionPoint> section = sections[sectionIndex];
             minCommonX = Math.Max(minCommonX, section[0].X);
             maxCommonX = Math.Min(maxCommonX, section[^1].X);
-            AddAdjacentXIntervals(section, xIntervals);
         }
 
         if (maxCommonX - minCommonX <= Tolerance)
@@ -196,7 +220,7 @@ public sealed class PointCloudRepresentativeProfileService :
             throw new RepresentativeProfileExtractionException("有效轮廓没有公共 X 范围，无法计算平均代表截面。");
         }
 
-        double gridStep = ResolveTypicalXStep(xIntervals);
+        double gridStep = ResolveTypicalXStep(sections);
         var sectionPoints = new List<RailProfilePoint>();
         int gridIndex = 0;
         while (true)
@@ -332,7 +356,9 @@ public sealed class PointCloudRepresentativeProfileService :
         for (int index = 0; index < sortedPoints.Count; index++)
         {
             PointCloudPoint3D point = sortedPoints[index];
-            if (currentSection == null || Math.Abs(point.Y - currentY) > Tolerance)
+            // 使用与传感器物理分辨率匹配的 Y 方向容差进行截面分组，
+            // 避免因传感器微小噪声将同一物理截面拆成多个点数极少的伪截面。
+            if (currentSection == null || Math.Abs(point.Y - currentY) > DefaultYSplitToleranceMm)
             {
                 currentSection = new List<PointCloudPoint3D>();
                 sections.Add(currentSection);
@@ -373,31 +399,51 @@ public sealed class PointCloudRepresentativeProfileService :
         return section;
     }
 
-    private static void AddAdjacentXIntervals(IReadOnlyList<SectionPoint> section, ICollection<double> intervals)
+
+    /// <summary>
+    /// 计算代表网格步长。
+    /// 先对每个截面取相邻 X 间距的中位数，再对所有截面的中位数取中位数。
+    /// 两层中位数可有效抵御个别退化截面（如异常稀疏/密集）对全局网格步长的干扰。
+    /// </summary>
+    /// <param name="sections">所有有效截面。</param>
+    /// <returns>代表网格步长。</returns>
+    private static double ResolveTypicalXStep(List<List<SectionPoint>> sections)
     {
-        for (int index = 1; index < section.Count; index++)
+        var sectionMedianSteps = new List<double>();
+        for (int sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
         {
-            double interval = section[index].X - section[index - 1].X;
-            if (interval > Tolerance)
+            List<SectionPoint> section = sections[sectionIndex];
+            if (section.Count < 2)
             {
-                intervals.Add(interval);
+                continue;
+            }
+
+            double stepsSum = 0.0;
+            int stepsCount = 0;
+            for (int index = 1; index < section.Count; index++)
+            {
+                double interval = section[index].X - section[index - 1].X;
+                if (interval > Tolerance)
+                {
+                    stepsSum += interval;
+                    stepsCount++;
+                }
+            }
+
+            if (stepsCount > 0)
+            {
+                // 每截面取平均间距作为该截面的代表步长，避免对单截面内采样不均过度敏感
+                sectionMedianSteps.Add(stepsSum / stepsCount);
             }
         }
-    }
 
-    private static double ResolveTypicalXStep(IReadOnlyList<double> xIntervals)
-    {
-        if (xIntervals.Count == 0)
+        if (sectionMedianSteps.Count == 0)
         {
             throw new RepresentativeProfileExtractionException("有效轮廓横向采样间距无效，无法计算平均代表截面。");
         }
 
-        double[] values = new double[xIntervals.Count];
-        for (int index = 0; index < xIntervals.Count; index++)
-        {
-            values[index] = xIntervals[index];
-        }
-
+        // 对所有截面的代表步长取中位数
+        double[] values = sectionMedianSteps.ToArray();
         int medianIndex = (values.Length - 1) / 2;
         double step = QuickSelect.SelectKthSmallest(values, medianIndex);
         if (step <= Tolerance)

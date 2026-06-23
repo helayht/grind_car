@@ -262,10 +262,10 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Rail/Core/ProfileRegistrationSettingsStore.cs`：运行目录 `point-cloud-profile-registration.json` 的读写与校验服务
 - `GrindCar/Services/Rail/Core/ProfileRegistrationTransformService.cs`：二维刚体平移/旋转变换与标准轨面贴合误差计算
 - `GrindCar/Services/Rail/Processing/PointCloudCsvReader.cs`：点云 CSV 解析（分隔符/表头/坐标列识别）
-- `GrindCar/Services/Rail/Processing/RepresentativeProfilePointProcessor.cs`：离群过滤、旋转、对称扩展和平移
+- `GrindCar/Services/Rail/Processing/RepresentativeProfilePointProcessor.cs`：离群过滤（自适应窗口）、旋转、对称扩展和平移
 - `GrindCar/Services/Rail/Processing/QuickSelect.cs`：中位值快速选择算法
 - `GrindCar/Services/Rail/PointCloudMedianSectionCaptureService.cs`：在线采集单帧点云并输出平均代表截面提取结果（失败自动回退 CSV，类型名保留 MedianSection）
-- `GrindCar/Services/Rail/Core/StandardRailProfileSolver.cs`：标准轨面函数和切线 `b` 求解
+- `GrindCar/Services/Rail/Core/StandardRailProfileSolver.cs`：标准轨面函数、切线 `b` 求解及基于前 0.5% 最大候选值平均的代表截距 `b` 求解（抗异常值）
 - `GrindCar/Services/Rail/Core/RepresentativeSectionCaptureService.cs`：代表截面点采集
 - `GrindCar/Services/Rail/Core/GrindingDepthBaselineStore.cs`：检测基线持久化
 - `GrindCar/Services/RailSurfaceService.cs`：轨面计算外观层（Facade），对 UI 保持稳定调用入口
@@ -283,13 +283,13 @@ dotnet clean GrindCar.sln
 
 ### 平均代表截面定义
 - 先从单帧点云中读取全部点，并过滤 `X/Y/Z` 全为 `0` 的异常点
-- 按前进方向 `Y` 将点云拆成多条有效轮廓
-- 每条轮廓按 `X` 排序，丢弃点数不足或 `X` 范围无效的轮廓
+- 按前进方向 `Y` 将点云拆成多条有效轮廓；分组容差为 `0.25 mm`，与廓形仪 Y 方向物理分辨率匹配，避免传感器微小噪声将同一物理截面拆成多个伪截面
+- 每条轮廓按 `X` 排序，丢弃点数不足或 `X` 范围无效的轮廓；有效轮廓数 < 5 时拒绝计算（防止数据质量异常时静默产出不可靠结果）
 - 取所有有效轮廓 `X` 范围的公共交集
-- 从有效轮廓相邻 `X` 差值中取中位数作为统一 X 网格步长
+- 从有效轮廓相邻 `X` 差值中先取每截面均值，再取截面间中位数作为统一 X 网格步长（两层统计抵御异常截面干扰）
 - 每条轮廓在统一 X 网格上对 `Z` 做线性插值
 - 对同一网格 X 上的所有插值 `Z` 做算术平均，输出二维 `(X, AverageZ)` 点集
-- `RepresentativeY` 表示参与平均代表截面的有效轮廓 `Y` 均值
+- `RepresentativeY` 表示参与平均代表截面的有效轮廓 Y 的中位数（避免采样密度偏差导致代表 Y 偏移）
 - 当前实现会在平均代表截面生成后按固定流程处理：
 - 先执行离群点过滤（局部拟合残差 + MAD 阈值）
 - 读取运行目录 `point-cloud-profile-registration.json` 中对应侧别的 `Dx`、`Dy`、`RotationDegrees`、`IsMirrored`
@@ -299,10 +299,11 @@ dotnet clean GrindCar.sln
 - 若缺少手动配准参数，带侧别的代表廓形提取会直接报错，不再回退到旧的自动边界对齐
 
 ### 打磨深度计算说明
-- 输入角度以“度”为单位
+- 输入角度以”度”为单位
 - 斜率关系为 `k = tan(angle)`（`angle` 为角度制，内部按 `angle * π / 180` 转弧度）
 - 结果基于标准轨面函数与采集到的代表截面点集计算得出
 - 标准轨面函数整体下移 `176`，对应切线 `b` 与切点求解自动使用下移后的标准曲线
+- **代表截距 b 的抗异常值计算**：`GetRepresentativeB` 不再取所有候选值中的全局最大值（`max`），而是取**前 0.5% 最大候选值的算术平均**。当代表廓形点数 ≥ 200 时，该策略可有效抵御传感器飞点（镜面反射噪点、跳变点）对打磨深度的单点干扰；点数 < 200 时退化为原 `max` 行为。核心实现位于 `StandardRailProfileSolver.GetRepresentativeB`，底层使用项目已有的 `QuickSelect` 快速选择算法（平均 O(n)），不引入额外性能开销
 
 ### 已打磨深度检测说明
 - 系统会在“计算需要打磨深度”时记录当前各角度对应的代表廓形 `b` 值

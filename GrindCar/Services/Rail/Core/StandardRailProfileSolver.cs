@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using GrindCar.Models.Rail;
+using GrindCar.Services.Rail.Processing;
 
 namespace GrindCar.Services.Rail.Core;
 
@@ -138,6 +139,14 @@ public static class StandardRailProfileSolver
         return Math.Round(k, SlopeCacheDigits, MidpointRounding.AwayFromZero);
     }
 
+    /// <summary>
+    /// 计算代表截面点集在给定斜率 k 下的截距 b。
+    /// 取前 0.5% 最大候选值的平均值代替全局最大值，以抵御传感器飞点等异常值的干扰。
+    /// 物理含义：直线 y = kx + b 从上方下降时首次"托住"代表廓形的位置。
+    /// </summary>
+    /// <param name="k">斜率 k = tan(角度)。</param>
+    /// <param name="representativeSectionPoints">代表廓形二维点集。</param>
+    /// <returns>代表截距 b。</returns>
     public static double GetRepresentativeB(double k, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
     {
         if (double.IsNaN(k) || double.IsInfinity(k))
@@ -155,23 +164,58 @@ public static class StandardRailProfileSolver
             throw new InvalidOperationException("代表截面点集不能为空。");
         }
 
-        double best = double.NegativeInfinity;
-        for (int index = 0; index < representativeSectionPoints.Count; index++)
+        int count = representativeSectionPoints.Count;
+        double[] candidates = new double[count];
+        for (int index = 0; index < count; index++)
         {
             RailProfilePoint point = representativeSectionPoints[index];
-            double candidate = point.Y - k * point.X;
-            if (candidate > best)
+            candidates[index] = point.Y - k * point.X;
+        }
+
+        // 取前 0.5% 最大值的平均，对抗单个飞点的干扰。
+        // 至少保留 1 个点，避免小数截断导致 topCount = 0。
+        int topCount = Math.Max(1, count / 200);
+        if (topCount == 1)
+        {
+            // 快速路径：点数较少时退化为取最大值，性能最优
+            double best = double.NegativeInfinity;
+            for (int index = 0; index < count; index++)
             {
-                best = candidate;
+                if (candidates[index] > best)
+                {
+                    best = candidates[index];
+                }
+            }
+
+            if (double.IsNegativeInfinity(best))
+            {
+                throw new InvalidOperationException("未能基于代表点计算有效的 b。");
+            }
+
+            return best;
+        }
+
+        // 用 QuickSelect 找到第 (count - topCount) 小的元素，
+        // 则该元素及之后的所有元素即为前 topCount 个最大值。
+        int thresholdIndex = count - topCount;
+        double threshold = QuickSelect.SelectKthSmallest(candidates, thresholdIndex);
+
+        double sum = 0.0;
+        int included = 0;
+        for (int index = 0; index < count; index++)
+        {
+            if (candidates[index] >= threshold)
+            {
+                sum += candidates[index];
+                included++;
+                if (included >= topCount)
+                {
+                    break;
+                }
             }
         }
 
-        if (double.IsNegativeInfinity(best))
-        {
-            throw new InvalidOperationException("未能基于代表点计算有效的 b。 ");
-        }
-
-        return best;
+        return sum / included;
     }
 
     private readonly struct Arc
