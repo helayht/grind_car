@@ -7,22 +7,24 @@
         MinWidth="820"
         MinHeight="700"
         WindowStartupLocation="CenterOwner"
-        Background="#F4F6F8">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
-        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="CardBorder" Color="#DCE3E8" />
-        <SolidColorBrush x:Key="Ink" Color="#1E2A32" />
-        <SolidColorBrush x:Key="Muted" Color="#61727D" />
-        <SolidColorBrush x:Key="Accent" Color="#0F7A6C" />
-        <SolidColorBrush x:Key="AccentSoft" Color="#E8F6F3" />
 
         <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource CardBackground}" />
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="18" />
         </Style>
+
+        <Style TargetType="TextBox" x:Key="DebugTextBoxStyle">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+
     </Window.Resources>
 
     <Grid Margin="18">
@@ -44,10 +46,10 @@
                 <StackPanel>
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                Text="打磨深度调试" />
                     <TextBlock Margin="0,6,0,0"
-                               Foreground="{StaticResource Muted}"
+                               Foreground="{DynamicResource MutedTextBrush}"
                                 />
                 </StackPanel>
 
@@ -95,7 +97,7 @@
                     Style="{StaticResource CardBorderStyle}"
                     Margin="0,0,12,0">
                 <StackPanel>
-                    <TextBlock Foreground="{StaticResource Muted}"
+                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                                Text="打磨角度输入" />
                     <TextBox x:Name="AnglesTextBox"
                              Margin="0,8,0,0"
@@ -104,25 +106,28 @@
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
                              VerticalContentAlignment="Top"
+                             Foreground="{DynamicResource PrimaryTextBrush}"
+                             Background="{DynamicResource InputBackgroundBrush}"
+                             BorderBrush="{DynamicResource CardBorderBrush}"
                              IsEnabled="{Binding CanEditAngles}"
                              Text="{Binding AnglesInput, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Margin="0,8,0,0"
-                               Foreground="{StaticResource Muted}"
+                               Foreground="{DynamicResource MutedTextBrush}"
                                />
                 </StackPanel>
             </Border>
 
             <Border Grid.Column="2"
                     Style="{StaticResource CardBorderStyle}"
-                    Background="{StaticResource AccentSoft}">
+                    Background="{DynamicResource AccentSoftBrush}">
                 <StackPanel>
-                    <!-- <TextBlock Foreground="{StaticResource Muted}" -->
+                    <!-- <TextBlock Foreground="{DynamicResource MutedTextBrush}" -->
                     <!--            Text="结果数量" /> -->
                     <TextBlock x:Name="ResultCountTextBlock"
                                Margin="0,8,0,0"
                                FontSize="32"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Accent}"
+                               Foreground="{DynamicResource AccentBrush}"
                                Text="{Binding ResultCountText}" />
                 </StackPanel>
             </Border>
@@ -146,7 +151,7 @@
                     <StackPanel>
                         <TextBlock FontSize="20"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource Ink}"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"
                                    Text="需要打磨深度" />
                     </StackPanel>
 
@@ -156,6 +161,9 @@
                               IsReadOnly="True"
                               CanUserAddRows="False"
                               HeadersVisibility="Column"
+                              Background="{DynamicResource DataGridBackgroundBrush}"
+                              Foreground="{DynamicResource PrimaryTextBrush}"
+                              BorderBrush="{DynamicResource CardBorderBrush}"
                               ItemsSource="{Binding RequiredResults}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Width="*"
@@ -180,7 +188,7 @@
                     <StackPanel>
                         <TextBlock FontSize="20"
                                    FontWeight="SemiBold"
-                                   Foreground="{StaticResource Ink}"
+                                   Foreground="{DynamicResource PrimaryTextBrush}"
                                    Text="已打磨深度检测结果" />
                     </StackPanel>
 
@@ -190,6 +198,9 @@
                               IsReadOnly="True"
                               CanUserAddRows="False"
                               HeadersVisibility="Column"
+                              Background="{DynamicResource DataGridBackgroundBrush}"
+                              Foreground="{DynamicResource PrimaryTextBrush}"
+                              BorderBrush="{DynamicResource CardBorderBrush}"
                               ItemsSource="{Binding DetectedResults}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Width="*"
@@ -214,7 +225,7 @@
                 Margin="0,14,0,0"
                 Style="{StaticResource CardBorderStyle}">
             <TextBlock x:Name="StatusTextBlock"
-                       Foreground="{StaticResource Muted}"
+                       Foreground="{DynamicResource MutedTextBrush}"
                        TextWrapping="Wrap"
                        Text="{Binding StatusMessage}" />
         </Border>

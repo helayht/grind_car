@@ -7,28 +7,22 @@
         MinWidth="980"
         MinHeight="680"
         WindowStartupLocation="CenterOwner"
-        Background="#F4F6F8">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
-        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="CardBorder" Color="#DCE3E8" />
-        <SolidColorBrush x:Key="Ink" Color="#1E2A32" />
-        <SolidColorBrush x:Key="Muted" Color="#61727D" />
-        <SolidColorBrush x:Key="StandardBrush" Color="#D96C06" />
-        <SolidColorBrush x:Key="LeftBrush" Color="#1769AA" />
-        <SolidColorBrush x:Key="RightBrush" Color="#0F7A6C" />
 
         <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource CardBackground}" />
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Padding" Value="16" />
         </Style>
 
         <Style x:Key="CaptionStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
             <Setter Property="FontSize" Value="13" />
         </Style>
+
     </Window.Resources>
 
     <Grid Margin="18">
@@ -49,7 +43,7 @@
                 <StackPanel>
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                Text="代表廓形手动配准" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="15"
@@ -81,7 +75,7 @@
                         <StackPanel>
                             <TextBlock FontSize="17"
                                        FontWeight="SemiBold"
-                                       Foreground="{StaticResource Ink}"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"
                                        Text="数据源" />
 
                             <Button Margin="0,14,0,0"
@@ -89,7 +83,7 @@
                                     Content="选择 Left CSV"
                                     Click="SelectLeftCsv_Click" />
                             <TextBlock Margin="0,8,0,0"
-                                       Foreground="{StaticResource Ink}"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"
                                        Text="{Binding LeftFilePath}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,4,0,0"
@@ -101,7 +95,7 @@
                                     Content="选择 Right CSV"
                                     Click="SelectRightCsv_Click" />
                             <TextBlock Margin="0,8,0,0"
-                                       Foreground="{StaticResource Ink}"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"
                                        Text="{Binding RightFilePath}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,4,0,0"
@@ -115,7 +109,7 @@
                         <StackPanel>
                             <TextBlock FontSize="17"
                                        FontWeight="SemiBold"
-                                       Foreground="{StaticResource LeftBrush}"
+                                       Foreground="{DynamicResource LeftBrush}"
                                        Text="Left 设备调节" />
                             <CheckBox Margin="0,12,0,0"
                                       Content="向右镜像"
@@ -185,7 +179,7 @@
                         <StackPanel>
                             <TextBlock FontSize="17"
                                        FontWeight="SemiBold"
-                                       Foreground="{StaticResource RightBrush}"
+                                       Foreground="{DynamicResource RightBrush}"
                                        Text="Right 设备调节" />
                             <CheckBox Margin="0,12,0,0"
                                       Content="向左镜像"
@@ -286,7 +280,7 @@
                                     Margin="0,0,20,0">
                             <Rectangle Width="24"
                                        Height="4"
-                                       Fill="{StaticResource StandardBrush}"
+                                       Fill="{DynamicResource StandardBrush}"
                                        VerticalAlignment="Center" />
                             <TextBlock Margin="7,0,0,0"
                                        Style="{StaticResource CaptionStyle}"
@@ -296,7 +290,7 @@
                                     Margin="0,0,20,0">
                             <Rectangle Width="24"
                                        Height="4"
-                                       Fill="{StaticResource LeftBrush}"
+                                       Fill="{DynamicResource LeftBrush}"
                                        VerticalAlignment="Center" />
                             <TextBlock Margin="7,0,0,0"
                                        Style="{StaticResource CaptionStyle}"
@@ -305,7 +299,7 @@
                         <StackPanel Orientation="Horizontal">
                             <Rectangle Width="24"
                                        Height="4"
-                                       Fill="{StaticResource RightBrush}"
+                                       Fill="{DynamicResource RightBrush}"
                                        VerticalAlignment="Center" />
                             <TextBlock Margin="7,0,0,0"
                                        Style="{StaticResource CaptionStyle}"
@@ -315,33 +309,33 @@
 
                     <Canvas x:Name="PlotCanvas"
                             Grid.Row="1"
-                            Background="#FCFDFD"
+                            Background="{DynamicResource CanvasBackgroundBrush}"
                             SizeChanged="PlotCanvas_SizeChanged">
-                        <Line Stroke="#B9C6CE"
+                        <Line Stroke="{DynamicResource CanvasAxisBrush}"
                               StrokeThickness="1"
                               StrokeDashArray="4,4"
                               X1="{Binding XAxisX1}"
                               X2="{Binding XAxisX2}"
                               Y1="{Binding XAxisY1}"
                               Y2="{Binding XAxisY2}" />
-                        <Line Stroke="#B9C6CE"
+                        <Line Stroke="{DynamicResource CanvasAxisBrush}"
                               StrokeThickness="1"
                               StrokeDashArray="4,4"
                               X1="{Binding YAxisX1}"
                               X2="{Binding YAxisX2}"
                               Y1="{Binding YAxisY1}"
                               Y2="{Binding YAxisY2}" />
-                        <Path Stroke="{StaticResource StandardBrush}"
+                        <Path Stroke="{DynamicResource StandardBrush}"
                               StrokeThickness="2.5"
                               StrokeStartLineCap="Round"
                               StrokeEndLineCap="Round"
                               Data="{Binding StandardCurveGeometry}" />
-                        <Path Stroke="{StaticResource LeftBrush}"
+                        <Path Stroke="{DynamicResource LeftBrush}"
                               StrokeThickness="2.5"
                               StrokeStartLineCap="Round"
                               StrokeEndLineCap="Round"
                               Data="{Binding LeftCurveGeometry}" />
-                        <Path Stroke="{StaticResource RightBrush}"
+                        <Path Stroke="{DynamicResource RightBrush}"
                               StrokeThickness="2.5"
                               StrokeStartLineCap="Round"
                               StrokeEndLineCap="Round"
@@ -363,7 +357,7 @@
                                 <DataTemplate>
                                     <Ellipse Width="5"
                                              Height="5"
-                                             Fill="{StaticResource LeftBrush}" />
+                                             Fill="{DynamicResource LeftBrush}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -384,7 +378,7 @@
                                 <DataTemplate>
                                     <Ellipse Width="5"
                                              Height="5"
-                                             Fill="{StaticResource RightBrush}" />
+                                             Fill="{DynamicResource RightBrush}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

@@ -1,0 +1,83 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ===== 暗色主题 (Dark Theme) =====
+         颜色规范：
+         Level 0  #18181B  底层背景 (Window / Canvas)
+         Level 1  #2A2B32  表面层     (Card / Sidebar / Panel / Dialog)
+         Level 2  #34353C  交互层     (Input / Dropdown / Checkbox)
+         Action   #3C57DD  品牌主色   (Primary Button / Tab / Progress / Toggle on)
+         Content  #F2F2F3  主要文字   (Body / Title / Button text)
+    ======================================== -->
+
+    <!-- ===== Level 0: 底层背景 ===== -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#18181B" />
+    <LinearGradientBrush x:Key="PageBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#18181B" Offset="0" />
+        <GradientStop Color="#1E1E22" Offset="0.55" />
+        <GradientStop Color="#141417" Offset="1" />
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#18181B" />
+
+    <!-- ===== Level 1: 表面层 / 卡片 ===== -->
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#2A2B32" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#3E3F48" />
+
+    <SolidColorBrush x:Key="StatusBarBackgroundBrush" Color="#2A2B32" />
+    <SolidColorBrush x:Key="StatusBarBorderBrush" Color="#3E3F48" />
+
+    <SolidColorBrush x:Key="DataGridHeaderBackgroundBrush" Color="#2A2B32" />
+
+    <!-- ===== Level 2: 交互层 / 输入 ===== -->
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#34353C" />
+    <SolidColorBrush x:Key="DataGridBackgroundBrush" Color="#34353C" />
+    <SolidColorBrush x:Key="DataGridAltRowBrush" Color="#383940" />
+
+    <SolidColorBrush x:Key="TimestampBackgroundBrush" Color="#34353C" />
+    <SolidColorBrush x:Key="StatusBadgeBackgroundBrush" Color="#2A2F38" />
+    <SolidColorBrush x:Key="StatusBadgeBorderBrush" Color="#3E3F48" />
+
+    <!-- ===== 分割线 ===== -->
+    <SolidColorBrush x:Key="LineBrush" Color="#3E3F48" />
+    <SolidColorBrush x:Key="CanvasAxisBrush" Color="#4A4B54" />
+
+    <!-- ===== Action: 品牌主色 #3C57DD ===== -->
+    <SolidColorBrush x:Key="PrimaryActionBrush" Color="#3C57DD" />
+    <SolidColorBrush x:Key="PrimaryActionHoverBrush" Color="#5A71E7" />
+    <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#3C57DD" />
+
+    <!-- ===== 次要操作按钮（在 Level-1 基底上稍微提亮） ===== -->
+    <SolidColorBrush x:Key="SecondaryActionBrush" Color="#3A3B44" />
+    <SolidColorBrush x:Key="SecondaryActionBorderBrush" Color="#4A4B54" />
+    <SolidColorBrush x:Key="SecondaryActionHoverBrush" Color="#484952" />
+
+    <!-- ===== Content: 文字层级 ===== -->
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F2F2F3" />
+    <SolidColorBrush x:Key="PrimaryButtonForegroundBrush" Color="#F2F2F3" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A0A0A8" />
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#707078" />
+
+    <!-- ===== 状态指示（语义色） ===== -->
+    <SolidColorBrush x:Key="StatusOnlineBrush" Color="#4ADE80" />
+    <SolidColorBrush x:Key="StatusNeutralBrush" Color="#F59E0B" />
+
+    <!-- ===== 强调色（Action 衍生） ===== -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#3C57DD" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#1B1F40" />
+
+    <!-- ===== Toggle Switch 控件专用 ===== -->
+    <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#34353C" />
+    <SolidColorBrush x:Key="ToggleTrackOffBorderBrush" Color="#3E3F48" />
+    <SolidColorBrush x:Key="ToggleThumbBrush" Color="#C8C8D0" />
+    <SolidColorBrush x:Key="ToggleThumbBorderBrush" Color="#5A5B64" />
+    <SolidColorBrush x:Key="ToggleTrackHoverBorderBrush" Color="#5A71E7" />
+
+    <!-- ===== 语义色（暗色/亮色主题通用，保持色相一致） ===== -->
+    <SolidColorBrush x:Key="StandardBrush" Color="#D96C06" />
+    <SolidColorBrush x:Key="LeftBrush" Color="#1769AA" />
+    <SolidColorBrush x:Key="RightBrush" Color="#0F7A6C" />
+    <SolidColorBrush x:Key="RepresentativeBrush" Color="#0F7A6C" />
+    <SolidColorBrush x:Key="PointBrush" Color="#125A51" />
+
+</ResourceDictionary>

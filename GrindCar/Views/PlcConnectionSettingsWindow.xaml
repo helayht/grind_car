@@ -6,7 +6,7 @@
         Height="250"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        Background="#F4F6F8">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -17,7 +17,7 @@
 
         <TextBlock FontSize="20"
                    FontWeight="SemiBold"
-                   Foreground="#1E2A32"
+                   Foreground="{DynamicResource PrimaryTextBrush}"
                    Text="PLC连接设置" />
 
         <Grid Grid.Row="1" Margin="0,16,0,0">
@@ -25,7 +25,7 @@
                 <ColumnDefinition Width="80" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock VerticalAlignment="Center" Foreground="#1E2A32" Text="IP" />
+            <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" Text="IP" />
             <TextBox x:Name="IpAddressTextBox"
                      Grid.Column="1"
                      Height="32"
@@ -37,7 +37,7 @@
                 <ColumnDefinition Width="80" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock VerticalAlignment="Center" Foreground="#1E2A32" Text="Port" />
+            <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" Text="Port" />
             <TextBox x:Name="PortTextBox"
                      Grid.Column="1"
                      Height="32"

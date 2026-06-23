@@ -7,22 +7,17 @@
         MinWidth="900"
         MinHeight="680"
         WindowStartupLocation="CenterOwner"
-        Background="#F4F6F8">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
-        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="CardBorder" Color="#DCE3E8" />
-        <SolidColorBrush x:Key="Ink" Color="#1E2A32" />
-        <SolidColorBrush x:Key="Muted" Color="#61727D" />
-        <SolidColorBrush x:Key="Accent" Color="#0F7A6C" />
-        <SolidColorBrush x:Key="AccentSoft" Color="#E8F6F3" />
 
         <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource CardBackground}" />
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="18" />
         </Style>
+
     </Window.Resources>
 
     <Grid Margin="18">
@@ -44,10 +39,10 @@
                 <StackPanel>
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                Text="点云算法验证" />
                     <TextBlock Margin="0,6,0,0"
-                               Foreground="{StaticResource Muted}"/>
+                               Foreground="{DynamicResource MutedTextBrush}"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
@@ -92,16 +87,16 @@
                     Style="{StaticResource CardBorderStyle}"
                     Margin="0,0,12,0">
                 <StackPanel>
-                    <TextBlock Foreground="{StaticResource Muted}"
+                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                                Text="Left 原始点云" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="15"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                TextWrapping="Wrap"
                                Text="{Binding LeftFilePath}" />
                     <TextBlock Margin="0,8,0,0"
-                               Foreground="{StaticResource Muted}"
+                               Foreground="{DynamicResource MutedTextBrush}"
                                Text="{Binding LeftSummaryText}" />
                 </StackPanel>
             </Border>
@@ -110,16 +105,16 @@
                     Style="{StaticResource CardBorderStyle}"
                     Margin="0,0,12,0">
                 <StackPanel>
-                    <TextBlock Foreground="{StaticResource Muted}"
+                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                                Text="Right 原始点云" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="15"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                TextWrapping="Wrap"
                                Text="{Binding RightFilePath}" />
                     <TextBlock Margin="0,8,0,0"
-                               Foreground="{StaticResource Muted}"
+                               Foreground="{DynamicResource MutedTextBrush}"
                                Text="{Binding RightSummaryText}" />
                 </StackPanel>
             </Border>
@@ -128,7 +123,7 @@
                     Style="{StaticResource CardBorderStyle}"
                     Margin="0,0,12,0">
                 <StackPanel>
-                    <TextBlock Foreground="{StaticResource Muted}"
+                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                                Text="打磨角度输入" />
                     <TextBox Margin="0,8,0,0"
                              MinHeight="84"
@@ -136,11 +131,14 @@
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
                              VerticalContentAlignment="Top"
+                             Foreground="{DynamicResource PrimaryTextBrush}"
+                             Background="{DynamicResource InputBackgroundBrush}"
+                             BorderBrush="{DynamicResource CardBorderBrush}"
                              IsEnabled="{Binding CanSelectFiles}"
                              Text="{Binding AnglesInput, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
             </Border>
-            
+
         </Grid>
 
         <Border Grid.Row="2"
@@ -153,7 +151,7 @@
 
                 <TextBlock FontSize="20"
                            FontWeight="SemiBold"
-                           Foreground="{StaticResource Ink}"
+                           Foreground="{DynamicResource PrimaryTextBrush}"
                            Text="需要打磨深度" />
 
                 <DataGrid Grid.Row="1"
@@ -162,6 +160,9 @@
                           IsReadOnly="True"
                           CanUserAddRows="False"
                           HeadersVisibility="Column"
+                          Background="{DynamicResource DataGridBackgroundBrush}"
+                          Foreground="{DynamicResource PrimaryTextBrush}"
+                          BorderBrush="{DynamicResource CardBorderBrush}"
                           ItemsSource="{Binding Results}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Width="*"
@@ -178,7 +179,7 @@
         <Border Grid.Row="3"
                 Margin="0,14,0,0"
                 Style="{StaticResource CardBorderStyle}">
-            <TextBlock Foreground="{StaticResource Muted}"
+            <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                        Text="{Binding StatusMessage}"
                        TextWrapping="Wrap" />
         </Border>

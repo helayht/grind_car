@@ -7,23 +7,17 @@
         MinWidth="860"
         MinHeight="620"
         WindowStartupLocation="CenterOwner"
-        Background="#F4F6F8">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
-        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="CardBorder" Color="#DCE3E8" />
-        <SolidColorBrush x:Key="Ink" Color="#1E2A32" />
-        <SolidColorBrush x:Key="Muted" Color="#61727D" />
-        <SolidColorBrush x:Key="RepresentativeBrush" Color="#0F7A6C" />
-        <SolidColorBrush x:Key="StandardBrush" Color="#D96C06" />
-        <SolidColorBrush x:Key="PointBrush" Color="#125A51" />
 
         <Style x:Key="CardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource CardBackground}" />
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="18" />
         </Style>
+
     </Window.Resources>
 
     <Grid Margin="18">
@@ -44,10 +38,10 @@
                 <StackPanel>
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                Text="代表轨面与标准轨面曲线对比" />
                     <TextBlock Margin="0,6,0,0"
-                               Foreground="{StaticResource Muted}"
+                               Foreground="{DynamicResource MutedTextBrush}"
                                Text="绿色为代表拟合曲线，橙色为标准轨面曲线。" />
                 </StackPanel>
 
@@ -70,35 +64,35 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel>
-                    <TextBlock Foreground="{StaticResource Muted}"
+                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                                Text="代表点数量" />
                     <TextBlock
                                Margin="0,8,0,0"
                                FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource RepresentativeBrush}"
+                               Foreground="{DynamicResource RepresentativeBrush}"
                                Text="{Binding PointCountText}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1">
-                    <TextBlock Foreground="{StaticResource Muted}"
+                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                                Text="横向范围" />
                     <TextBlock
                                Margin="0,8,0,0"
                                FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource Ink}"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
                                Text="{Binding XRangeText}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
-                    <TextBlock Foreground="{StaticResource Muted}"
+                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
                                Text="高度范围" />
                     <TextBlock
                                Margin="0,8,0,0"
                                FontSize="28"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource StandardBrush}"
+                               Foreground="{DynamicResource StandardBrush}"
                                Text="{Binding YRangeText}" />
                 </StackPanel>
             </Grid>
@@ -108,10 +102,10 @@
                 Style="{StaticResource CardBorderStyle}">
             <Grid>
                 <Canvas x:Name="PlotCanvas"
-                        Background="#FCFDFD"
+                        Background="{DynamicResource CanvasBackgroundBrush}"
                         SizeChanged="PlotCanvas_SizeChanged">
                     <Line
-                          Stroke="#B9C6CE"
+                          Stroke="{DynamicResource CanvasAxisBrush}"
                           StrokeThickness="1"
                           StrokeDashArray="4,4"
                           X1="{Binding XAxisX1}"
@@ -119,7 +113,7 @@
                           Y1="{Binding XAxisY1}"
                           Y2="{Binding XAxisY2}" />
                     <Line
-                          Stroke="#B9C6CE"
+                          Stroke="{DynamicResource CanvasAxisBrush}"
                           StrokeThickness="1"
                           StrokeDashArray="4,4"
                           X1="{Binding YAxisX1}"
@@ -127,13 +121,13 @@
                           Y1="{Binding YAxisY1}"
                           Y2="{Binding YAxisY2}" />
                     <Path
-                          Stroke="{StaticResource StandardBrush}"
+                          Stroke="{DynamicResource StandardBrush}"
                           StrokeThickness="2.5"
                           StrokeStartLineCap="Round"
                           StrokeEndLineCap="Round"
                           Data="{Binding StandardCurveGeometry}" />
                     <Path
-                          Stroke="{StaticResource RepresentativeBrush}"
+                          Stroke="{DynamicResource RepresentativeBrush}"
                           StrokeThickness="3"
                           StrokeStartLineCap="Round"
                           StrokeEndLineCap="Round"
@@ -156,7 +150,7 @@
                             <DataTemplate>
                                 <Ellipse Width="5"
                                          Height="5"
-                                         Fill="{StaticResource PointBrush}" />
+                                         Fill="{DynamicResource PointBrush}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

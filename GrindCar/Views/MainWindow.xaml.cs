@@ -58,6 +58,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 切换暗色/亮色主题。
+    /// </summary>
+    private void ThemeToggle_Click(object sender, RoutedEventArgs e)
+    {
+        ThemeService.ToggleTheme();
+
+        if (sender is System.Windows.Controls.Button button)
+        {
+            button.Content = ThemeService.CurrentTheme == ThemeType.Dark ? "☀" : "🌙";
+        }
+    }
+
+    /// <summary>
     /// 打开电机调试窗口。
     /// </summary>
     private void OpenMotorDebugWindow_Click(object sender, RoutedEventArgs e)

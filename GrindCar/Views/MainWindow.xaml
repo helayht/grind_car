@@ -11,29 +11,14 @@
         MinWidth="1200"
         MinHeight="760"
         WindowStartupLocation="CenterScreen"
-        Background="#0B1118">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
-        <LinearGradientBrush x:Key="PageBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#0B1118" Offset="0" />
-            <GradientStop Color="#0F1823" Offset="0.55" />
-            <GradientStop Color="#0A121B" Offset="1" />
-        </LinearGradientBrush>
 
-        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#121B27" />
-        <SolidColorBrush x:Key="CardBorderBrush" Color="#2A384A" />
-        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#E8EEF5" />
-        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#AAB8C7" />
-        <SolidColorBrush x:Key="MutedTextBrush" Color="#7E8EA0" />
-        <SolidColorBrush x:Key="PrimaryActionBrush" Color="#2B4F73" />
-        <SolidColorBrush x:Key="PrimaryActionHoverBrush" Color="#37638D" />
-        <SolidColorBrush x:Key="SecondaryActionBrush" Color="#1A2736" />
-        <SolidColorBrush x:Key="SecondaryActionBorderBrush" Color="#33475C" />
-        <SolidColorBrush x:Key="StatusOnlineBrush" Color="#5BD49A" />
-        <SolidColorBrush x:Key="StatusNeutralBrush" Color="#E1B86A" />
+        <!-- ===== 主窗口本地样式 ===== -->
 
         <Style x:Key="PanelCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Padding" Value="20" />
@@ -42,81 +27,42 @@
 
         <Style x:Key="PageTitleStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Bahnschrift" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="22" />
         </Style>
 
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Bahnschrift" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="17" />
         </Style>
 
         <Style x:Key="CaptionStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
         </Style>
 
         <Style x:Key="ValueStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             <Setter Property="FontFamily" Value="Consolas" />
             <Setter Property="FontSize" Value="42" />
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
-        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-            <Setter Property="Foreground" Value="#FFFFFF" />
-            <Setter Property="Background" Value="{StaticResource PrimaryActionBrush}" />
-            <Setter Property="BorderBrush" Value="#4F6982" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="14,8" />
-            <Setter Property="MinHeight" Value="34" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              RecognizesAccessKey="True" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource PrimaryActionHoverBrush}" />
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.55" />
-                </Trigger>
-            </Style.Triggers>
+        <Style x:Key="ThemeToggleButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="Width" Value="64" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="ToolTip" Value="切换暗色/亮色主题" />
         </Style>
 
-        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
-            <Setter Property="Background" Value="{StaticResource SecondaryActionBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource SecondaryActionBorderBrush}" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#223244" />
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.55" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
     </Window.Resources>
 
-    <Grid Background="{StaticResource PageBackgroundBrush}">
+    <Grid Background="{DynamicResource PageBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -141,27 +87,34 @@
                             <Border Margin="0,0,10,0"
                                     Padding="10,6"
                                     CornerRadius="6"
-                                    Background="#152A1F"
-                                    BorderBrush="#295640"
+                                    Background="{DynamicResource StatusBadgeBackgroundBrush}"
+                                    BorderBrush="{DynamicResource StatusBadgeBorderBrush}"
                                     BorderThickness="1">
                                 <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="{StaticResource StatusOnlineBrush}" VerticalAlignment="Center" />
+                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource StatusOnlineBrush}" VerticalAlignment="Center" />
                                     <TextBlock Margin="7,0,0,0"
                                                VerticalAlignment="Center"
-                                               Foreground="{StaticResource PrimaryTextBrush}"
+                                               Foreground="{DynamicResource PrimaryTextBrush}"
                                                Text="{Binding ElementName=MainWindowRoot, Path=Measurement.PlcConnectionStatus}" />
                                 </StackPanel>
                             </Border>
 
                             <Border Padding="10,6"
                                     CornerRadius="6"
-                                    Background="#172433"
-                                    BorderBrush="{StaticResource CardBorderBrush}"
+                                    Background="{DynamicResource TimestampBackgroundBrush}"
+                                    BorderBrush="{DynamicResource CardBorderBrush}"
                                     BorderThickness="1">
-                                <TextBlock Foreground="{StaticResource SecondaryTextBrush}"
+                                <TextBlock Foreground="{DynamicResource SecondaryTextBrush}"
                                            FontFamily="Consolas"
                                            Text="{Binding DashboardTimestamp}" />
                             </Border>
+
+                            <!-- 主题切换按钮 -->
+                            <Button x:Name="ThemeToggleButton"
+                                    Style="{StaticResource ThemeToggleButtonStyle}"
+                                    Margin="10,0,0,0"
+                                    Content="☀"
+                                    Click="ThemeToggle_Click" />
                         </StackPanel>
                     </DockPanel>
 
@@ -215,7 +168,7 @@
                         <TextBlock Text="电源状态" Style="{StaticResource SectionTitleStyle}" />
                         <StackPanel Grid.Row="2" Margin="0,16,0,0">
                             <TextBlock Text="{Binding BatteryLevelText}" Style="{StaticResource ValueStyle}" />
-                            <TextBlock Margin="0,4,0,0" Text="{Binding BatteryStateText}" Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBlock Margin="0,4,0,0" Text="{Binding BatteryStateText}" Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -230,7 +183,7 @@
                         <TextBlock Text="速度状态" Style="{StaticResource SectionTitleStyle}" />
                         <StackPanel Grid.Row="2" Margin="0,16,0,0">
                             <TextBlock Text="{Binding CurrentSpeedText}" Style="{StaticResource ValueStyle}" />
-                            <TextBlock Margin="0,4,0,0" Text="{Binding SpeedStatus}" Foreground="{StaticResource MutedTextBrush}" />
+                            <TextBlock Margin="0,4,0,0" Text="{Binding SpeedStatus}" Foreground="{DynamicResource MutedTextBrush}" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -268,15 +221,15 @@
                                      Height="34"
                                      Padding="8,4"
                                      VerticalContentAlignment="Center"
-                                     Foreground="{StaticResource PrimaryTextBrush}"
-                                     Background="#0F1722"
-                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                     Background="{DynamicResource InputBackgroundBrush}"
+                                     BorderBrush="{DynamicResource CardBorderBrush}"
                                      IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                      Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StartPositionText, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
                                        Text="m" />
                         </Grid>
                     </StackPanel>
@@ -292,15 +245,15 @@
                                      Height="34"
                                      Padding="8,4"
                                      VerticalContentAlignment="Center"
-                                     Foreground="{StaticResource PrimaryTextBrush}"
-                                     Background="#0F1722"
-                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                     Background="{DynamicResource InputBackgroundBrush}"
+                                     BorderBrush="{DynamicResource CardBorderBrush}"
                                      IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                      Text="{Binding ElementName=MainWindowRoot, Path=Measurement.EndPositionText, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
                                        Text="m" />
                         </Grid>
                     </StackPanel>
@@ -316,15 +269,15 @@
                                      Height="34"
                                      Padding="8,4"
                                      VerticalContentAlignment="Center"
-                                     Foreground="{StaticResource PrimaryTextBrush}"
-                                     Background="#0F1722"
-                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                     Background="{DynamicResource InputBackgroundBrush}"
+                                     BorderBrush="{DynamicResource CardBorderBrush}"
                                      IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                      Text="{Binding ElementName=MainWindowRoot, Path=Measurement.GrindingStartPositionText, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
                                        Text="m" />
                         </Grid>
                     </StackPanel>
@@ -340,15 +293,15 @@
                                      Height="34"
                                      Padding="8,4"
                                      VerticalContentAlignment="Center"
-                                     Foreground="{StaticResource PrimaryTextBrush}"
-                                     Background="#0F1722"
-                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                     Background="{DynamicResource InputBackgroundBrush}"
+                                     BorderBrush="{DynamicResource CardBorderBrush}"
                                      IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                      Text="{Binding ElementName=MainWindowRoot, Path=Measurement.GrindingEndPositionText, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
                                        Text="m" />
                         </Grid>
                     </StackPanel>
@@ -364,15 +317,15 @@
                                      Height="34"
                                      Padding="8,4"
                                      VerticalContentAlignment="Center"
-                                     Foreground="{StaticResource PrimaryTextBrush}"
-                                     Background="#0F1722"
-                                     BorderBrush="{StaticResource CardBorderBrush}"
+                                     Foreground="{DynamicResource PrimaryTextBrush}"
+                                     Background="{DynamicResource InputBackgroundBrush}"
+                                     BorderBrush="{DynamicResource CardBorderBrush}"
                                      IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                      Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CarSpeedText, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
                                        VerticalAlignment="Center"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
                                        Text="m/min" />
                         </Grid>
                     </StackPanel>
@@ -394,15 +347,15 @@
                                          Height="34"
                                          Padding="8,4"
                                          VerticalContentAlignment="Center"
-                                         Foreground="{StaticResource PrimaryTextBrush}"
-                                         Background="#0F1722"
-                                         BorderBrush="{StaticResource CardBorderBrush}"
+                                         Foreground="{DynamicResource PrimaryTextBrush}"
+                                         Background="{DynamicResource InputBackgroundBrush}"
+                                         BorderBrush="{DynamicResource CardBorderBrush}"
                                          IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                          Text="{Binding ElementName=MainWindowRoot, Path=Measurement.ProfileCountText, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Grid.Column="1"
                                            Margin="8,0,0,0"
                                            VerticalAlignment="Center"
-                                           Foreground="{StaticResource SecondaryTextBrush}"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
                                            Text="条" />
                             </Grid>
                         </StackPanel>
@@ -412,11 +365,11 @@
                             <Border Margin="0,8,0,0"
                                     Height="34"
                                     Padding="8,4"
-                                    Background="#0F1722"
-                                    BorderBrush="{StaticResource CardBorderBrush}"
+                                    Background="{DynamicResource InputBackgroundBrush}"
+                                    BorderBrush="{DynamicResource CardBorderBrush}"
                                     BorderThickness="1">
                                 <TextBlock VerticalAlignment="Center"
-                                           Foreground="{StaticResource PrimaryTextBrush}"
+                                           Foreground="{DynamicResource PrimaryTextBrush}"
                                            FontFamily="Consolas"
                                            Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CalculatedFrameRateText}" />
                             </Border>
@@ -429,21 +382,21 @@
                         <StackPanel Orientation="Horizontal">
                             <Button x:Name="WriteMeasurementParametersButton"
                                     MinWidth="180"
-                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                     Content="写入测量起止点"
                                     Click="WriteMeasurementParameters_Click" />
                             <Button x:Name="WriteGrindingParametersButton"
                                     Margin="10,0,0,0"
                                     MinWidth="180"
-                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                     Content="写入打磨起止点"
                                     Click="WriteGrindingParameters_Click" />
                             <Button x:Name="SavePointCloudCaptureSettingsButton"
                                     Margin="10,0,0,0"
                                     MinWidth="180"
-                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Style="{StaticResource SecondaryButtonStyle}"
                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
                                     Content="保存点云采集参数"
                                     Click="SavePointCloudCaptureSettings_Click" />
@@ -465,11 +418,11 @@
                         <Border Margin="0,10,0,0"
                                 Padding="10,8"
                                 CornerRadius="6"
-                                Background="#0F1722"
-                                BorderBrush="{StaticResource CardBorderBrush}"
+                                Background="{DynamicResource InputBackgroundBrush}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
                                 BorderThickness="1">
                             <TextBlock x:Name="MeasurementParameterStatusTextBlock"
-                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
                                        Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StatusMessage}"
                                        TextWrapping="Wrap" />
                         </Border>
@@ -482,10 +435,10 @@
                 Margin="20,0,20,16"
                 Padding="10,8"
                 CornerRadius="6"
-                Background="#111A26"
-                BorderBrush="#2A3A4D"
+                Background="{DynamicResource StatusBarBackgroundBrush}"
+                BorderBrush="{DynamicResource StatusBarBorderBrush}"
                 BorderThickness="1">
-            <!-- <TextBlock Foreground="{StaticResource SecondaryTextBrush}" -->
+            <!-- <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" -->
             <!--            Text="提示：如需接入实时速度/电量，请先在 PLC 协议中补充对应只读地址并同步到参数定义。" -->
             <!--            TextWrapping="Wrap" /> -->
         </Border>

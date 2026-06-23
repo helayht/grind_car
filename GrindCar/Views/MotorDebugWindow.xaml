@@ -9,32 +9,26 @@
         Width="1100"
         Height="780"
         WindowStartupLocation="CenterOwner"
-        Background="#F4F6F8">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:InverseBooleanConverter x:Key="InverseBool" />
 
-        <SolidColorBrush x:Key="CardBg" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="Ink" Color="#1E2A32" />
-        <SolidColorBrush x:Key="Muted" Color="#5B6B74" />
-        <SolidColorBrush x:Key="Accent" Color="#0F7A6C" />
-        <SolidColorBrush x:Key="Line" Color="#E1E6EA" />
-
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Ink}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
 
         <Style x:Key="HeaderText" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Semibold" />
             <Setter Property="FontSize" Value="20" />
-            <Setter Property="Foreground" Value="{StaticResource Ink}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
 
         <Style x:Key="SubHeaderText" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         </Style>
 
         <Style x:Key="RowName" TargetType="TextBlock">
@@ -47,15 +41,15 @@
             <Setter Property="FontFamily" Value="Consolas" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Padding" Value="8,4" />
-            <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="#F9FBFC" />
+            <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
         </Style>
 
         <Style TargetType="Border" x:Key="Card">
             <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="Background" Value="{StaticResource CardBg}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="18" />
         </Style>
@@ -80,8 +74,8 @@
                                   VerticalAlignment="Center">
                                 <Border x:Name="Track"
                                         CornerRadius="14"
-                                        Background="#D8E0E5"
-                                        BorderBrush="#C4CED6"
+                                        Background="{DynamicResource ToggleTrackOffBrush}"
+                                        BorderBrush="{DynamicResource ToggleTrackOffBorderBrush}"
                                         BorderThickness="1" />
                                 <Grid Margin="2">
                                     <Grid.ColumnDefinitions>
@@ -96,20 +90,20 @@
                                             CornerRadius="12"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
-                                            Background="#FFFFFF"
-                                            BorderBrush="#B6C0C8"
+                                            Background="{DynamicResource ToggleThumbBrush}"
+                                            BorderBrush="{DynamicResource ToggleThumbBorderBrush}"
                                             BorderThickness="1" />
                                 </Grid>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding BoolValue}" Value="True">
-                                <Setter TargetName="Track" Property="Background" Value="{StaticResource Accent}" />
-                                <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Accent}" />
+                                <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                                 <Setter TargetName="Thumb" Property="Grid.Column" Value="1" />
                             </DataTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Track" Property="BorderBrush" Value="#0B5F55" />
+                                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource ToggleTrackHoverBorderBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Thumb" Property="Opacity" Value="0.86" />
@@ -193,7 +187,7 @@
                     <ItemsControl ItemsSource="{Binding Parameters}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,8">
+                                <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="280" />
@@ -208,8 +202,8 @@
                                                  Text="{Binding Value}"
                                                  Width="180"
                                                  IsReadOnly="True"
-                                                 Background="#EEF2F4"
-                                                 BorderBrush="{StaticResource Line}"
+                                                 Background="{DynamicResource InputBackgroundBrush}"
+                                                 BorderBrush="{DynamicResource LineBrush}"
                                                  Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}" />
 
                                         <TextBox Grid.Column="1"

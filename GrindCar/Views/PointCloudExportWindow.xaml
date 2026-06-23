@@ -6,7 +6,7 @@
         Width="760"
         Height="320"
         WindowStartupLocation="CenterOwner"
-        Background="#F4F6F8">
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -19,9 +19,9 @@
 
         <TextBlock FontSize="22"
                    FontWeight="SemiBold"
-                   Foreground="#1E2A32"
+                   Foreground="{DynamicResource PrimaryTextBrush}"
                    Text="点云导出" />
-        
+
 
         <Grid Grid.Row="2" Margin="0,22,0,0">
             <Grid.ColumnDefinitions>
@@ -31,7 +31,7 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock VerticalAlignment="Center"
-                       Foreground="#1E2A32"
+                       Foreground="{DynamicResource PrimaryTextBrush}"
                        Text="设备列表" />
 
             <ComboBox x:Name="DeviceComboBox"
@@ -59,7 +59,7 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock VerticalAlignment="Center"
-                       Foreground="#1E2A32"
+                       Foreground="{DynamicResource PrimaryTextBrush}"
                        Text="导出格式" />
 
             <ComboBox x:Name="FormatComboBox"
@@ -79,7 +79,7 @@
 
             <TextBlock Grid.Column="2"
                        VerticalAlignment="Center"
-                       Foreground="#1E2A32"
+                       Foreground="{DynamicResource PrimaryTextBrush}"
                        Text="保存路径" />
 
             <Grid Grid.Column="3">
@@ -93,7 +93,7 @@
                          VerticalContentAlignment="Center"
                          IsEnabled="{Binding CanInteract}"
                          IsReadOnly="True"
-                         Background="#FFFFFF"
+                         Background="{DynamicResource CardBackgroundBrush}"
                          Text="{Binding OutputPath, Mode=OneWay}" />
 
                 <Button Grid.Column="1"
@@ -109,11 +109,11 @@
                 Margin="0,18,0,0"
                 Padding="14"
                 CornerRadius="10"
-                BorderBrush="#D8E0E5"
+                BorderBrush="{DynamicResource CardBorderBrush}"
                 BorderThickness="1"
-                Background="#FFFFFF">
+                Background="{DynamicResource CardBackgroundBrush}">
             <TextBlock x:Name="StatusTextBlock"
-                       Foreground="#4C5B65"
+                       Foreground="{DynamicResource MutedTextBrush}"
                        TextWrapping="Wrap"
                        Text="{Binding StatusText}"/>
         </Border>
