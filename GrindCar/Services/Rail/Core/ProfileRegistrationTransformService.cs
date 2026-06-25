@@ -58,6 +58,23 @@ public sealed class ProfileRegistrationTransformService
             transformedPoints.Add(new RailProfilePoint(transformedX, transformedY));
         }
 
+        if (parameters.XMin.HasValue || parameters.XMax.HasValue)
+        {
+            var filteredPoints = new List<RailProfilePoint>(transformedPoints.Count);
+            for (int index = 0; index < transformedPoints.Count; index++)
+            {
+                RailProfilePoint point = transformedPoints[index];
+                bool keep = (!parameters.XMin.HasValue || point.X >= parameters.XMin.Value) &&
+                            (!parameters.XMax.HasValue || point.X <= parameters.XMax.Value);
+                if (keep)
+                {
+                    filteredPoints.Add(point);
+                }
+            }
+
+            return filteredPoints;
+        }
+
         return transformedPoints;
     }
 
@@ -125,18 +142,45 @@ public sealed class ProfileRegistrationTransformService
             return double.NaN;
         }
 
+        // 1. 密集采样标准曲线，用于欧氏距离匹配
+        const int SampleCount = 1000;
+        var standardPoints = new List<RailProfilePoint>(SampleCount + 1);
+        for (int i = 0; i <= SampleCount; i++)
+        {
+            double x = StandardRailProfileSolver.LeftBoundaryX +
+                (StandardRailProfileSolver.RightBoundaryX - StandardRailProfileSolver.LeftBoundaryX) * i / SampleCount;
+            double y = StandardRailProfileSolver.RailSurfaceFun(x);
+            if (!double.IsNaN(y) && !double.IsInfinity(y))
+            {
+                standardPoints.Add(new RailProfilePoint(x, y));
+            }
+        }
+
+        if (standardPoints.Count == 0)
+        {
+            return double.NaN;
+        }
+
         double sum = 0.0;
         int validCount = 0;
+
+        // 2. 计算每个测量点到标准曲线的最短欧氏距离
         for (int index = 0; index < points.Count; index++)
         {
             RailProfilePoint point = points[index];
-            double standardY = StandardRailProfileSolver.RailSurfaceFun(point.X);
-            if (double.IsNaN(standardY) || double.IsInfinity(standardY))
+            double minDistanceSq = double.MaxValue;
+
+            for (int j = 0; j < standardPoints.Count; j++)
             {
-                continue;
+                RailProfilePoint sp = standardPoints[j];
+                double distSq = (point.X - sp.X) * (point.X - sp.X) + (point.Y - sp.Y) * (point.Y - sp.Y);
+                if (distSq < minDistanceSq)
+                {
+                    minDistanceSq = distSq;
+                }
             }
 
-            sum += Math.Abs(point.Y - standardY);
+            sum += Math.Sqrt(minDistanceSq);
             validCount++;
         }
 

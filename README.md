@@ -181,7 +181,7 @@ dotnet clean GrindCar.sln
 ### 点云调试流程
 1. 在运行目录创建 `point-cloud-devices.json`，按点云设备序列号配置 `Left` / `Right` 侧别。
 2. 打开“点云导出”窗口，选择设备并导出 Left / Right 原始点云 CSV。
-3. 打开“代表廓形配准”窗口，分别选择 Left / Right CSV，通过 X/Y 平移、旋转与镜像选项将两侧代表廓形对齐到标准参考线。
+3. 打开“代表廓形配准”窗口，分别选择 Left / Right CSV，通过 X/Y 平移、旋转、镜像选项以及 X 范围裁切将两侧代表廓形对齐到标准参考线。窗口提供稳健 ICP 自动精对齐功能，可基于当前手动参数自动微调配准。
 4. 参数编辑后点击“确认调整”刷新预览，确认无误后点击“保存参数”，系统会将 Left / Right 配准参数保存到运行目录 `point-cloud-profile-registration.json`。
 5. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。
 6. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
@@ -260,13 +260,14 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/PointCloud/PointCloudCaptureSettingsStore.cs`：运行目录 `point-cloud-capture-settings.json` 的读写服务
 - `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从在线点集或 CSV 提取平均代表截面二维点集，并按侧别应用手动配准参数
 - `GrindCar/Services/Rail/Core/ProfileRegistrationSettingsStore.cs`：运行目录 `point-cloud-profile-registration.json` 的读写与校验服务
-- `GrindCar/Services/Rail/Core/ProfileRegistrationTransformService.cs`：二维刚体平移/旋转变换与标准轨面贴合误差计算
+- `GrindCar/Services/Rail/Core/ProfileRegistrationTransformService.cs`：二维刚体平移/旋转变换与标准轨面贴合误差计算。配准误差度量已升级为平均最短欧氏距离（对标准曲线密集采样 1000 点后逐测量点求最近距离），替代原有的固定 X 处 Y 轴偏差，避免垂直边缘噪点对配准评价的误导
 - `GrindCar/Services/Rail/Processing/PointCloudCsvReader.cs`：点云 CSV 解析（分隔符/表头/坐标列识别）
 - `GrindCar/Services/Rail/Processing/RepresentativeProfilePointProcessor.cs`：离群过滤（自适应窗口）、旋转、对称扩展和平移
 - `GrindCar/Services/Rail/Processing/QuickSelect.cs`：中位值快速选择算法
 - `GrindCar/Services/Rail/PointCloudMedianSectionCaptureService.cs`：在线采集单帧点云并输出平均代表截面提取结果（失败自动回退 CSV，类型名保留 MedianSection）
 - `GrindCar/Services/Rail/Core/StandardRailProfileSolver.cs`：标准轨面函数、切线 `b` 求解及基于前 0.5% 最大候选值平均的代表截距 `b` 求解（抗异常值）
 - `GrindCar/Services/Rail/Core/RepresentativeSectionCaptureService.cs`：代表截面点采集
+- `GrindCar/Services/Rail/Core/RobustIcpRegistrationService.cs`：纯 C# 稳健 ICP（迭代最近点）二维精对齐服务。采用截断匹配策略（保留 80% 最佳拟合点对）以抵抗边缘噪点和局部离群，自动微调手动配准后的廓形对齐
 - `GrindCar/Services/Rail/Core/GrindingDepthBaselineStore.cs`：检测基线持久化
 - `GrindCar/Services/RailSurfaceService.cs`：轨面计算外观层（Facade），对 UI 保持稳定调用入口
 

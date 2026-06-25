@@ -27,6 +27,16 @@ public sealed class ProfileRegistrationParameters
 
     public bool IsMirrored { get; set; }
 
+    /// <summary>
+    /// 裁切曲线的X范围下限（配准后坐标系）。null 表示不限制。
+    /// </summary>
+    public double? XMin { get; set; }
+
+    /// <summary>
+    /// 裁切曲线的X范围上限（配准后坐标系）。null 表示不限制。
+    /// </summary>
+    public double? XMax { get; set; }
+
     public void Validate(string sideName)
     {
         if (!IsFinite(Dx))
@@ -42,6 +52,21 @@ public sealed class ProfileRegistrationParameters
         if (!IsFinite(RotationDegrees))
         {
             throw new InvalidOperationException($"{sideName} 配准参数 RotationDegrees 必须是有效数字。");
+        }
+
+        if (XMin.HasValue && !IsFinite(XMin.Value))
+        {
+            throw new InvalidOperationException($"{sideName} 配准参数 XMin 必须是有效数字。");
+        }
+
+        if (XMax.HasValue && !IsFinite(XMax.Value))
+        {
+            throw new InvalidOperationException($"{sideName} 配准参数 XMax 必须是有效数字。");
+        }
+
+        if (XMin.HasValue && XMax.HasValue && XMin.Value > XMax.Value)
+        {
+            throw new InvalidOperationException($"{sideName} 配准参数 XMin 不能大于 XMax。");
         }
     }
 

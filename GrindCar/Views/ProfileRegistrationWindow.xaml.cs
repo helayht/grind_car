@@ -68,6 +68,28 @@ public partial class ProfileRegistrationWindow : Window
         _viewModel.ApplyPendingParameters();
     }
 
+    private void ClearLeftXRange_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.PendingLeftXMin = null;
+        _viewModel.PendingLeftXMax = null;
+    }
+
+    private void ClearRightXRange_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.PendingRightXMin = null;
+        _viewModel.PendingRightXMax = null;
+    }
+
+    private void AutoAlignLeft_Click(object sender, RoutedEventArgs e)
+    {
+        TryExecute(() => _viewModel.AutoAlignLeft(), "Left 自动精对齐失败");
+    }
+
+    private void AutoAlignRight_Click(object sender, RoutedEventArgs e)
+    {
+        TryExecute(() => _viewModel.AutoAlignRight(), "Right 自动精对齐失败");
+    }
+
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         TryExecute(

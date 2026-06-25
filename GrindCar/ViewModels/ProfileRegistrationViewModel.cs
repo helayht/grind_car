@@ -35,6 +35,7 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
     private readonly ProfileRegistrationTransformService _transformService;
     private readonly ProfileRegistrationPlotMapper _plotMapper = new(PlotPadding);
     private readonly PointCloudRepresentativeProfileService _profileService = new();
+    private readonly RobustIcpRegistrationService _icpService = new();
 
     private List<RailProfilePoint> _leftBasePoints = new();
     private List<RailProfilePoint> _rightBasePoints = new();
@@ -65,6 +66,10 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
     private double _pendingRightRotationDegrees;
     private bool _pendingLeftIsMirrored;
     private bool _pendingRightIsMirrored;
+    private double? _pendingLeftXMin;
+    private double? _pendingLeftXMax;
+    private double? _pendingRightXMin;
+    private double? _pendingRightXMax;
     private double _appliedLeftDx;
     private double _appliedLeftDy;
     private double _appliedLeftRotationDegrees;
@@ -244,6 +249,66 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         set => SetPendingField(ref _pendingRightIsMirrored, value);
     }
 
+    public double? PendingLeftXMin
+    {
+        get => _pendingLeftXMin;
+        set
+        {
+            if (_pendingLeftXMin == value)
+            {
+                return;
+            }
+
+            _pendingLeftXMin = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double? PendingLeftXMax
+    {
+        get => _pendingLeftXMax;
+        set
+        {
+            if (_pendingLeftXMax == value)
+            {
+                return;
+            }
+
+            _pendingLeftXMax = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double? PendingRightXMin
+    {
+        get => _pendingRightXMin;
+        set
+        {
+            if (_pendingRightXMin == value)
+            {
+                return;
+            }
+
+            _pendingRightXMin = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public double? PendingRightXMax
+    {
+        get => _pendingRightXMax;
+        set
+        {
+            if (_pendingRightXMax == value)
+            {
+                return;
+            }
+
+            _pendingRightXMax = value;
+            OnPropertyChanged();
+        }
+    }
+
     public double AppliedLeftDx => _appliedLeftDx;
 
     public double AppliedLeftDy => _appliedLeftDy;
@@ -284,6 +349,14 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         SetAppliedParameters(
             new ProfileRegistrationParameters(0.0, 0.0, 0.0),
             new ProfileRegistrationParameters(0.0, 0.0, 0.0));
+        _pendingLeftXMin = null;
+        _pendingLeftXMax = null;
+        _pendingRightXMin = null;
+        _pendingRightXMax = null;
+        OnPropertyChanged(nameof(PendingLeftXMin));
+        OnPropertyChanged(nameof(PendingLeftXMax));
+        OnPropertyChanged(nameof(PendingRightXMin));
+        OnPropertyChanged(nameof(PendingRightXMax));
         RefreshPlot();
     }
 
@@ -303,6 +376,42 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         _settingsStore.Save(settings);
         FeedbackText = $"配准参数已保存：{_settingsStore.ConfigurationFilePath}";
         FeedbackBrush = Brushes.ForestGreen;
+    }
+
+    public void AutoAlignLeft()
+    {
+        if (_leftBasePoints.Count == 0) return;
+
+        var currentApplied = BuildAppliedLeftParameters();
+        IReadOnlyList<RailProfilePoint> initialGuessPoints =
+            _transformService.Transform(_leftBasePoints, currentApplied, PointCloudDeviceSide.Left);
+        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
+
+        ProfileRegistrationParameters icpDelta = _icpService.Align(initialGuessPoints.ToList(), standardPoints.ToList());
+
+        PendingLeftDx = ClampTranslation(currentApplied.Dx + icpDelta.Dx);
+        PendingLeftDy = ClampTranslation(currentApplied.Dy + icpDelta.Dy);
+        PendingLeftRotationDegrees = ClampRotation(currentApplied.RotationDegrees + icpDelta.RotationDegrees);
+
+        ApplyPendingParameters();
+    }
+
+    public void AutoAlignRight()
+    {
+        if (_rightBasePoints.Count == 0) return;
+
+        var currentApplied = BuildAppliedRightParameters();
+        IReadOnlyList<RailProfilePoint> initialGuessPoints =
+            _transformService.Transform(_rightBasePoints, currentApplied, PointCloudDeviceSide.Right);
+        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
+
+        ProfileRegistrationParameters icpDelta = _icpService.Align(initialGuessPoints.ToList(), standardPoints.ToList());
+
+        PendingRightDx = ClampTranslation(currentApplied.Dx + icpDelta.Dx);
+        PendingRightDy = ClampTranslation(currentApplied.Dy + icpDelta.Dy);
+        PendingRightRotationDegrees = ClampRotation(currentApplied.RotationDegrees + icpDelta.RotationDegrees);
+
+        ApplyPendingParameters();
     }
 
     public void UpdatePlot(double plotWidth, double plotHeight)
@@ -435,7 +544,11 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             PendingLeftDx,
             PendingLeftDy,
             PendingLeftRotationDegrees,
-            PendingLeftIsMirrored);
+            PendingLeftIsMirrored)
+        {
+            XMin = PendingLeftXMin,
+            XMax = PendingLeftXMax
+        };
     }
 
     private ProfileRegistrationParameters BuildPendingRightParameters()
@@ -444,7 +557,11 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             PendingRightDx,
             PendingRightDy,
             PendingRightRotationDegrees,
-            PendingRightIsMirrored);
+            PendingRightIsMirrored)
+        {
+            XMin = PendingRightXMin,
+            XMax = PendingRightXMax
+        };
     }
 
     private ProfileRegistrationParameters BuildAppliedLeftParameters()
@@ -453,7 +570,11 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             AppliedLeftDx,
             AppliedLeftDy,
             AppliedLeftRotationDegrees,
-            AppliedLeftIsMirrored);
+            AppliedLeftIsMirrored)
+        {
+            XMin = PendingLeftXMin,
+            XMax = PendingLeftXMax
+        };
     }
 
     private ProfileRegistrationParameters BuildAppliedRightParameters()
@@ -462,7 +583,11 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             AppliedRightDx,
             AppliedRightDy,
             AppliedRightRotationDegrees,
-            AppliedRightIsMirrored);
+            AppliedRightIsMirrored)
+        {
+            XMin = PendingRightXMin,
+            XMax = PendingRightXMax
+        };
     }
 
     private void SetPendingParameters(
@@ -473,10 +598,14 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         _pendingLeftDy = ClampTranslation(leftParameters.Dy);
         _pendingLeftRotationDegrees = ClampRotation(leftParameters.RotationDegrees);
         _pendingLeftIsMirrored = leftParameters.IsMirrored;
+        _pendingLeftXMin = leftParameters.XMin;
+        _pendingLeftXMax = leftParameters.XMax;
         _pendingRightDx = ClampTranslation(rightParameters.Dx);
         _pendingRightDy = ClampTranslation(rightParameters.Dy);
         _pendingRightRotationDegrees = ClampRotation(rightParameters.RotationDegrees);
         _pendingRightIsMirrored = rightParameters.IsMirrored;
+        _pendingRightXMin = rightParameters.XMin;
+        _pendingRightXMax = rightParameters.XMax;
         NotifyPendingPropertiesChanged();
     }
 
@@ -505,6 +634,10 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(PendingRightDy));
         OnPropertyChanged(nameof(PendingRightRotationDegrees));
         OnPropertyChanged(nameof(PendingRightIsMirrored));
+        OnPropertyChanged(nameof(PendingLeftXMin));
+        OnPropertyChanged(nameof(PendingLeftXMax));
+        OnPropertyChanged(nameof(PendingRightXMin));
+        OnPropertyChanged(nameof(PendingRightXMax));
     }
 
     private void NotifyAppliedPropertiesChanged()

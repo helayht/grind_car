@@ -255,10 +255,9 @@ internal static class RepresentativeProfilePointProcessor
                 }
             }
 
-            (double slope, double intercept) = FitLineExcludingIndex(sortedPoints, left, right, index);
+            FittedLine localLine = FitLineByPrincipalComponentExcludingIndex(sortedPoints, left, right, index);
             RailProfilePoint point = sortedPoints[index];
-            double predictedY = slope * point.X + intercept;
-            residuals[index] = point.Y - predictedY;
+            residuals[index] = localLine.DistanceTo(point);
         }
 
         double residualMedian = Median(residuals);
@@ -903,6 +902,56 @@ internal static class RepresentativeProfilePointProcessor
         double slope = (n * sumXY - sumX * sumY) / denominator;
         double intercept = (sumY - slope * sumX) / n;
         return (slope, intercept);
+    }
+
+    private static FittedLine FitLineByPrincipalComponentExcludingIndex(
+        IReadOnlyList<RailProfilePoint> points,
+        int leftInclusive,
+        int rightInclusive,
+        int excludedIndex)
+    {
+        int n = 0;
+        double sumX = 0.0, sumY = 0.0;
+        for (int i = leftInclusive; i <= rightInclusive; i++)
+        {
+            if (i == excludedIndex) continue;
+            n++;
+            sumX += points[i].X;
+            sumY += points[i].Y;
+        }
+        if (n < 2) return new FittedLine(1, 0, -points[excludedIndex].X, 0, 1);
+
+        double meanX = sumX / n;
+        double meanY = sumY / n;
+        double covXX = 0.0, covXY = 0.0, covYY = 0.0;
+        for (int i = leftInclusive; i <= rightInclusive; i++)
+        {
+            if (i == excludedIndex) continue;
+            double dx = points[i].X - meanX;
+            double dy = points[i].Y - meanY;
+            covXX += dx * dx;
+            covXY += dx * dy;
+            covYY += dy * dy;
+        }
+
+        double trace = covXX + covYY;
+        double det = covXX * covYY - covXY * covXY;
+        double discriminant = Math.Max(0.0, trace * trace / 4.0 - det);
+        double principalEigenvalue = trace / 2.0 + Math.Sqrt(discriminant);
+
+        double dirX = covXY;
+        double dirY = principalEigenvalue - covXX;
+        if (Math.Abs(covXY) <= 1e-12 && Math.Abs(principalEigenvalue - covXX) <= 1e-12)
+        {
+            dirX = 1.0; dirY = 0.0;
+        }
+
+        double length = Math.Sqrt(dirX * dirX + dirY * dirY);
+        double a = -(dirY / length);
+        double b = dirX / length;
+        double c = -(a * meanX + b * meanY);
+
+        return new FittedLine(a, b, c, dirX / length, dirY / length);
     }
 
     private static double Median(IReadOnlyList<double> values)

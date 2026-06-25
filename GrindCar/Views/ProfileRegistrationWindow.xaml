@@ -171,6 +171,46 @@
                                     TickFrequency="0.1"
                                     IsSnapToTickEnabled="False"
                                     Value="{Binding PendingLeftRotationDegrees, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <StackPanel Margin="0,14,0,0">
+                                <TextBlock FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MutedTextBrush}"
+                                           Text="X范围裁切"
+                                           Margin="0,0,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Style="{StaticResource CaptionStyle}"
+                                               Text="Min:" />
+                                    <TextBox Grid.Column="1"
+                                             Margin="4,0,8,0"
+                                             Height="26"
+                                             ToolTip="裁切下限，留空则不限制"
+                                             Text="{Binding PendingLeftXMin, TargetNullValue='', StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Grid.Column="2"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource CaptionStyle}"
+                                               Text="Max:" />
+                                    <TextBox Grid.Column="3"
+                                             Margin="4,0,8,0"
+                                             Height="26"
+                                             ToolTip="裁切上限，留空则不限制"
+                                             Text="{Binding PendingLeftXMax, TargetNullValue='', StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="4"
+                                            Width="50"
+                                            Height="26"
+                                            FontSize="12"
+                                            Content="清除"
+                                            Click="ClearLeftXRange_Click" />
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
@@ -241,26 +281,80 @@
                                     TickFrequency="0.1"
                                     IsSnapToTickEnabled="False"
                                     Value="{Binding PendingRightRotationDegrees, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <StackPanel Margin="0,14,0,0">
+                                <TextBlock FontSize="14"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MutedTextBrush}"
+                                           Text="X范围裁切"
+                                           Margin="0,0,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Style="{StaticResource CaptionStyle}"
+                                               Text="Min:" />
+                                    <TextBox Grid.Column="1"
+                                             Margin="4,0,8,0"
+                                             Height="26"
+                                             ToolTip="裁切下限，留空则不限制"
+                                             Text="{Binding PendingRightXMin, TargetNullValue='', StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Grid.Column="2"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource CaptionStyle}"
+                                               Text="Max:" />
+                                    <TextBox Grid.Column="3"
+                                             Margin="4,0,8,0"
+                                             Height="26"
+                                             ToolTip="裁切上限，留空则不限制"
+                                             Text="{Binding PendingRightXMax, TargetNullValue='', StringFormat=F2, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="4"
+                                            Width="50"
+                                            Height="26"
+                                            FontSize="12"
+                                            Content="清除"
+                                            Click="ClearRightXRange_Click" />
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
                     <Border Style="{StaticResource CardBorderStyle}"
                             Margin="0,0,12,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Button Width="132"
-                                    Height="34"
-                                    Margin="0,0,8,0"
-                                    Content="重置参数"
-                                    Click="Reset_Click" />
-                            <Button Width="96"
-                                    Height="34"
-                                    Margin="0,0,8,0"
-                                    Content="确认调整"
-                                    Click="Apply_Click" />
-                            <Button Width="96"
-                                    Height="34"
-                                    Content="保存参数"
-                                    Click="Save_Click" />
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Width="132"
+                                        Height="34"
+                                        Margin="0,0,8,0"
+                                        Content="重置参数"
+                                        Click="Reset_Click" />
+                                <Button Width="96"
+                                        Height="34"
+                                        Margin="0,0,8,0"
+                                        Content="确认调整"
+                                        Click="Apply_Click" />
+                                <Button Width="96"
+                                        Height="34"
+                                        Content="保存参数"
+                                        Click="Save_Click" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,10,0,0">
+                                <Button Width="132"
+                                        Height="34"
+                                        Margin="0,0,8,0"
+                                        Content="Left 自动精对齐"
+                                        Click="AutoAlignLeft_Click" />
+                                <Button Width="132"
+                                        Height="34"
+                                        Content="Right 自动精对齐"
+                                        Click="AutoAlignRight_Click" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>
