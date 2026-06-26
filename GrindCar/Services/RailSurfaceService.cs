@@ -23,6 +23,19 @@ public static class RailSurfaceService
     }
 
     /// <summary>
+    /// 当前激活的轨面型号。
+    /// </summary>
+    public static RailProfileType CurrentProfileType => StandardRailProfileSolver.CurrentProfileType;
+
+    /// <summary>
+    /// 切换轨面型号，内部会清空切线求解缓存。
+    /// </summary>
+    public static void SwitchProfile(RailProfileType type)
+    {
+        StandardRailProfileSolver.SwitchProfile(type);
+    }
+
+    /// <summary>
     /// 批量计算打磨深度，并返回过程中使用的代表截面点集。
     /// </summary>
     public static GrindDepthCalculationResult CalculateGrindDepths(IReadOnlyList<int> angles)

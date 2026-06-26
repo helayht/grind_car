@@ -91,6 +91,10 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _transformService = transformService ?? throw new ArgumentNullException(nameof(transformService));
         LoadExistingSettingsIfAvailable();
+        _pendingLeftXMin = null;
+        _pendingLeftXMax = null;
+        _pendingRightXMin = null;
+        _pendingRightXMax = null;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -374,7 +378,7 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             Right = BuildAppliedRightParameters()
         };
         _settingsStore.Save(settings);
-        FeedbackText = $"配准参数已保存：{_settingsStore.ConfigurationFilePath}";
+        FeedbackText = $"配准参数已保存：{_settingsStore.ResolveConfigurationFilePath()}";
         FeedbackBrush = Brushes.ForestGreen;
     }
 

@@ -17,7 +17,7 @@ public static class StandardRailProfileSolver
     private const double StandardProfileVerticalOffset = -176.0;
     private const int SlopeCacheDigits = 12;
 
-    private static readonly Arc[] Arcs =
+    private static readonly Arc[] Arcs60Kg =
     {
         new(-35.4, -25.3, true, false, 13, -22.42, 161.15),
         new(-25.3, -10, true, false, 80, -7.3, 95.88),
@@ -26,13 +26,26 @@ public static class StandardRailProfileSolver
         new(25.35, 35.4, false, true, 13, 22.42, 161.15)
     };
 
+    /// <summary>
+    /// 50kg/m 高精度分段圆弧参数。
+    /// 三段相切圆弧，外侧边界延伸至 ±35.4。
+    /// </summary>
+    private static readonly Arc[] Arcs50Kg =
+    {
+        new(-35.4, -23, true, false, 13, -22, 138.16),
+        new(-23, 23, true, true, 300, 0, -148),
+        new(23, 35.4, false, true, 13, 22, 138.16)
+    };
+
+    private static Arc[] _activeArcs = Arcs60Kg;
+
     private static readonly ConcurrentDictionary<double, TangentSolution> TangentSolutionCache = new();
 
     public static double RailSurfaceFun(double x)
     {
-        for (int index = 0; index < Arcs.Length; index++)
+        for (int index = 0; index < _activeArcs.Length; index++)
         {
-            Arc arc = Arcs[index];
+            Arc arc = _activeArcs[index];
             if (!arc.Contains(x))
             {
                 continue;
@@ -75,9 +88,9 @@ public static class StandardRailProfileSolver
     private static TangentSolution ComputeTangentSolution(double k)
     {
         var candidates = new List<double>();
-        for (int index = 0; index < Arcs.Length; index++)
+        for (int index = 0; index < _activeArcs.Length; index++)
         {
-            Arc arc = Arcs[index];
+            Arc arc = _activeArcs[index];
             if (arc.LeftClosed)
             {
                 candidates.Add(arc.XMin);
@@ -90,9 +103,9 @@ public static class StandardRailProfileSolver
         }
 
         double denominator = Math.Sqrt(1.0 + k * k);
-        for (int index = 0; index < Arcs.Length; index++)
+        for (int index = 0; index < _activeArcs.Length; index++)
         {
-            Arc arc = Arcs[index];
+            Arc arc = _activeArcs[index];
             double xTouch = arc.C - (k * arc.R) / denominator;
             if (!arc.Contains(xTouch))
             {
@@ -137,6 +150,26 @@ public static class StandardRailProfileSolver
     private static double NormalizeSlope(double k)
     {
         return Math.Round(k, SlopeCacheDigits, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// 当前激活的轨面型号。
+    /// </summary>
+    public static RailProfileType CurrentProfileType { get; private set; } = RailProfileType.Kg60;
+
+    /// <summary>
+    /// 切换轨面型号并清空切线求解缓存。
+    /// </summary>
+    public static void SwitchProfile(RailProfileType type)
+    {
+        if (CurrentProfileType == type)
+        {
+            return;
+        }
+
+        _activeArcs = type == RailProfileType.Kg50 ? Arcs50Kg : Arcs60Kg;
+        CurrentProfileType = type;
+        TangentSolutionCache.Clear();
     }
 
     /// <summary>

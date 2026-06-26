@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using GrindCar.Definitions;
 using GrindCar.Models.PointCloud;
+using GrindCar.Models.Rail;
 using GrindCar.Services;
 using GrindCar.Services.Measurement;
 using GrindCar.Services.PointCloud;
@@ -35,6 +36,31 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     private string _profileCountText = string.Empty;
     private string _statusMessage = "请填写参数后写入。";
     private bool _isBusy;
+    private RailProfileType _selectedProfileType = RailProfileType.Kg60;
+
+    public IReadOnlyList<RailProfileType> ProfileTypeOptions { get; } = new List<RailProfileType>
+    {
+        RailProfileType.Kg60,
+        RailProfileType.Kg50
+    };
+
+    public RailProfileType SelectedProfileType
+    {
+        get => _selectedProfileType;
+        set
+        {
+            if (_selectedProfileType == value)
+            {
+                return;
+            }
+
+            _selectedProfileType = value;
+            RailSurfaceService.SwitchProfile(value);
+            string profileName = GetProfileTypeDisplayName(value);
+            StatusMessage = $"已切换为标准轨面型号：{profileName}";
+            OnPropertyChanged();
+        }
+    }
 
     public MainWindowMeasurementViewModel(
         IMeasurementParameterService measurementParameterService,
@@ -364,6 +390,16 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
     public void SetErrorStatus(string message)
     {
         StatusMessage = message;
+    }
+
+    private static string GetProfileTypeDisplayName(RailProfileType type)
+    {
+        return type switch
+        {
+            RailProfileType.Kg60 => "60kg/m",
+            RailProfileType.Kg50 => "50kg/m",
+            _ => type.ToString()
+        };
     }
 
     private PointCloudCaptureSettings CreatePointCloudCaptureSettingsFromInput()

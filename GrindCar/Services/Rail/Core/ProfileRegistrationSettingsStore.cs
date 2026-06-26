@@ -11,6 +11,8 @@ namespace GrindCar.Services.Rail.Core;
 public sealed class ProfileRegistrationSettingsStore
 {
     private const string DefaultFileName = "point-cloud-profile-registration.json";
+    private const string Kg60FileName = "point-cloud-profile-registration-60kg.json";
+    private const string Kg50FileName = "point-cloud-profile-registration-50kg.json";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -19,27 +21,51 @@ public sealed class ProfileRegistrationSettingsStore
     };
 
     private readonly string _configurationFilePath;
+    private readonly bool _isExplicitPath;
 
     public ProfileRegistrationSettingsStore(string? configurationFilePath = null)
     {
-        _configurationFilePath = string.IsNullOrWhiteSpace(configurationFilePath)
-            ? Path.Combine(Environment.CurrentDirectory, DefaultFileName)
-            : configurationFilePath;
+        _isExplicitPath = !string.IsNullOrWhiteSpace(configurationFilePath);
+        _configurationFilePath = _isExplicitPath
+            ? configurationFilePath!
+            : Path.Combine(Environment.CurrentDirectory, DefaultFileName);
     }
 
     public string ConfigurationFilePath => _configurationFilePath;
 
+    /// <summary>
+    /// 获取当前激活轨型对应的配置文件路径。
+    /// 当未指定显式路径时，自动根据当前轨型推导文件名。
+    /// </summary>
+    public string ResolveConfigurationFilePath()
+    {
+        if (_isExplicitPath)
+        {
+            return _configurationFilePath;
+        }
+
+        string fileName = StandardRailProfileSolver.CurrentProfileType switch
+        {
+            RailProfileType.Kg60 => Kg60FileName,
+            RailProfileType.Kg50 => Kg50FileName,
+            _ => DefaultFileName
+        };
+
+        return Path.Combine(Environment.CurrentDirectory, fileName);
+    }
+
     public ProfileRegistrationSettings? Load()
     {
-        if (!File.Exists(_configurationFilePath))
+        string filePath = ResolveConfigurationFilePath();
+        if (!File.Exists(filePath))
         {
             return null;
         }
 
-        string json = File.ReadAllText(_configurationFilePath);
+        string json = File.ReadAllText(filePath);
         if (string.IsNullOrWhiteSpace(json))
         {
-            throw new InvalidOperationException($"代表廓形配准配置文件为空: {_configurationFilePath}");
+            throw new InvalidOperationException($"代表廓形配准配置文件为空: {filePath}");
         }
 
         ProfileRegistrationSettings? settings;
@@ -49,12 +75,12 @@ public sealed class ProfileRegistrationSettingsStore
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException($"代表廓形配准配置文件格式无效: {_configurationFilePath}", ex);
+            throw new InvalidOperationException($"代表廓形配准配置文件格式无效: {filePath}", ex);
         }
 
         if (settings == null)
         {
-            throw new InvalidOperationException($"代表廓形配准配置文件格式无效: {_configurationFilePath}");
+            throw new InvalidOperationException($"代表廓形配准配置文件格式无效: {filePath}");
         }
 
         settings.Validate();
@@ -80,13 +106,14 @@ public sealed class ProfileRegistrationSettingsStore
         }
 
         settings.Validate();
-        string? directoryPath = Path.GetDirectoryName(_configurationFilePath);
+        string filePath = ResolveConfigurationFilePath();
+        string? directoryPath = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrWhiteSpace(directoryPath))
         {
             Directory.CreateDirectory(directoryPath);
         }
 
         string json = JsonSerializer.Serialize(settings, SerializerOptions);
-        File.WriteAllText(_configurationFilePath, json);
+        File.WriteAllText(filePath, json);
     }
 }
