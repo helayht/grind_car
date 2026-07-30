@@ -392,10 +392,15 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
 
         ProfileRegistrationParameters icpDelta = _icpService.Align(initialGuessPoints.ToList(), standardPoints.ToList());
+        ProfileRegistrationParameters composedParameters = _transformService.ComposeWithGlobalDelta(
+            _leftBasePoints,
+            currentApplied,
+            icpDelta,
+            PointCloudDeviceSide.Left);
 
-        PendingLeftDx = ClampTranslation(currentApplied.Dx + icpDelta.Dx);
-        PendingLeftDy = ClampTranslation(currentApplied.Dy + icpDelta.Dy);
-        PendingLeftRotationDegrees = ClampRotation(currentApplied.RotationDegrees + icpDelta.RotationDegrees);
+        PendingLeftDx = ClampTranslation(composedParameters.Dx);
+        PendingLeftDy = ClampTranslation(composedParameters.Dy);
+        PendingLeftRotationDegrees = ClampRotation(composedParameters.RotationDegrees);
 
         ApplyPendingParameters();
     }
@@ -410,10 +415,15 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
 
         ProfileRegistrationParameters icpDelta = _icpService.Align(initialGuessPoints.ToList(), standardPoints.ToList());
+        ProfileRegistrationParameters composedParameters = _transformService.ComposeWithGlobalDelta(
+            _rightBasePoints,
+            currentApplied,
+            icpDelta,
+            PointCloudDeviceSide.Right);
 
-        PendingRightDx = ClampTranslation(currentApplied.Dx + icpDelta.Dx);
-        PendingRightDy = ClampTranslation(currentApplied.Dy + icpDelta.Dy);
-        PendingRightRotationDegrees = ClampRotation(currentApplied.RotationDegrees + icpDelta.RotationDegrees);
+        PendingRightDx = ClampTranslation(composedParameters.Dx);
+        PendingRightDy = ClampTranslation(composedParameters.Dy);
+        PendingRightRotationDegrees = ClampRotation(composedParameters.RotationDegrees);
 
         ApplyPendingParameters();
     }
@@ -472,7 +482,7 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
 
         if (allPoints.Count == 0)
         {
-            UpdateFeedback(leftPoints, rightPoints);
+            UpdateFeedback(leftPoints, rightPoints, standardPoints);
             return;
         }
 
@@ -495,10 +505,13 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         YAxisX2 = YAxisX1;
         YAxisY1 = PlotPadding;
         YAxisY2 = _plotHeight - PlotPadding;
-        UpdateFeedback(leftPoints, rightPoints);
+        UpdateFeedback(leftPoints, rightPoints, standardPoints);
     }
 
-    private void UpdateFeedback(IReadOnlyList<RailProfilePoint> leftPoints, IReadOnlyList<RailProfilePoint> rightPoints)
+    private void UpdateFeedback(
+        IReadOnlyList<RailProfilePoint> leftPoints,
+        IReadOnlyList<RailProfilePoint> rightPoints,
+        IReadOnlyList<RailProfilePoint> standardPoints)
     {
         if (leftPoints.Count == 0 || rightPoints.Count == 0)
         {
@@ -507,21 +520,23 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             return;
         }
 
-        double leftError = _transformService.CalculateAverageAbsoluteStandardError(leftPoints);
-        double rightError = _transformService.CalculateAverageAbsoluteStandardError(rightPoints);
-        string leftText = FormatError(leftError);
-        string rightText = FormatError(rightError);
-        if (!double.IsNaN(leftError) &&
-            !double.IsNaN(rightError) &&
-            leftError <= SuccessErrorThreshold &&
-            rightError <= SuccessErrorThreshold)
+        ProfileRegistrationErrorMetrics leftMetrics =
+            _transformService.CalculateStandardErrorMetrics(leftPoints, standardPoints);
+        ProfileRegistrationErrorMetrics rightMetrics =
+            _transformService.CalculateStandardErrorMetrics(rightPoints, standardPoints);
+        string leftText = FormatMetrics(leftMetrics);
+        string rightText = FormatMetrics(rightMetrics);
+        if (!double.IsNaN(leftMetrics.InlierRootMeanSquareDistance) &&
+            !double.IsNaN(rightMetrics.InlierRootMeanSquareDistance) &&
+            leftMetrics.InlierRootMeanSquareDistance <= SuccessErrorThreshold &&
+            rightMetrics.InlierRootMeanSquareDistance <= SuccessErrorThreshold)
         {
-            FeedbackText = $"配准成功，轨面已闭合。Left平均偏差={leftText}，Right平均偏差={rightText}";
+            FeedbackText = $"配准成功，轨面已闭合。Left {leftText}；Right {rightText}";
             FeedbackBrush = Brushes.ForestGreen;
             return;
         }
 
-        FeedbackText = $"继续调整配准参数。Left平均偏差={leftText}，Right平均偏差={rightText}";
+        FeedbackText = $"继续调整配准参数。Left {leftText}；Right {rightText}";
         FeedbackBrush = Brushes.DarkOrange;
     }
 
@@ -540,6 +555,13 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         return double.IsNaN(error)
             ? "--"
             : error.ToString("0.###", CultureInfo.CurrentCulture);
+    }
+
+    private static string FormatMetrics(ProfileRegistrationErrorMetrics metrics)
+    {
+        return $"内点RMSE={FormatError(metrics.InlierRootMeanSquareDistance)} mm，" +
+               $"全点均值={FormatError(metrics.AverageDistance)} mm，" +
+               $"P95={FormatError(metrics.Percentile95Distance)} mm";
     }
 
     private ProfileRegistrationParameters BuildPendingLeftParameters()

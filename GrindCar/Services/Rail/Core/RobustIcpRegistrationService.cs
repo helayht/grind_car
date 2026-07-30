@@ -12,7 +12,7 @@ public sealed class RobustIcpRegistrationService
 {
     private const int MaxIterations = 30;
     private const double Tolerance = 1e-4;
-    private const double OverlapRatio = 0.8; // 只取最近的 80% 的点作为内点(Inliers)进行刚体解算
+    internal const double InlierRatio = 0.8;
 
     /// <summary>
     /// 对给定点云进行精对齐，返回相对于输入的附加变换参数 (dDx, dDy, dRotation)。
@@ -43,9 +43,9 @@ public sealed class RobustIcpRegistrationService
                 matches.Add((sp, tp, dist));
             }
 
-            // 2. 稳健截断 (Trim)：按距离排序，只保留前 OverlapRatio 的内点
+            // 2. 稳健截断 (Trim)：按距离排序，只保留前 InlierRatio 的内点
             matches = matches.OrderBy(m => m.distance).ToList();
-            int inlierCount = Math.Max(3, (int)(matches.Count * OverlapRatio));
+            int inlierCount = ResolveInlierCount(matches.Count);
             var inliers = matches.Take(inlierCount).ToList();
 
             // 3. SVD 解算 2D 刚体变换
@@ -53,9 +53,13 @@ public sealed class RobustIcpRegistrationService
                 inliers.Select(m => m.source).ToList(),
                 inliers.Select(m => m.target).ToList());
 
-            accumulatedDx += dx;
-            accumulatedDy += dy;
-            accumulatedRotationRadians += dTheta;
+            (accumulatedDx, accumulatedDy, accumulatedRotationRadians) = ComposeRigidTransforms(
+                accumulatedDx,
+                accumulatedDy,
+                accumulatedRotationRadians,
+                dx,
+                dy,
+                dTheta);
 
             // 4. 应用当次变换，准备下一次迭代
             double cosVal = Math.Cos(dTheta);
@@ -77,6 +81,38 @@ public sealed class RobustIcpRegistrationService
 
         double degrees = accumulatedRotationRadians * 180.0 / Math.PI;
         return new ProfileRegistrationParameters(accumulatedDx, accumulatedDy, degrees, false);
+    }
+
+    internal static int ResolveInlierCount(int pointCount)
+    {
+        if (pointCount <= 0)
+        {
+            return 0;
+        }
+
+        int requestedCount = Math.Max(3, (int)(pointCount * InlierRatio));
+        return Math.Min(pointCount, requestedCount);
+    }
+
+    internal static (double dx, double dy, double rotationRadians) ComposeRigidTransforms(
+        double accumulatedDx,
+        double accumulatedDy,
+        double accumulatedRotationRadians,
+        double incrementalDx,
+        double incrementalDy,
+        double incrementalRotationRadians)
+    {
+        double incrementalCosValue = Math.Cos(incrementalRotationRadians);
+        double incrementalSinValue = Math.Sin(incrementalRotationRadians);
+        double composedDx =
+            accumulatedDx * incrementalCosValue - accumulatedDy * incrementalSinValue + incrementalDx;
+        double composedDy =
+            accumulatedDx * incrementalSinValue + accumulatedDy * incrementalCosValue + incrementalDy;
+
+        return (
+            composedDx,
+            composedDy,
+            accumulatedRotationRadians + incrementalRotationRadians);
     }
 
     private static RailProfilePoint FindNearest(RailProfilePoint p, IReadOnlyList<RailProfilePoint> targets)
