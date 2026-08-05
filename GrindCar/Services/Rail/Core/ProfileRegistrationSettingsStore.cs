@@ -10,6 +10,7 @@ namespace GrindCar.Services.Rail.Core;
 /// </summary>
 public sealed class ProfileRegistrationSettingsStore
 {
+    internal const int CurrentAlgorithmVersion = 2;
     private const string DefaultFileName = "point-cloud-profile-registration.json";
     private const string Kg60FileName = "point-cloud-profile-registration-60kg.json";
     private const string Kg50FileName = "point-cloud-profile-registration-50kg.json";
@@ -83,6 +84,12 @@ public sealed class ProfileRegistrationSettingsStore
             throw new InvalidOperationException($"代表廓形配准配置文件格式无效: {filePath}");
         }
 
+        if (settings.AlgorithmVersion != CurrentAlgorithmVersion)
+        {
+            throw new InvalidOperationException(
+                $"代表廓形配准配置算法版本过旧，请重新完成配准并保存参数。当前版本: {settings.AlgorithmVersion}，要求版本: {CurrentAlgorithmVersion}。");
+        }
+
         settings.Validate();
         return settings;
     }
@@ -105,6 +112,7 @@ public sealed class ProfileRegistrationSettingsStore
             throw new ArgumentNullException(nameof(settings));
         }
 
+        settings.AlgorithmVersion = CurrentAlgorithmVersion;
         settings.Validate();
         string filePath = ResolveConfigurationFilePath();
         string? directoryPath = Path.GetDirectoryName(filePath);

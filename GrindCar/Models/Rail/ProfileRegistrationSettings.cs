@@ -7,6 +7,11 @@ namespace GrindCar.Models.Rail;
 /// </summary>
 public sealed class ProfileRegistrationSettings
 {
+    /// <summary>
+    /// 配准处理顺序版本。版本 2 表示原始点先镜像旋转，再生成平均代表廓形。
+    /// </summary>
+    public int AlgorithmVersion { get; set; }
+
     public ProfileRegistrationParameters? Left { get; set; }
 
     public ProfileRegistrationParameters? Right { get; set; }

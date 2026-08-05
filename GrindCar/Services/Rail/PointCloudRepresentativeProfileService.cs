@@ -7,7 +7,8 @@ using GrindCar.Services.Rail.Processing;
 namespace GrindCar.Services.Rail;
 
 /// <summary>
-/// 从点云 CSV 中提取代表廓形二维点集。
+/// 从在线点集或点云 CSV 中提取平均代表廓形二维点集。
+/// 带侧别提取时先对原始有效点执行镜像和旋转，再生成平均代表廓形，最后应用平移和裁切。
 /// 输出的 RailProfilePoint 语义为：
 /// X -> 轨面横向 X
 /// Y -> 高度 Z
@@ -94,14 +95,22 @@ public sealed class PointCloudRepresentativeProfileService :
 
     internal MedianSectionExtractionResult ExtractMedianSectionProfileFromPoints(IReadOnlyList<PointCloudPoint3D> points)
     {
-        return ExtractMedianSectionProfileCore(points, null);
+        return ExtractMedianSectionProfileCore(points, null, null);
     }
 
     internal MedianSectionExtractionResult ExtractMedianSectionProfileFromPoints(
         IReadOnlyList<PointCloudPoint3D> points,
         PointCloudDeviceSide side)
     {
-        return ExtractMedianSectionProfileCore(points, side);
+        return ExtractMedianSectionProfileCore(points, side, null);
+    }
+
+    internal MedianSectionExtractionResult ExtractMedianSectionProfileFromPoints(
+        IReadOnlyList<PointCloudPoint3D> points,
+        PointCloudDeviceSide side,
+        ProfileRegistrationParameters parameters)
+    {
+        return ExtractMedianSectionProfileCore(points, side, parameters);
     }
 
     MedianSectionExtractionResult IPointCloudRepresentativeProfilePointExtractor.ExtractMedianSectionProfileFromPoints(
@@ -113,7 +122,8 @@ public sealed class PointCloudRepresentativeProfileService :
 
     private MedianSectionExtractionResult ExtractMedianSectionProfileCore(
         IReadOnlyList<PointCloudPoint3D> points,
-        PointCloudDeviceSide? side)
+        PointCloudDeviceSide? side,
+        ProfileRegistrationParameters? explicitParameters)
     {
         if (points == null || points.Count == 0)
         {
@@ -127,7 +137,19 @@ public sealed class PointCloudRepresentativeProfileService :
         }
 
         double representativeY = ResolveAverageY(validPoints);
-        List<RailProfilePoint> sectionPoints = CreateAverageSectionPoints(validPoints);
+        ProfileRegistrationParameters? registrationParameters = null;
+        IReadOnlyList<PointCloudPoint3D> pointsForExtraction = validPoints;
+        if (side.HasValue)
+        {
+            registrationParameters = explicitParameters ??
+                _registrationSettingsStore.LoadRequired().GetParameters(side.Value);
+            pointsForExtraction = _registrationTransformService.ApplyRawOrientation(
+                validPoints,
+                registrationParameters,
+                side.Value);
+        }
+
+        List<RailProfilePoint> sectionPoints = CreateAverageSectionPoints(pointsForExtraction);
         if (sectionPoints.Count == 0)
         {
             throw new RepresentativeProfileExtractionException("未找到平均代表截面的有效 X/Z 点。");
@@ -136,14 +158,12 @@ public sealed class PointCloudRepresentativeProfileService :
         List<RailProfilePoint> filteredSectionPoints =
             RepresentativeProfilePointProcessor.FilterOutlierRepresentativePoints(sectionPoints);
         List<RailProfilePoint> profilePoints = filteredSectionPoints;
-        if (side.HasValue)
+        if (registrationParameters != null)
         {
-            ProfileRegistrationSettings registrationSettings = _registrationSettingsStore.LoadRequired();
             profilePoints = new List<RailProfilePoint>(
-                _registrationTransformService.Transform(
+                _registrationTransformService.ApplyTranslationAndCrop(
                     filteredSectionPoints,
-                    registrationSettings.GetParameters(side.Value),
-                    side.Value));
+                    registrationParameters));
         }
 
         return new MedianSectionExtractionResult(representativeY, profilePoints);

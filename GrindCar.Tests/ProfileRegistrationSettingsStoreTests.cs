@@ -23,6 +23,7 @@ public class ProfileRegistrationSettingsStoreTests
         ProfileRegistrationSettings? loaded = store.Load();
 
         Assert.NotNull(loaded);
+        Assert.Equal(ProfileRegistrationSettingsStore.CurrentAlgorithmVersion, loaded.AlgorithmVersion);
         Assert.Equal(1.0, loaded.Left!.Dx, 6);
         Assert.True(loaded.Left.IsMirrored);
         Assert.Equal(-2.0, loaded.Right!.Dy, 6);
@@ -31,7 +32,7 @@ public class ProfileRegistrationSettingsStoreTests
     }
 
     [Fact]
-    public void Load_WithLegacyJsonWithoutMirror_LoadsMirrorAsFalse()
+    public void Load_WithLegacyJsonWithoutAlgorithmVersion_RequiresNewRegistration()
     {
         string filePath = BuildTempFilePath();
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
@@ -51,10 +52,10 @@ public class ProfileRegistrationSettingsStoreTests
             "}");
         var store = new ProfileRegistrationSettingsStore(filePath);
 
-        ProfileRegistrationSettings loaded = store.LoadRequired();
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => store.LoadRequired());
 
-        Assert.False(loaded.Left!.IsMirrored);
-        Assert.False(loaded.Right!.IsMirrored);
+        Assert.Contains("算法版本过旧", exception.Message);
+        Assert.Contains("重新完成配准", exception.Message);
     }
 
     [Fact]
@@ -74,7 +75,7 @@ public class ProfileRegistrationSettingsStoreTests
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
         File.WriteAllText(
             filePath,
-            "{\n  \"Left\": {\n    \"Dx\": 1,\n    \"Dy\": 2,\n    \"RotationDegrees\": 3\n  }\n}");
+            "{\n  \"AlgorithmVersion\": 2,\n  \"Left\": {\n    \"Dx\": 1,\n    \"Dy\": 2,\n    \"RotationDegrees\": 3\n  }\n}");
         var store = new ProfileRegistrationSettingsStore(filePath);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => store.Load());

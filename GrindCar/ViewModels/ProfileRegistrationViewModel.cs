@@ -30,13 +30,16 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
     private const double TranslationMaximum = 200.0;
     private const double RotationMinimum = -360.0;
     private const double RotationMaximum = 360.0;
+    private const double IcpDeltaTolerance = 1e-4;
 
     private readonly ProfileRegistrationSettingsStore _settingsStore;
     private readonly ProfileRegistrationTransformService _transformService;
     private readonly ProfileRegistrationPlotMapper _plotMapper = new(PlotPadding);
-    private readonly PointCloudRepresentativeProfileService _profileService = new();
+    private readonly PointCloudRepresentativeProfileService _profileService;
     private readonly RobustIcpRegistrationService _icpService = new();
 
+    private List<PointCloudPoint3D> _leftRawPoints = new();
+    private List<PointCloudPoint3D> _rightRawPoints = new();
     private List<RailProfilePoint> _leftBasePoints = new();
     private List<RailProfilePoint> _rightBasePoints = new();
     private double _plotWidth;
@@ -78,6 +81,10 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
     private double _appliedRightRotationDegrees;
     private bool _appliedLeftIsMirrored;
     private bool _appliedRightIsMirrored;
+    private double? _appliedLeftXMin;
+    private double? _appliedLeftXMax;
+    private double? _appliedRightXMin;
+    private double? _appliedRightXMax;
 
     public ProfileRegistrationViewModel()
         : this(new ProfileRegistrationSettingsStore(), new ProfileRegistrationTransformService())
@@ -90,11 +97,8 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
     {
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _transformService = transformService ?? throw new ArgumentNullException(nameof(transformService));
+        _profileService = new PointCloudRepresentativeProfileService(_settingsStore, _transformService);
         LoadExistingSettingsIfAvailable();
-        _pendingLeftXMin = null;
-        _pendingLeftXMax = null;
-        _pendingRightXMin = null;
-        _pendingRightXMax = null;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -331,7 +335,13 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
 
     public void SetLeftFilePath(string filePath)
     {
-        _leftBasePoints = LoadBaseProfilePoints(filePath);
+        List<PointCloudPoint3D> rawPoints = PointCloudCsvReader.ReadPointsFromCsv(filePath);
+        List<RailProfilePoint> profilePoints = BuildProfilePoints(
+            rawPoints,
+            BuildAppliedLeftParameters(),
+            PointCloudDeviceSide.Left);
+        _leftRawPoints = rawPoints;
+        _leftBasePoints = profilePoints;
         LeftFilePath = filePath;
         LeftSummaryText = BuildSummaryText(_leftBasePoints);
         RefreshPlot();
@@ -339,7 +349,13 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
 
     public void SetRightFilePath(string filePath)
     {
-        _rightBasePoints = LoadBaseProfilePoints(filePath);
+        List<PointCloudPoint3D> rawPoints = PointCloudCsvReader.ReadPointsFromCsv(filePath);
+        List<RailProfilePoint> profilePoints = BuildProfilePoints(
+            rawPoints,
+            BuildAppliedRightParameters(),
+            PointCloudDeviceSide.Right);
+        _rightRawPoints = rawPoints;
+        _rightBasePoints = profilePoints;
         RightFilePath = filePath;
         RightSummaryText = BuildSummaryText(_rightBasePoints);
         RefreshPlot();
@@ -361,12 +377,14 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(PendingLeftXMax));
         OnPropertyChanged(nameof(PendingRightXMin));
         OnPropertyChanged(nameof(PendingRightXMax));
+        RebuildCachedProfiles();
         RefreshPlot();
     }
 
     public void ApplyPendingParameters()
     {
         SetAppliedParameters(BuildPendingLeftParameters(), BuildPendingRightParameters());
+        RebuildCachedProfiles();
         RefreshPlot();
     }
 
@@ -384,48 +402,54 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
 
     public void AutoAlignLeft()
     {
-        if (_leftBasePoints.Count == 0) return;
+        if (_leftRawPoints.Count == 0 || _leftBasePoints.Count == 0) return;
 
-        var currentApplied = BuildAppliedLeftParameters();
-        IReadOnlyList<RailProfilePoint> initialGuessPoints =
-            _transformService.Transform(_leftBasePoints, currentApplied, PointCloudDeviceSide.Left);
-        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
-
-        ProfileRegistrationParameters icpDelta = _icpService.Align(initialGuessPoints.ToList(), standardPoints.ToList());
-        ProfileRegistrationParameters composedParameters = _transformService.ComposeWithGlobalDelta(
+        ProfileRegistrationParameters? composedParameters = CalculateSinglePassAutoAlignment(
+            _leftRawPoints,
             _leftBasePoints,
-            currentApplied,
-            icpDelta,
+            BuildAppliedLeftParameters(),
             PointCloudDeviceSide.Left);
+        if (composedParameters == null)
+        {
+            return;
+        }
 
         PendingLeftDx = ClampTranslation(composedParameters.Dx);
         PendingLeftDy = ClampTranslation(composedParameters.Dy);
         PendingLeftRotationDegrees = ClampRotation(composedParameters.RotationDegrees);
+        PendingLeftIsMirrored = composedParameters.IsMirrored;
+        PendingLeftXMin = composedParameters.XMin;
+        PendingLeftXMax = composedParameters.XMax;
 
-        ApplyPendingParameters();
+        SetAppliedParameters(composedParameters, BuildAppliedRightParameters());
+        RebuildCachedProfile(PointCloudDeviceSide.Left);
+        RefreshPlot();
     }
 
     public void AutoAlignRight()
     {
-        if (_rightBasePoints.Count == 0) return;
+        if (_rightRawPoints.Count == 0 || _rightBasePoints.Count == 0) return;
 
-        var currentApplied = BuildAppliedRightParameters();
-        IReadOnlyList<RailProfilePoint> initialGuessPoints =
-            _transformService.Transform(_rightBasePoints, currentApplied, PointCloudDeviceSide.Right);
-        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
-
-        ProfileRegistrationParameters icpDelta = _icpService.Align(initialGuessPoints.ToList(), standardPoints.ToList());
-        ProfileRegistrationParameters composedParameters = _transformService.ComposeWithGlobalDelta(
+        ProfileRegistrationParameters? composedParameters = CalculateSinglePassAutoAlignment(
+            _rightRawPoints,
             _rightBasePoints,
-            currentApplied,
-            icpDelta,
+            BuildAppliedRightParameters(),
             PointCloudDeviceSide.Right);
+        if (composedParameters == null)
+        {
+            return;
+        }
 
         PendingRightDx = ClampTranslation(composedParameters.Dx);
         PendingRightDy = ClampTranslation(composedParameters.Dy);
         PendingRightRotationDegrees = ClampRotation(composedParameters.RotationDegrees);
+        PendingRightIsMirrored = composedParameters.IsMirrored;
+        PendingRightXMin = composedParameters.XMin;
+        PendingRightXMax = composedParameters.XMax;
 
-        ApplyPendingParameters();
+        SetAppliedParameters(BuildAppliedLeftParameters(), composedParameters);
+        RebuildCachedProfile(PointCloudDeviceSide.Right);
+        RefreshPlot();
     }
 
     public void UpdatePlot(double plotWidth, double plotHeight)
@@ -456,11 +480,86 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         }
     }
 
-    private List<RailProfilePoint> LoadBaseProfilePoints(string filePath)
+    private List<RailProfilePoint> BuildProfilePoints(
+        IReadOnlyList<PointCloudPoint3D> rawPoints,
+        ProfileRegistrationParameters parameters,
+        PointCloudDeviceSide side)
     {
-        List<PointCloudPoint3D> points = PointCloudCsvReader.ReadPointsFromCsv(filePath);
-        MedianSectionExtractionResult result = _profileService.ExtractMedianSectionProfileFromPoints(points);
+        if (rawPoints.Count == 0)
+        {
+            return new List<RailProfilePoint>();
+        }
+
+        MedianSectionExtractionResult result =
+            _profileService.ExtractMedianSectionProfileFromPoints(rawPoints, side, parameters);
         return result.ProfilePoints.ToList();
+    }
+
+    private void RebuildCachedProfiles()
+    {
+        RebuildCachedProfile(PointCloudDeviceSide.Left);
+        RebuildCachedProfile(PointCloudDeviceSide.Right);
+    }
+
+    private void RebuildCachedProfile(PointCloudDeviceSide side)
+    {
+        if (side == PointCloudDeviceSide.Left)
+        {
+            _leftBasePoints = BuildProfilePoints(
+                _leftRawPoints,
+                BuildAppliedLeftParameters(),
+                PointCloudDeviceSide.Left);
+            LeftSummaryText = BuildSummaryText(_leftBasePoints);
+            return;
+        }
+
+        _rightBasePoints = BuildProfilePoints(
+            _rightRawPoints,
+            BuildAppliedRightParameters(),
+            PointCloudDeviceSide.Right);
+        RightSummaryText = BuildSummaryText(_rightBasePoints);
+    }
+
+    private ProfileRegistrationParameters? CalculateSinglePassAutoAlignment(
+        IReadOnlyList<PointCloudPoint3D> rawPoints,
+        IReadOnlyList<RailProfilePoint> currentProfile,
+        ProfileRegistrationParameters currentParameters,
+        PointCloudDeviceSide side)
+    {
+        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
+        ProfileRegistrationParameters icpDelta =
+            _icpService.Align(currentProfile, standardPoints);
+        if (IsNegligibleIcpDelta(icpDelta))
+        {
+            return null;
+        }
+
+        return ClampParameters(
+            _transformService.ComposeRawFirstWithGlobalDelta(
+                rawPoints,
+                currentParameters,
+                icpDelta,
+                side));
+    }
+
+    private static bool IsNegligibleIcpDelta(ProfileRegistrationParameters delta)
+    {
+        return Math.Abs(delta.Dx) <= IcpDeltaTolerance &&
+               Math.Abs(delta.Dy) <= IcpDeltaTolerance &&
+               Math.Abs(delta.RotationDegrees) <= IcpDeltaTolerance;
+    }
+
+    private static ProfileRegistrationParameters ClampParameters(ProfileRegistrationParameters parameters)
+    {
+        return new ProfileRegistrationParameters(
+            ClampTranslation(parameters.Dx),
+            ClampTranslation(parameters.Dy),
+            ClampRotation(parameters.RotationDegrees),
+            parameters.IsMirrored)
+        {
+            XMin = parameters.XMin,
+            XMax = parameters.XMax
+        };
     }
 
     private void RefreshPlot()
@@ -470,10 +569,8 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             return;
         }
 
-        IReadOnlyList<RailProfilePoint> leftPoints =
-            _transformService.Transform(_leftBasePoints, BuildAppliedLeftParameters(), PointCloudDeviceSide.Left);
-        IReadOnlyList<RailProfilePoint> rightPoints =
-            _transformService.Transform(_rightBasePoints, BuildAppliedRightParameters(), PointCloudDeviceSide.Right);
+        IReadOnlyList<RailProfilePoint> leftPoints = _leftBasePoints;
+        IReadOnlyList<RailProfilePoint> rightPoints = _rightBasePoints;
         IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints();
         IReadOnlyList<RailProfilePoint> allPoints = leftPoints
             .Concat(rightPoints)
@@ -598,8 +695,8 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             AppliedLeftRotationDegrees,
             AppliedLeftIsMirrored)
         {
-            XMin = PendingLeftXMin,
-            XMax = PendingLeftXMax
+            XMin = _appliedLeftXMin,
+            XMax = _appliedLeftXMax
         };
     }
 
@@ -611,8 +708,8 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
             AppliedRightRotationDegrees,
             AppliedRightIsMirrored)
         {
-            XMin = PendingRightXMin,
-            XMax = PendingRightXMax
+            XMin = _appliedRightXMin,
+            XMax = _appliedRightXMax
         };
     }
 
@@ -643,10 +740,14 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         _appliedLeftDy = ClampTranslation(leftParameters.Dy);
         _appliedLeftRotationDegrees = ClampRotation(leftParameters.RotationDegrees);
         _appliedLeftIsMirrored = leftParameters.IsMirrored;
+        _appliedLeftXMin = leftParameters.XMin;
+        _appliedLeftXMax = leftParameters.XMax;
         _appliedRightDx = ClampTranslation(rightParameters.Dx);
         _appliedRightDy = ClampTranslation(rightParameters.Dy);
         _appliedRightRotationDegrees = ClampRotation(rightParameters.RotationDegrees);
         _appliedRightIsMirrored = rightParameters.IsMirrored;
+        _appliedRightXMin = rightParameters.XMin;
+        _appliedRightXMax = rightParameters.XMax;
         NotifyAppliedPropertiesChanged();
     }
 

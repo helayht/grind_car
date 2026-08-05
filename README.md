@@ -68,8 +68,8 @@ GrindCar.sln
 - 点云 SDK 图像模式集中定义在 `PointCloudExportService`：`Origin=1`、`PointCloud=4`、`Range=7`、`Intensity=10`
 - 当前默认采集使用 `ImageMode=7`（Range 深度图模式），先通过 `GetImage` 获取深度图，再调用 `MapDepthToPointCloud` 转换为点云
 - `PointCloudRepresentativeProfileService` 支持从在线点云点集或 `CSV` 提取平均代表截面二维点集
-- 带 `Left` / `Right` 侧别的代表点提取会执行固定流程：离群点过滤 -> 按已保存的 `IsMirrored` 执行手动镜像 -> 应用已保存的手动配准平移/旋转参数
-- 手动配准参数保存在运行目录 `point-cloud-profile-registration.json`；未保存参数时，后续测量和点云算法验证会直接提示先完成代表廓形手动配准
+- 带 `Left` / `Right` 侧别的代表点提取会执行固定流程：原始有效点镜像 -> 绕原始点 X/Z 质心旋转 -> 平均代表截面提取与离群过滤 -> 平移和 X 范围裁切
+- 手动配准参数保存在运行目录 `point-cloud-profile-registration.json`，当前算法版本为 `2`；旧版本配置必须重新完成配准并保存
 - `PointCloudMedianSectionCaptureService` 提供一条串联流程（在线优先）：
   `SDK 单帧采集 -> 内存点集提取平均代表截面`
 - 在线链路异常时会自动回退：
@@ -181,8 +181,8 @@ dotnet clean GrindCar.sln
 ### 点云调试流程
 1. 在运行目录创建 `point-cloud-devices.json`，按点云设备序列号配置 `Left` / `Right` 侧别。
 2. 打开“点云导出”窗口，选择设备并导出 Left / Right 原始点云 CSV。
-3. 打开“代表廓形配准”窗口，分别选择 Left / Right CSV，通过 X/Y 平移、旋转、镜像选项以及 X 范围裁切将两侧代表廓形对齐到标准参考线。窗口提供稳健 ICP 自动精对齐功能，可基于当前手动参数自动微调配准。
-4. 参数编辑后点击“确认调整”刷新预览，确认无误后点击“保存参数”，系统会将 Left / Right 配准参数保存到运行目录 `point-cloud-profile-registration.json`。
+3. 打开“代表廓形配准”窗口，分别选择 Left / Right CSV，通过 X/Y 平移、旋转、镜像选项以及 X 范围裁切将两侧代表廓形对齐到标准参考线。镜像和旋转会先作用于原始点，再重新生成平均代表廓形；自动精对齐直接对当前缓存的平均代表廓形执行一次稳健 ICP，合并参数后仅重建一次当前侧廓形，不会循环处理原始点。
+4. 参数编辑后点击“确认调整”同步重新处理原始点并刷新预览，确认无误后点击“保存参数”，系统会将 Left / Right 配准参数和算法版本保存到当前轨型对应的配置文件。
 5. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。
 6. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
 7. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
@@ -259,8 +259,8 @@ dotnet clean GrindCar.sln
 - `GrindCar/Models/PointCloud/PointCloudCaptureSettings.cs`：点云在线采集参数模型，包含小车速度(m/min)、单次测量总条数和按 1 cm 间距计算的帧率
 - `GrindCar/Services/PointCloud/PointCloudCaptureSettingsStore.cs`：运行目录 `point-cloud-capture-settings.json` 的读写服务
 - `GrindCar/Services/Rail/PointCloudRepresentativeProfileService.cs`：从在线点集或 CSV 提取平均代表截面二维点集，并按侧别应用手动配准参数
-- `GrindCar/Services/Rail/Core/ProfileRegistrationSettingsStore.cs`：代表廓形配准参数存储，按轨型独立保存（`point-cloud-profile-registration-60kg.json` / `point-cloud-profile-registration-50kg.json`），自动根据当前激活的轨面型号选择对应文件
-- `GrindCar/Services/Rail/Core/ProfileRegistrationTransformService.cs`：二维刚体平移/旋转变换、ICP 全局增量到质心旋转参数的换算，以及标准轨面贴合误差计算。配准窗口使用与 ICP 相同的标准采样点和最佳 80% 点对计算内点 RMSE，并同时显示全点平均最短欧氏距离与 P95 距离，用于识别边缘噪点和局部异常
+- `GrindCar/Services/Rail/Core/ProfileRegistrationSettingsStore.cs`：代表廓形配准参数和算法版本存储，按轨型独立保存（`point-cloud-profile-registration-60kg.json` / `point-cloud-profile-registration-50kg.json`），旧算法版本会提示重新配准
+- `GrindCar/Services/Rail/Core/ProfileRegistrationTransformService.cs`：原始点镜像/旋转、代表点平移/裁切、完整二维刚体变换、ICP 增量参数换算和标准轨面贴合误差计算
 - `GrindCar/Services/Rail/Processing/PointCloudCsvReader.cs`：点云 CSV 解析（分隔符/表头/坐标列识别）
 - `GrindCar/Services/Rail/Processing/RepresentativeProfilePointProcessor.cs`：离群过滤（自适应窗口）、旋转、对称扩展和平移
 - `GrindCar/Services/Rail/Processing/QuickSelect.cs`：中位值快速选择算法
@@ -284,6 +284,8 @@ dotnet clean GrindCar.sln
 
 ### 平均代表截面定义
 - 先从单帧点云中读取全部点，并过滤 `X/Y/Z` 全为 `0` 的异常点
+- 带侧别提取时读取算法版本为 `2` 的配准参数；当 `IsMirrored=true` 时，Left 以原始有效点 `MaxX`、Right 以原始有效点 `MinX` 为轴执行 X 镜像
+- 计算镜像后全部原始有效点的 X/Z 质心 `(cx, cz)`，仅旋转 X/Z：`x' = (x-cx)*cos(θ) - (z-cz)*sin(θ) + cx`，`z' = (x-cx)*sin(θ) + (z-cz)*cos(θ) + cz`；前进方向 Y 保持不变
 - 按前进方向 `Y` 将点云拆成多条有效轮廓；分组容差为 `0.25 mm`，与廓形仪 Y 方向物理分辨率匹配，避免传感器微小噪声将同一物理截面拆成多个伪截面
 - 每条轮廓按 `X` 排序，丢弃点数不足或 `X` 范围无效的轮廓；有效轮廓数 < 5 时拒绝计算（防止数据质量异常时静默产出不可靠结果）
 - 取所有有效轮廓 `X` 范围的公共交集
@@ -291,12 +293,10 @@ dotnet clean GrindCar.sln
 - 每条轮廓在统一 X 网格上对 `Z` 做线性插值
 - 对同一网格 X 上的所有插值 `Z` 做算术平均，输出二维 `(X, AverageZ)` 点集
 - `RepresentativeY` 表示参与平均代表截面的有效轮廓 Y 的中位数（避免采样密度偏差导致代表 Y 偏移）
-- 当前实现会在平均代表截面生成后按固定流程处理：
-- 先执行离群点过滤（局部拟合残差 + MAD 阈值）
-- 读取运行目录 `point-cloud-profile-registration.json` 中对应侧别的 `Dx`、`Dy`、`RotationDegrees`、`IsMirrored`
-- 当 `IsMirrored=true` 时先执行 X 方向镜像：Left 以当前点集 `MaxX` 为轴向右镜像，Right 以当前点集 `MinX` 为轴向左镜像
-- 镜像后按当前侧代表点云质心 `(cx, cy)` 执行二维刚体变换：`x' = (x-cx)*cos(θ) - (y-cy)*sin(θ) + cx + dx`，`y' = (x-cx)*sin(θ) + (y-cy)*cos(θ) + cy + dy`
-- 配置文件格式不保存质心；旧配置缺少 `IsMirrored` 时默认按 `false` 处理。已有非零旋转角度或需要镜像的旧配准参数，建议重新打开“代表廓形配准”窗口校准并保存
+- 平均代表截面生成后执行局部拟合残差 + MAD 离群过滤，再应用 `Dx/Dy` 平移，最后按最终 X 坐标执行 `XMin/XMax` 裁切
+- 配置文件不保存质心，每次从当前原始有效点重新计算；算法版本缺失或不为 `2` 时拒绝加载，必须重新打开“代表廓形配准”窗口校准并保存
+- 配准窗口的自动精对齐以当前已确认参数生成的代表廓形为 ICP 输入，只调用一次 ICP 服务；ICP 内部最多执行 30 次收敛迭代，所得刚体增量合并到现有 `RotationDegrees/Dx/Dy` 后，仅重新生成当前侧代表廓形用于最终预览
+- ICP 最近点匹配只处理压缩后的代表点和 241 个标准采样点，不直接遍历原始点；自动对齐的原始点处理成本由最多三轮重建降低为参数合并后的一次当前侧重建
 - 若缺少手动配准参数，带侧别的代表廓形提取会直接报错，不再回退到旧的自动边界对齐
 
 ### 打磨深度计算说明
@@ -406,7 +406,7 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 - 在线点云采集默认使用 `ImageMode=7` 的 Range 深度图模式；采集后通过 `MapDepthToPointCloud` 转换为点云
 - 在线点云采集会按主界面保存的 `point-cloud-capture-settings.json` 写入 `AcquisitionFrameRate` 和 `LSLRangeImgHeight`；配置不存在时会提示先设置并保存点云采集参数
 - 点云采集默认走在线提取，在线失败时会在运行目录 `Log/` 目录落盘 `CSV` 后回退处理
-- 带侧别的代表点预处理逻辑会先离群点过滤，再按 `point-cloud-profile-registration.json` 中保存的 `IsMirrored` 手动镜像状态与平移/旋转参数输出标准坐标系代表点
+- 带侧别的代表点预处理逻辑会先对原始有效点执行镜像和旋转，再提取平均代表截面并过滤，最后应用平移和 X 范围裁切
 - 后续测量必须先完成代表廓形手动配准并保存参数；缺少 `point-cloud-profile-registration.json` 时不会执行自动对齐兜底
 - 点云设备侧别配置文件为运行目录下的 `point-cloud-devices.json`，未配置设备不会参与默认推断，会直接报错
 - 测量参数写入使用地址 `D1140/D1142`，比例 `/100000`，写入入口位于主界面参数区

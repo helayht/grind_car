@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GrindCar.Models.Rail;
+using GrindCar.Services.Rail.Processing;
 
 namespace GrindCar.Services.Rail.Core;
 
@@ -77,6 +78,143 @@ public sealed class ProfileRegistrationTransformService
         }
 
         return transformedPoints;
+    }
+
+    /// <summary>
+    /// 对原始三维点执行方向校正：先按侧别镜像 X，再绕镜像后全部点的 X/Z 质心旋转。
+    /// 前进方向 Y 保持不变；平移和 X 范围裁切由代表廓形生成后单独执行。
+    /// </summary>
+    internal IReadOnlyList<PointCloudPoint3D> ApplyRawOrientation(
+        IReadOnlyList<PointCloudPoint3D> points,
+        ProfileRegistrationParameters parameters,
+        PointCloudDeviceSide side)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (parameters == null)
+        {
+            throw new ArgumentNullException(nameof(parameters));
+        }
+
+        parameters.Validate("原始点方向校正");
+        if (points.Count == 0)
+        {
+            return Array.Empty<PointCloudPoint3D>();
+        }
+
+        double mirrorAxisX = ResolveRawMirrorAxisX(points, parameters.IsMirrored, side);
+        (double centerX, double centerZ) =
+            CalculateRawOrientedCentroid(points, parameters.IsMirrored, mirrorAxisX);
+        double radians = parameters.RotationDegrees * DegreesToRadiansFactor;
+        double cosValue = Math.Cos(radians);
+        double sinValue = Math.Sin(radians);
+        var orientedPoints = new List<PointCloudPoint3D>(points.Count);
+
+        for (int index = 0; index < points.Count; index++)
+        {
+            PointCloudPoint3D point = points[index];
+            double orientedX = parameters.IsMirrored ? 2.0 * mirrorAxisX - point.X : point.X;
+            double relativeX = orientedX - centerX;
+            double relativeZ = point.Z - centerZ;
+            double rotatedX = relativeX * cosValue - relativeZ * sinValue + centerX;
+            double rotatedZ = relativeX * sinValue + relativeZ * cosValue + centerZ;
+            orientedPoints.Add(new PointCloudPoint3D(rotatedX, point.Y, rotatedZ));
+        }
+
+        return orientedPoints;
+    }
+
+    /// <summary>
+    /// 对已完成方向校正和平均提取的代表点应用平移及最终 X 范围裁切。
+    /// </summary>
+    internal IReadOnlyList<RailProfilePoint> ApplyTranslationAndCrop(
+        IReadOnlyList<RailProfilePoint> points,
+        ProfileRegistrationParameters parameters)
+    {
+        if (points == null)
+        {
+            throw new ArgumentNullException(nameof(points));
+        }
+
+        if (parameters == null)
+        {
+            throw new ArgumentNullException(nameof(parameters));
+        }
+
+        parameters.Validate("代表点位置校正");
+        var transformedPoints = new List<RailProfilePoint>(points.Count);
+        for (int index = 0; index < points.Count; index++)
+        {
+            RailProfilePoint point = points[index];
+            double transformedX = point.X + parameters.Dx;
+            double transformedY = point.Y + parameters.Dy;
+            bool keep = (!parameters.XMin.HasValue || transformedX >= parameters.XMin.Value) &&
+                        (!parameters.XMax.HasValue || transformedX <= parameters.XMax.Value);
+            if (keep)
+            {
+                transformedPoints.Add(new RailProfilePoint(transformedX, transformedY));
+            }
+        }
+
+        return transformedPoints;
+    }
+
+    /// <summary>
+    /// 将 ICP 返回的全局增量换算为“原始点先旋转、代表点后平移”参数。
+    /// </summary>
+    internal ProfileRegistrationParameters ComposeRawFirstWithGlobalDelta(
+        IReadOnlyList<PointCloudPoint3D> rawPoints,
+        ProfileRegistrationParameters currentParameters,
+        ProfileRegistrationParameters globalDelta,
+        PointCloudDeviceSide side)
+    {
+        if (rawPoints == null)
+        {
+            throw new ArgumentNullException(nameof(rawPoints));
+        }
+
+        if (currentParameters == null)
+        {
+            throw new ArgumentNullException(nameof(currentParameters));
+        }
+
+        if (globalDelta == null)
+        {
+            throw new ArgumentNullException(nameof(globalDelta));
+        }
+
+        if (rawPoints.Count == 0)
+        {
+            throw new InvalidOperationException("ICP 参数换算至少需要一个原始点。");
+        }
+
+        currentParameters.Validate("当前配准");
+        globalDelta.Validate("ICP 增量配准");
+        double mirrorAxisX = ResolveRawMirrorAxisX(rawPoints, currentParameters.IsMirrored, side);
+        (double centerX, double centerZ) =
+            CalculateRawOrientedCentroid(rawPoints, currentParameters.IsMirrored, mirrorAxisX);
+        double deltaRadians = globalDelta.RotationDegrees * DegreesToRadiansFactor;
+        double deltaCosValue = Math.Cos(deltaRadians);
+        double deltaSinValue = Math.Sin(deltaRadians);
+        double currentCenterX = centerX + currentParameters.Dx;
+        double currentCenterZ = centerZ + currentParameters.Dy;
+        double composedCenterX =
+            currentCenterX * deltaCosValue - currentCenterZ * deltaSinValue + globalDelta.Dx;
+        double composedCenterZ =
+            currentCenterX * deltaSinValue + currentCenterZ * deltaCosValue + globalDelta.Dy;
+
+        return new ProfileRegistrationParameters(
+            composedCenterX - centerX,
+            composedCenterZ - centerZ,
+            currentParameters.RotationDegrees + globalDelta.RotationDegrees,
+            currentParameters.IsMirrored)
+        {
+            XMin = currentParameters.XMin,
+            XMax = currentParameters.XMax
+        };
     }
 
     internal ProfileRegistrationParameters ComposeWithGlobalDelta(
@@ -212,6 +350,44 @@ public sealed class ProfileRegistrationTransformService
         }
 
         return mirroredPoints;
+    }
+
+    private static double ResolveRawMirrorAxisX(
+        IReadOnlyList<PointCloudPoint3D> points,
+        bool isMirrored,
+        PointCloudDeviceSide side)
+    {
+        if (!isMirrored)
+        {
+            return 0.0;
+        }
+
+        double axisX = points[0].X;
+        for (int index = 1; index < points.Count; index++)
+        {
+            axisX = side == PointCloudDeviceSide.Left
+                ? Math.Max(axisX, points[index].X)
+                : Math.Min(axisX, points[index].X);
+        }
+
+        return axisX;
+    }
+
+    private static (double centerX, double centerZ) CalculateRawOrientedCentroid(
+        IReadOnlyList<PointCloudPoint3D> points,
+        bool isMirrored,
+        double mirrorAxisX)
+    {
+        double sumX = 0.0;
+        double sumZ = 0.0;
+        for (int index = 0; index < points.Count; index++)
+        {
+            PointCloudPoint3D point = points[index];
+            sumX += isMirrored ? 2.0 * mirrorAxisX - point.X : point.X;
+            sumZ += point.Z;
+        }
+
+        return (sumX / points.Count, sumZ / points.Count);
     }
 
     private static double ResolveMinX(IReadOnlyList<RailProfilePoint> points)

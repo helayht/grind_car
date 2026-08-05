@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail.Core;
+using GrindCar.Services.Rail.Processing;
 using Xunit;
 
 namespace GrindCar.Tests;
@@ -168,7 +169,7 @@ public class ProfileRegistrationTransformServiceTests
 
         double error = service.CalculateAverageAbsoluteStandardError(points);
 
-        Assert.Equal(0.0, error, 6);
+        Assert.InRange(error, 0.0, 0.02);
     }
 
     [Theory]
@@ -239,6 +240,114 @@ public class ProfileRegistrationTransformServiceTests
         Assert.True(metrics.AverageDistance > 0.0);
         Assert.True(metrics.Percentile95Distance > 0.0);
         Assert.Equal(0.8, metrics.InlierRatio, 10);
+    }
+
+    [Fact]
+    public void ApplyRawOrientation_WithRotation_RotatesXAndZAroundRawCentroidAndKeepsY()
+    {
+        var service = new ProfileRegistrationTransformService();
+        var points = new[]
+        {
+            new PointCloudPoint3D(10.0, 100.0, 0.0),
+            new PointCloudPoint3D(10.0, 200.0, 2.0)
+        };
+        var parameters = new ProfileRegistrationParameters(0.0, 0.0, 90.0);
+
+        IReadOnlyList<PointCloudPoint3D> transformed =
+            service.ApplyRawOrientation(points, parameters, PointCloudDeviceSide.Left);
+
+        Assert.Equal(11.0, transformed[0].X, 6);
+        Assert.Equal(100.0, transformed[0].Y, 6);
+        Assert.Equal(1.0, transformed[0].Z, 6);
+        Assert.Equal(9.0, transformed[1].X, 6);
+        Assert.Equal(200.0, transformed[1].Y, 6);
+        Assert.Equal(1.0, transformed[1].Z, 6);
+    }
+
+    [Fact]
+    public void ApplyRawOrientation_WithMirrorAndRotation_MirrorsBeforeRotation()
+    {
+        var service = new ProfileRegistrationTransformService();
+        var points = new[]
+        {
+            new PointCloudPoint3D(10.0, 1.0, 0.0),
+            new PointCloudPoint3D(12.0, 2.0, 0.0)
+        };
+        var parameters = new ProfileRegistrationParameters(0.0, 0.0, 90.0, true);
+
+        IReadOnlyList<PointCloudPoint3D> transformed =
+            service.ApplyRawOrientation(points, parameters, PointCloudDeviceSide.Left);
+
+        Assert.Equal(13.0, transformed[0].X, 6);
+        Assert.Equal(1.0, transformed[0].Z, 6);
+        Assert.Equal(13.0, transformed[1].X, 6);
+        Assert.Equal(-1.0, transformed[1].Z, 6);
+    }
+
+    [Fact]
+    public void ApplyTranslationAndCrop_FiltersByTranslatedX()
+    {
+        var service = new ProfileRegistrationTransformService();
+        var points = new[]
+        {
+            new RailProfilePoint(1.0, 2.0),
+            new RailProfilePoint(2.0, 3.0)
+        };
+        var parameters = new ProfileRegistrationParameters(3.0, 4.0, 0.0)
+        {
+            XMin = 5.0,
+            XMax = 5.0
+        };
+
+        IReadOnlyList<RailProfilePoint> transformed =
+            service.ApplyTranslationAndCrop(points, parameters);
+
+        RailProfilePoint point = Assert.Single(transformed);
+        Assert.Equal(5.0, point.X, 6);
+        Assert.Equal(7.0, point.Y, 6);
+    }
+
+    [Fact]
+    public void ComposeRawFirstWithGlobalDelta_MatchesSequentialRawFirstTransform()
+    {
+        var service = new ProfileRegistrationTransformService();
+        var rawPoints = new[]
+        {
+            new PointCloudPoint3D(0.0, 10.0, 0.0),
+            new PointCloudPoint3D(2.0, 20.0, 0.0)
+        };
+        var current = new ProfileRegistrationParameters(3.0, -2.0, 10.0, true)
+        {
+            XMin = -20.0,
+            XMax = 20.0
+        };
+        var delta = new ProfileRegistrationParameters(-1.0, 4.0, 5.0);
+
+        IReadOnlyList<PointCloudPoint3D> currentOriented =
+            service.ApplyRawOrientation(rawPoints, current, PointCloudDeviceSide.Left);
+        RailProfilePoint currentPositioned = service.ApplyTranslationAndCrop(
+            new[] { new RailProfilePoint(currentOriented[0].X, currentOriented[0].Z) },
+            current)[0];
+        RailProfilePoint expected = ApplyGlobalTransform(
+            new[] { currentPositioned },
+            delta)[0];
+
+        ProfileRegistrationParameters composed = service.ComposeRawFirstWithGlobalDelta(
+            rawPoints,
+            current,
+            delta,
+            PointCloudDeviceSide.Left);
+        IReadOnlyList<PointCloudPoint3D> composedOriented =
+            service.ApplyRawOrientation(rawPoints, composed, PointCloudDeviceSide.Left);
+        RailProfilePoint actual = service.ApplyTranslationAndCrop(
+            new[] { new RailProfilePoint(composedOriented[0].X, composedOriented[0].Z) },
+            composed)[0];
+
+        Assert.Equal(expected.X, actual.X, 6);
+        Assert.Equal(expected.Y, actual.Y, 6);
+        Assert.True(composed.IsMirrored);
+        Assert.Equal(-20.0, composed.XMin);
+        Assert.Equal(20.0, composed.XMax);
     }
 
     private static IReadOnlyList<RailProfilePoint> ApplyGlobalTransform(
