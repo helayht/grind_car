@@ -20,13 +20,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Remove="view\**\*.cs" />
-      <Compile Remove="viewModel\**\*.cs" />
-      <Compile Remove="model\**\*.cs" />
-      <Compile Remove="tool\**\*.cs" />
       <Compile Remove="tmp_obj\**\*" />
       <Compile Remove="tmp_bin\**\*" />
-      <Page Remove="view\**\*.xaml" />
       <Page Remove="tmp_obj\**\*" />
       <Page Remove="tmp_bin\**\*" />
       <ApplicationDefinition Remove="tmp_obj\**\*" />
@@ -35,10 +30,6 @@
       <EmbeddedResource Remove="tmp_bin\**\*" />
       <None Remove="tmp_obj\**\*" />
       <None Remove="tmp_bin\**\*" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Log\" />
     </ItemGroup>
 
 </Project>

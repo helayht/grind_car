@@ -8,28 +8,6 @@ namespace GrindCar.Services;
 public partial class PlcModbusCommunicator
 {
     /// <summary>
-    /// 向指定 Coil 地址写入一个布尔值。
-    /// </summary>
-    /// <param name="coilAddress">目标 Coil 地址。</param>
-    /// <param name="value">要写入的布尔值。</param>
-    public void WriteSingleCoil(ushort coilAddress, bool value)
-    {
-        EnsureConnected();
-        IModbusMaster modbusMaster = GetModbusMaster();
-        try
-        {
-            modbusMaster.WriteSingleCoil(_unitId, coilAddress, value);
-            Debug.WriteLine($"Modbus: Wrote Coil {coilAddress}={value}");
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Err Wr Coil {coilAddress}:{ex.Message}");
-            HandleModbusError(ex);
-            throw;
-        }
-    }
-
-    /// <summary>
     /// 读取指定 Coil 地址的布尔值。
     /// </summary>
     /// <param name="coilAddress">目标 Coil 地址。</param>
@@ -74,59 +52,6 @@ public partial class PlcModbusCommunicator
         catch (Exception ex)
         {
             Debug.WriteLine($"Modbus: 写入 Coil 地址 {coilAddress} 发生错误: {ex.Message}");
-            HandleModbusError(ex);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// 将浮点值写入两个连续 Holding Register。
-    /// </summary>
-    /// <param name="startAddress">起始寄存器地址。</param>
-    /// <param name="value">要写入的浮点值。</param>
-    public void WriteFloat(ushort startAddress, float value)
-    {
-        EnsureConnected();
-        IModbusMaster modbusMaster = GetModbusMaster();
-        try
-        {
-            ushort[] dataToWrite = FloatToUshorts(value);
-            modbusMaster.WriteMultipleRegisters(_unitId, startAddress, dataToWrite);
-            Debug.WriteLine($"Modbus: 成功写入浮点数 {value} 到 Holding Register 地址 {startAddress}");
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Modbus: 写入 Float 到 Holding Register 地址 {startAddress} 发生错误: {ex.Message}");
-            HandleModbusError(ex);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// 从两个连续 Holding Register 读取一个浮点值。
-    /// </summary>
-    /// <param name="startAddress">起始寄存器地址。</param>
-    /// <returns>读取到的浮点值。</returns>
-    public float ReadFloat(ushort startAddress)
-    {
-        EnsureConnected();
-        IModbusMaster modbusMaster = GetModbusMaster();
-        try
-        {
-            ushort[] registers = modbusMaster.ReadHoldingRegisters(_unitId, startAddress, 2);
-            if (registers != null && registers.Length == 2)
-            {
-                float value = UshortsToFloat(registers);
-                Debug.WriteLine($"Modbus: 成功读取浮点数 {value} 从 Holding Register 地址 {startAddress}");
-                return value;
-            }
-
-            Debug.WriteLine($"Modbus: 从 Holding Register 地址 {startAddress} 读取 Float 失败，未返回足够数据。");
-            throw new Exception($"Failed to read 2 registers for Float from address {startAddress}.");
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Modbus: 读取 Float 从 Holding Register 地址 {startAddress} 发生错误: {ex.Message}");
             HandleModbusError(ex);
             throw;
         }

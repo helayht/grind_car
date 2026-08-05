@@ -23,20 +23,7 @@ public partial class PlcModbusCommunicator
         try
         {
             _tcpClient = new TcpClient();
-#if NETSTANDARD2_1_OR_GREATER || NET
             await _tcpClient.ConnectAsync(_plcIpAddress, _plcPort).ConfigureAwait(false);
-#else
-            // 为旧版 .NET Framework 提供兼容
-            var connectTask = _tcpClient.ConnectAsync(_plcIpAddress, _plcPort);
-            if (await Task.WhenAny(connectTask, Task.Delay(ConnectTimeoutMs)).ConfigureAwait(false) != connectTask)
-            {
-                _tcpClient?.Dispose();
-                _tcpClient = null;
-                throw new TimeoutException("PLC connection timed out.");
-            }
-
-            await connectTask.ConfigureAwait(false);
-#endif
 
             _modbusMaster = ModbusIpMaster.CreateIp(_tcpClient);
             _modbusMaster.Transport.ReadTimeout = TransportReadTimeoutMs;
@@ -69,65 +56,6 @@ public partial class PlcModbusCommunicator
     }
 
     /// <summary>
-    /// 以同步方式建立与 PLC 的 Modbus TCP 连接。
-    /// </summary>
-    public void Connect()
-    {
-        if (_isConnected)
-        {
-            Debug.WriteLine("Modbus: 已经连接，无需重复连接。");
-            return;
-        }
-
-        try
-        {
-            _tcpClient = new TcpClient();
-
-            IAsyncResult result = _tcpClient.BeginConnect(_plcIpAddress, _plcPort, null, null);
-            bool success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(ConnectTimeoutMs), true);
-
-            if (success && _tcpClient.Connected)
-            {
-                _tcpClient.EndConnect(result);
-            }
-            else
-            {
-                _tcpClient.Close();
-                _tcpClient.Dispose();
-                _tcpClient = null;
-                throw new TimeoutException($"连接到 PLC {_plcIpAddress}:{_plcPort} 超时 ({ConnectTimeoutMs}ms)。");
-            }
-
-            _modbusMaster = ModbusIpMaster.CreateIp(_tcpClient);
-            _modbusMaster.Transport.ReadTimeout = TransportReadTimeoutMs;
-            _modbusMaster.Transport.WriteTimeout = TransportWriteTimeoutMs;
-
-            _isConnected = true;
-            Debug.WriteLine($"Modbus: 成功连接到 PLC {_plcIpAddress}:{_plcPort} (Unit ID: {_unitId})");
-        }
-        catch (SocketException ex)
-        {
-            _isConnected = false;
-            Debug.WriteLine($"Modbus: Socket 错误 ({ex.SocketErrorCode}) 连接到 PLC: {ex.Message}");
-            SafeDisposeTcpClientAndMaster();
-            throw new Exception($"无法连接到 PLC (Socket Error): {ex.Message}", ex);
-        }
-        catch (TimeoutException)
-        {
-            _isConnected = false;
-            SafeDisposeTcpClientAndMaster();
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _isConnected = false;
-            Debug.WriteLine($"Modbus: 连接到 PLC 时发生错误: {ex.Message}");
-            SafeDisposeTcpClientAndMaster();
-            throw new Exception($"无法连接到 PLC: {ex.Message}", ex);
-        }
-    }
-
-    /// <summary>
     /// 断开与 PLC 的连接并释放资源。
     /// </summary>
     public void Disconnect()
@@ -137,10 +65,6 @@ public partial class PlcModbusCommunicator
             Debug.WriteLine("Modbus: 已经断开连接，无需重复操作。");
             return;
         }
-
-        StopContinuousDRegisterReading();
-        StopContinuousCoilReading();
-        StopContinuousCoilReading2();
 
         SafeDisposeTcpClientAndMaster();
         _isConnected = false;
@@ -162,7 +86,7 @@ public partial class PlcModbusCommunicator
     }
 
     /// <summary>
-    /// 释放连接、后台任务和相关资源。
+    /// 释放连接及相关资源。
     /// </summary>
     public void Dispose()
     {
@@ -178,10 +102,6 @@ public partial class PlcModbusCommunicator
     {
         if (disposing)
         {
-            StopContinuousDRegisterReading();
-            StopContinuousCoilReading();
-            StopContinuousCoilReading2();
-
             Disconnect();
         }
     }

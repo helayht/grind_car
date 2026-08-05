@@ -242,12 +242,10 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Motor/MotorParameterSpecProvider.cs`：电机读写参数映射与比例定义提供者
 - `GrindCar/Services/Motor/PlcConnectionSettingsValidator.cs`：PLC 连接参数校验
 - `GrindCar/Definitions/MotorParameterDefinitions.cs`：参数名称、地址、比例和单位定义中心
-- `GrindCar/Services/PlcModbusCommunicator.cs`：Modbus 通信上下文（字段、地址常量与构造注入）
-- `GrindCar/Services/PlcModbusCommunicator.Connection.cs`：连接管理与资源释放（Connect/Disconnect/Dispose）
+- `GrindCar/Services/PlcModbusCommunicator.cs`：Modbus 通信上下文（连接字段与构造注入）
+- `GrindCar/Services/PlcModbusCommunicator.Connection.cs`：连接管理与资源释放（ConnectAsync/Disconnect/Dispose）
 - `GrindCar/Services/PlcModbusCommunicator.SingleReadWrite.cs`：单次读写与连接校验（Coil/Register 读写）
-- `GrindCar/Services/PlcModbusCommunicator.Motion.cs`：运动编排与批量采集（MoveAndMonitor/GetData）
-- `GrindCar/Services/PlcModbusCommunicator.ContinuousReading.cs`：持续读取任务与联动监控逻辑
-- `GrindCar/Services/PlcModbusCommunicator.Conversion.cs`：寄存器与数值类型转换
+- `GrindCar/Services/PlcModbusCommunicator.Conversion.cs`：整型寄存器与数值类型转换
 - `GrindCar/Services/Measurement/MeasurementParameterService.cs`：主界面测量参数写入、测量运行轮询、平均打磨深度汇总与打磨次数写回
 - `GrindCar/Services/Measurement/MeasurementGrindingWorkflowResult.cs`：测量运行流程结果汇总模型
 - `GrindCar/Services/Measurement/MeasurementGrindingTimesResult.cs`：单角度平均深度与打磨次数模型

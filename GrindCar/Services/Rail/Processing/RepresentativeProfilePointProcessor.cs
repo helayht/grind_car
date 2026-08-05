@@ -35,28 +35,6 @@ internal static class RepresentativeProfilePointProcessor
     private const double MinResidualThreshold = 0.001;
     private const double MinKeepRatio = 0.4;
 
-    public static List<RailProfilePoint> RotateRepresentativePoints(IReadOnlyList<RailProfilePoint> points, double radians)
-    {
-        if (points == null)
-        {
-            throw new ArgumentNullException(nameof(points));
-        }
-
-        double cosValue = Math.Cos(radians);
-        double sinValue = Math.Sin(radians);
-        var rotatedPoints = new List<RailProfilePoint>(points.Count);
-
-        for (int index = 0; index < points.Count; index++)
-        {
-            RailProfilePoint point = points[index];
-            double rotatedX = point.X * cosValue - point.Y * sinValue;
-            double rotatedY = point.X * sinValue + point.Y * cosValue;
-            rotatedPoints.Add(new RailProfilePoint(rotatedX, rotatedY));
-        }
-
-        return rotatedPoints;
-    }
-
     public static List<RailProfilePoint> AlignRepresentativePointsToStandardBoundary(
         IReadOnlyList<RailProfilePoint> points,
         PointCloudDeviceSide side)
@@ -130,102 +108,6 @@ internal static class RepresentativeProfilePointProcessor
         }
 
         return currentPoints;
-    }
-
-    public static List<RailProfilePoint> AppendSymmetricPointsByMinX(IReadOnlyList<RailProfilePoint> points)
-    {
-        if (points == null)
-        {
-            throw new ArgumentNullException(nameof(points));
-        }
-
-        if (points.Count == 0)
-        {
-            return new List<RailProfilePoint>();
-        }
-
-        double xMax = points.Max(point => point.X);
-        var symmetricPoints = new List<RailProfilePoint>(points.Count * 2);
-        for (int index = 0; index < points.Count; index++)
-        {
-            RailProfilePoint point = points[index];
-            symmetricPoints.Add(point);
-            symmetricPoints.Add(new RailProfilePoint(2.0 * xMax - point.X, point.Y));
-        }
-
-        return symmetricPoints;
-    }
-
-    public static List<RailProfilePoint> TranslatePointsToBottomCenterAsOrigin(IReadOnlyList<RailProfilePoint> points)
-    {
-        if (points == null)
-        {
-            throw new ArgumentNullException(nameof(points));
-        }
-
-        if (points.Count == 0)
-        {
-            return new List<RailProfilePoint>();
-        }
-
-        double xMin = points.Min(point => point.X);
-        double xMax = points.Max(point => point.X);
-        double yMin = points.Min(point => point.Y);
-
-        double xCenter = (xMin + xMax) / 2.0;
-        double offsetX = -xCenter;
-        double offsetY = -yMin;
-
-        var translatedPoints = new List<RailProfilePoint>(points.Count);
-        for (int index = 0; index < points.Count; index++)
-        {
-            RailProfilePoint point = points[index];
-            translatedPoints.Add(new RailProfilePoint(point.X + offsetX, point.Y + offsetY));
-        }
-
-        return translatedPoints;
-    }
-
-    public static List<RailProfilePoint> TranslatePointsToMidXReferencePointAsOrigin(IReadOnlyList<RailProfilePoint> points)
-    {
-        if (points == null)
-        {
-            throw new ArgumentNullException(nameof(points));
-        }
-
-        if (points.Count == 0)
-        {
-            return new List<RailProfilePoint>();
-        }
-
-        double xMin = points.Min(point => point.X);
-        double xMax = points.Max(point => point.X);
-        double xMid = (xMin + xMax) / 2.0;
-
-        RailProfilePoint referencePoint = points[0];
-        double bestDistance = Math.Abs(referencePoint.X - xMid);
-        for (int index = 0; index < points.Count; index++)
-        {
-            RailProfilePoint point = points[index];
-            double distance = Math.Abs(point.X - xMid);
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-                referencePoint = point;
-            }
-        }
-
-        double offsetX = -referencePoint.X;
-        double offsetY = -referencePoint.Y;
-
-        var translatedPoints = new List<RailProfilePoint>(points.Count);
-        for (int index = 0; index < points.Count; index++)
-        {
-            RailProfilePoint point = points[index];
-            translatedPoints.Add(new RailProfilePoint(point.X + offsetX, point.Y + offsetY));
-        }
-
-        return translatedPoints;
     }
 
     private static List<RailProfilePoint> FilterOutlierRepresentativePointsSinglePass(IReadOnlyList<RailProfilePoint> sortedPoints)
