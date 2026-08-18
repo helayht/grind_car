@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using GrindCar.Models.Rail;
+using GrindCar.Services.Rail.Debug;
 using GrindCar.ViewModels;
 using Microsoft.Win32;
 
@@ -66,6 +67,23 @@ public partial class PointCloudGrindDepthDebugWindow : Window
     private void Close_Click(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private void ViewMaximumDropProfile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.LatestLeftMaximumDropProfile == null &&
+            _viewModel.LatestRightMaximumDropProfile == null)
+        {
+            return;
+        }
+
+        var comparisonWindow = new RepresentativeProfileComparisonWindow(
+            _viewModel.LatestLeftMaximumDropProfile,
+            _viewModel.LatestRightMaximumDropProfile)
+        {
+            Owner = this
+        };
+        comparisonWindow.Show();
     }
 
     private string? SelectCsvFile(string title)

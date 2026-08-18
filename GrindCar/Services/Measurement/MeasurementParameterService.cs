@@ -7,6 +7,7 @@ using GrindCar.Definitions;
 using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
+using GrindCar.Services.Rail;
 using GrindCar.Services.Rail.Core;
 
 namespace GrindCar.Services.Measurement;
@@ -22,8 +23,9 @@ public class MeasurementParameterService : IMeasurementParameterService
     private readonly Func<string, int, IPlcClient> _plcClientFactory;
     private readonly Func<IReadOnlyList<ConfiguredPointCloudDevice>> _configuredDeviceProvider;
     private readonly Func<PointCloudCaptureSettings> _captureSettingsProvider;
-    private readonly Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, IReadOnlyList<RailProfilePoint>> _representativePointCapture;
+    private readonly Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, PointCloudMedianSectionCaptureResult> _deviceAnalysisCapture;
     private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult> _grindDepthCalculator;
+    private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, IReadOnlyList<GrindDepthResult>> _defectGrindDepthCalculator;
 
     public MeasurementParameterService()
         : this(CreateDefaultPlcClient)
@@ -35,13 +37,35 @@ public class MeasurementParameterService : IMeasurementParameterService
         Func<IReadOnlyList<ConfiguredPointCloudDevice>>? configuredDeviceProvider = null,
         Func<PointCloudCaptureSettings>? captureSettingsProvider = null,
         Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, IReadOnlyList<RailProfilePoint>>? representativePointCapture = null,
-        Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult>? grindDepthCalculator = null)
+        Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult>? grindDepthCalculator = null,
+        Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, PointCloudMedianSectionCaptureResult>? deviceAnalysisCapture = null,
+        Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, IReadOnlyList<GrindDepthResult>>? defectGrindDepthCalculator = null)
     {
         _plcClientFactory = plcClientFactory ?? throw new ArgumentNullException(nameof(plcClientFactory));
         _configuredDeviceProvider = configuredDeviceProvider ?? RepresentativeSectionCaptureService.GetAvailableConfiguredDevicesInOrder;
         _captureSettingsProvider = captureSettingsProvider ?? (() => new PointCloudCaptureSettingsStore().LoadRequired());
-        _representativePointCapture = representativePointCapture ?? RepresentativeSectionCaptureService.CaptureRepresentativeSectionPoints;
+        if (deviceAnalysisCapture != null)
+        {
+            _deviceAnalysisCapture = deviceAnalysisCapture;
+        }
+        else if (representativePointCapture != null)
+        {
+            _deviceAnalysisCapture = (device, settings, archiveContext) =>
+            {
+                IReadOnlyList<RailProfilePoint> points =
+                    representativePointCapture(device, settings, archiveContext);
+                return new PointCloudMedianSectionCaptureResult(
+                    string.Empty,
+                    new MedianSectionExtractionResult(0.0, points));
+            };
+        }
+        else
+        {
+            _deviceAnalysisCapture = RepresentativeSectionCaptureService.CaptureDeviceAnalysis;
+        }
+
         _grindDepthCalculator = grindDepthCalculator ?? RailSurfaceService.CalculateGrindDepths;
+        _defectGrindDepthCalculator = defectGrindDepthCalculator ?? RailSurfaceService.CalculateDefectGrindDepths;
     }
 
     public static int CalculateGrindingTimes(double grindDepth)
@@ -168,6 +192,10 @@ public class MeasurementParameterService : IMeasurementParameterService
 
         var depthAccumulatorMap = CreateDepthAccumulatorMap(angles);
         var pendingRepresentativePoints = new List<RailProfilePoint>();
+        MaximumDropProfileResult? pendingLeftDropProfile = null;
+        MaximumDropProfileResult? pendingRightDropProfile = null;
+        MaximumDropProfileResult? maximumLeftDropProfile = null;
+        MaximumDropProfileResult? maximumRightDropProfile = null;
         int nextDeviceIndex = 0;
 
         using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
@@ -213,13 +241,30 @@ public class MeasurementParameterService : IMeasurementParameterService
                 device.SerialNumber,
                 device.Side,
                 progress);
-            IReadOnlyList<RailProfilePoint> devicePoints = _representativePointCapture(
+            PointCloudMedianSectionCaptureResult deviceAnalysis = _deviceAnalysisCapture(
                 device,
                 captureSettings,
                 archiveContext);
+            IReadOnlyList<RailProfilePoint> devicePoints = deviceAnalysis.ExtractionResult.ProfilePoints;
             if (devicePoints.Count > 0)
             {
                 pendingRepresentativePoints.AddRange(devicePoints);
+            }
+
+            if (deviceAnalysis.MaximumDropProfile != null)
+            {
+                if (device.Side == PointCloudDeviceSide.Left)
+                {
+                    pendingLeftDropProfile = MaximumDropProfileService.SelectDeeper(
+                        pendingLeftDropProfile,
+                        deviceAnalysis.MaximumDropProfile);
+                }
+                else
+                {
+                    pendingRightDropProfile = MaximumDropProfileService.SelectDeeper(
+                        pendingRightDropProfile,
+                        deviceAnalysis.MaximumDropProfile);
+                }
             }
 
             await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.MeasurementCurrentProfileCompletedAddress, true)
@@ -241,8 +286,24 @@ public class MeasurementParameterService : IMeasurementParameterService
             GrindDepthCalculationResult calculationResult =
                 _grindDepthCalculator(angles, pendingRepresentativePoints);
             AccumulateSingleMeasurement(depthAccumulatorMap, calculationResult.Results);
+            if (pendingLeftDropProfile != null)
+            {
+                maximumLeftDropProfile = MaximumDropProfileService.SelectDeeper(
+                    maximumLeftDropProfile,
+                    pendingLeftDropProfile);
+            }
+
+            if (pendingRightDropProfile != null)
+            {
+                maximumRightDropProfile = MaximumDropProfileService.SelectDeeper(
+                    maximumRightDropProfile,
+                    pendingRightDropProfile);
+            }
+
             sampleCount++;
             pendingRepresentativePoints.Clear();
+            pendingLeftDropProfile = null;
+            pendingRightDropProfile = null;
             nextDeviceIndex = 0;
             Report(progress, $"第 {sampleCount} 组测量计算完成。");
         }
@@ -257,12 +318,23 @@ public class MeasurementParameterService : IMeasurementParameterService
             throw new InvalidOperationException("测量运行已结束，但未采集到任何单次测量结果。");
         }
 
-        IReadOnlyList<MeasurementGrindingTimesResult> summaryResults =
-            CalculateSummaryResults(depthAccumulatorMap, sampleCount, angles);
+        IReadOnlyList<MeasurementGrindingTimesResult> summaryResults = CalculateSummaryResults(
+            depthAccumulatorMap,
+            sampleCount,
+            angles,
+            maximumLeftDropProfile,
+            maximumRightDropProfile);
+
+        MaximumDropProfileResult? globalMaximumDropProfile = ResolveGlobalMaximumDropProfile(
+            maximumLeftDropProfile,
+            maximumRightDropProfile);
 
         Report(progress, $"打磨深度汇总完成，共得到 {summaryResults.Count.ToString(CultureInfo.InvariantCulture)} 个角度。");
         plcClient.Disconnect();
-        return new MeasurementGrindingWorkflowResult(sampleCount, summaryResults);
+        return new MeasurementGrindingWorkflowResult(
+            sampleCount,
+            summaryResults,
+            globalMaximumDropProfile);
     }
 
     private static Dictionary<int, DepthAccumulator> CreateDepthAccumulatorMap(IReadOnlyList<int> angles)
@@ -293,12 +365,20 @@ public class MeasurementParameterService : IMeasurementParameterService
         }
     }
 
-    private static IReadOnlyList<MeasurementGrindingTimesResult> CalculateSummaryResults(
+    private IReadOnlyList<MeasurementGrindingTimesResult> CalculateSummaryResults(
         IReadOnlyDictionary<int, DepthAccumulator> depthAccumulatorMap,
         int sampleCount,
-        IReadOnlyList<int> angles)
+        IReadOnlyList<int> angles,
+        MaximumDropProfileResult? maximumLeftDropProfile,
+        MaximumDropProfileResult? maximumRightDropProfile)
     {
         var results = new List<MeasurementGrindingTimesResult>(angles.Count);
+        IReadOnlyDictionary<int, double> leftDefectDepthMap = CalculateDefectDepthMap(
+            angles,
+            maximumLeftDropProfile);
+        IReadOnlyDictionary<int, double> rightDefectDepthMap = CalculateDefectDepthMap(
+            angles,
+            maximumRightDropProfile);
 
         for (int index = 0; index < angles.Count; index++)
         {
@@ -314,8 +394,17 @@ public class MeasurementParameterService : IMeasurementParameterService
             }
 
             double averageDepth = accumulator.SumDepth / accumulator.Count;
-            int grindingTimes = CalculateGrindingTimes(averageDepth);
-            results.Add(new MeasurementGrindingTimesResult(angle, averageDepth, grindingTimes));
+            double defectDepth = Math.Max(
+                leftDefectDepthMap[angle],
+                rightDefectDepthMap[angle]);
+            double finalDepth = Math.Max(averageDepth, defectDepth);
+            int grindingTimes = CalculateGrindingTimes(finalDepth);
+            results.Add(new MeasurementGrindingTimesResult(
+                angle,
+                averageDepth,
+                defectDepth,
+                finalDepth,
+                grindingTimes));
         }
 
         if (sampleCount <= 0)
@@ -324,6 +413,66 @@ public class MeasurementParameterService : IMeasurementParameterService
         }
 
         return results;
+    }
+
+    private IReadOnlyDictionary<int, double> CalculateDefectDepthMap(
+        IReadOnlyList<int> angles,
+        MaximumDropProfileResult? maximumDropProfile)
+    {
+        var depthMap = new Dictionary<int, double>(angles.Count);
+        var applicableAngles = new List<int>();
+        for (int index = 0; index < angles.Count; index++)
+        {
+            int angle = angles[index];
+            depthMap[angle] = 0.0;
+            if (maximumDropProfile != null &&
+                RailSurfaceService.IsDefectAngleApplicable(maximumDropProfile.Side, angle))
+            {
+                applicableAngles.Add(angle);
+            }
+        }
+
+        if (maximumDropProfile == null || applicableAngles.Count == 0)
+        {
+            return depthMap;
+        }
+
+        IReadOnlyList<GrindDepthResult> results = _defectGrindDepthCalculator(
+            applicableAngles,
+            maximumDropProfile.ProfilePoints);
+        var calculatedAngles = new HashSet<int>();
+        for (int index = 0; index < results.Count; index++)
+        {
+            depthMap[results[index].Angle] = results[index].GrindDepth;
+            calculatedAngles.Add(results[index].Angle);
+        }
+
+        for (int index = 0; index < applicableAngles.Count; index++)
+        {
+            if (!calculatedAngles.Contains(applicableAngles[index]))
+            {
+                throw new InvalidOperationException($"掉块打磨深度结果缺少角度 {applicableAngles[index]}。");
+            }
+        }
+
+        return depthMap;
+    }
+
+    private static MaximumDropProfileResult? ResolveGlobalMaximumDropProfile(
+        MaximumDropProfileResult? left,
+        MaximumDropProfileResult? right)
+    {
+        if (left == null)
+        {
+            return right;
+        }
+
+        if (right == null)
+        {
+            return left;
+        }
+
+        return left.MaximumDropDepth >= right.MaximumDropDepth ? left : right;
     }
 
     private static void Report(IProgress<string>? progress, string message)

@@ -19,17 +19,25 @@ public sealed class GrindDepthConfirmationItemViewModel : INotifyPropertyChanged
     public GrindDepthConfirmationItemViewModel(MeasurementGrindingTimesResult source)
     {
         Angle = source.Angle;
-        MeasuredAverageDepth = source.AverageGrindDepth;
-        _confirmedDepth = source.AverageGrindDepth;
-        _confirmedDepthText = source.AverageGrindDepth.ToString("0.######", CultureInfo.CurrentCulture);
-        _grindingTimes = MeasurementParameterService.CalculateGrindingTimes(source.AverageGrindDepth);
+        RegularAverageDepth = source.RegularAverageDepth;
+        DefectDepth = source.DefectDepth;
+        FinalGrindDepth = source.FinalGrindDepth;
+        _confirmedDepth = source.FinalGrindDepth;
+        _confirmedDepthText = source.FinalGrindDepth.ToString("0.######", CultureInfo.CurrentCulture);
+        _grindingTimes = MeasurementParameterService.CalculateGrindingTimes(source.FinalGrindDepth);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public int Angle { get; }
 
-    public double MeasuredAverageDepth { get; }
+    public double RegularAverageDepth { get; }
+
+    public double DefectDepth { get; }
+
+    public double FinalGrindDepth { get; }
+
+    public double MeasuredAverageDepth => FinalGrindDepth;
 
     public string ConfirmedDepthText
     {
@@ -97,7 +105,12 @@ public sealed class GrindDepthConfirmationItemViewModel : INotifyPropertyChanged
             throw new InvalidOperationException(_errorMessage);
         }
 
-        return new MeasurementGrindingTimesResult(Angle, ConfirmedDepth, GrindingTimes);
+        return new MeasurementGrindingTimesResult(
+            Angle,
+            RegularAverageDepth,
+            DefectDepth,
+            ConfirmedDepth,
+            GrindingTimes);
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

@@ -66,6 +66,12 @@
                             Content="计算打磨深度"
                             IsEnabled="{Binding CanCalculate}"
                             Click="Calculate_Click" />
+                    <Button Width="150"
+                            Height="34"
+                            Margin="0,0,10,0"
+                            Content="查看最大掉块廓形"
+                            IsEnabled="{Binding CanViewMaximumDropProfile}"
+                            Click="ViewMaximumDropProfile_Click" />
                     <Button Width="88"
                             Height="34"
                             Content="关闭"
@@ -169,8 +175,14 @@
                                             Header="角度"
                                             Binding="{Binding Angle}" />
                         <DataGridTextColumn Width="*"
-                                            Header="打磨深度"
-                                            Binding="{Binding GrindDepth, StringFormat=F6}" />
+                                            Header="常规深度"
+                                            Binding="{Binding RegularDepth, StringFormat=F6}" />
+                        <DataGridTextColumn Width="*"
+                                            Header="掉块深度"
+                                            Binding="{Binding DefectDepth, StringFormat=F6}" />
+                        <DataGridTextColumn Width="*"
+                                            Header="最终深度"
+                                            Binding="{Binding FinalDepth, StringFormat=F6}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

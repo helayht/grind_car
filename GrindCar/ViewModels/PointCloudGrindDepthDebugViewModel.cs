@@ -19,9 +19,14 @@ public class PointCloudGrindDepthDebugViewModel : INotifyPropertyChanged
     private const string MissingFileText = "未选择文件";
 
     private readonly PointCloudGrindDepthDebugWorkflowService _workflowService;
-    private readonly ObservableCollection<GrindDepthResult> _results = new();
+    private readonly ObservableCollection<CombinedGrindDepthResult> _results = new();
 
     private List<RailProfilePoint> _latestRepresentativePoints = new();
+    private List<RailProfilePoint> _latestMaximumDropProfilePoints = new();
+    private IReadOnlyList<IReadOnlyList<RailProfilePoint>> _latestMaximumDropProfileSegments =
+        Array.Empty<IReadOnlyList<RailProfilePoint>>();
+    private MaximumDropProfileResult? _latestLeftMaximumDropProfile;
+    private MaximumDropProfileResult? _latestRightMaximumDropProfile;
     private string _leftFilePath = MissingFileText;
     private string _rightFilePath = MissingFileText;
     private string _anglesInput = "-20,-15,-10,-5,-2,0,2,5,10,15,25,35,45,55,65,75,83";
@@ -43,9 +48,29 @@ public class PointCloudGrindDepthDebugViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableCollection<GrindDepthResult> Results => _results;
+    public ObservableCollection<CombinedGrindDepthResult> Results => _results;
 
     public IReadOnlyList<RailProfilePoint> LatestRepresentativePoints => _latestRepresentativePoints;
+
+    public IReadOnlyList<RailProfilePoint> LatestMaximumDropProfilePoints =>
+        _latestMaximumDropProfilePoints;
+
+    public IReadOnlyList<IReadOnlyList<RailProfilePoint>> LatestMaximumDropProfileSegments =>
+        _latestMaximumDropProfileSegments;
+
+    public MaximumDropProfileResult? LatestLeftMaximumDropProfile =>
+        _latestLeftMaximumDropProfile;
+
+    public MaximumDropProfileResult? LatestRightMaximumDropProfile =>
+        _latestRightMaximumDropProfile;
+
+    public IReadOnlyList<IReadOnlyList<RailProfilePoint>> LatestLeftMaximumDropProfileSegments =>
+        _latestLeftMaximumDropProfile?.ProfileSegments ??
+        Array.Empty<IReadOnlyList<RailProfilePoint>>();
+
+    public IReadOnlyList<IReadOnlyList<RailProfilePoint>> LatestRightMaximumDropProfileSegments =>
+        _latestRightMaximumDropProfile?.ProfileSegments ??
+        Array.Empty<IReadOnlyList<RailProfilePoint>>();
 
     public string LeftFilePath
     {
@@ -168,6 +193,7 @@ public class PointCloudGrindDepthDebugViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanSelectFiles));
             OnPropertyChanged(nameof(CanCalculate));
+            OnPropertyChanged(nameof(CanViewMaximumDropProfile));
         }
     }
 
@@ -178,6 +204,9 @@ public class PointCloudGrindDepthDebugViewModel : INotifyPropertyChanged
         !string.IsNullOrWhiteSpace(RightFilePath) &&
         LeftFilePath != MissingFileText &&
         RightFilePath != MissingFileText;
+
+    public bool CanViewMaximumDropProfile => !IsBusy &&
+        (_latestLeftMaximumDropProfile != null || _latestRightMaximumDropProfile != null);
 
     public void SetLeftFilePath(string filePath)
     {
@@ -205,34 +234,79 @@ public class PointCloudGrindDepthDebugViewModel : INotifyPropertyChanged
                 .ConfigureAwait(true);
 
             _latestRepresentativePoints = new List<RailProfilePoint>(output.RepresentativePoints);
+            _latestLeftMaximumDropProfile = output.LeftMaximumDropProfile;
+            _latestRightMaximumDropProfile = output.RightMaximumDropProfile;
+            _latestMaximumDropProfilePoints = output.GlobalMaximumDropProfile == null
+                ? new List<RailProfilePoint>()
+                : new List<RailProfilePoint>(output.GlobalMaximumDropProfile.ProfilePoints);
+            _latestMaximumDropProfileSegments = output.GlobalMaximumDropProfile?.ProfileSegments ??
+                Array.Empty<IReadOnlyList<RailProfilePoint>>();
             _results.Clear();
             for (int index = 0; index < output.Results.Count; index++)
             {
                 _results.Add(output.Results[index]);
             }
 
-            LeftSummaryText =
-                $"Y={output.LeftRepresentativeY.ToString("F6", CultureInfo.InvariantCulture)}, 点数={output.LeftPointCount.ToString(CultureInfo.InvariantCulture)}";
-            RightSummaryText =
-                $"Y={output.RightRepresentativeY.ToString("F6", CultureInfo.InvariantCulture)}, 点数={output.RightPointCount.ToString(CultureInfo.InvariantCulture)}";
+            LeftSummaryText = BuildSideSummary(
+                output.LeftRepresentativeY,
+                output.LeftPointCount,
+                output.LeftMaximumDropProfile);
+            RightSummaryText = BuildSideSummary(
+                output.RightRepresentativeY,
+                output.RightPointCount,
+                output.RightMaximumDropProfile);
             ResultCountText = output.Results.Count.ToString(CultureInfo.InvariantCulture);
             StatusMessage =
                 $"计算完成，合并代表点 {_latestRepresentativePoints.Count.ToString(CultureInfo.InvariantCulture)} 个，结果 {output.Results.Count.ToString(CultureInfo.InvariantCulture)} 条。";
             OnPropertyChanged(nameof(LatestRepresentativePoints));
+            OnPropertyChanged(nameof(LatestMaximumDropProfilePoints));
+            OnPropertyChanged(nameof(LatestMaximumDropProfileSegments));
+            OnPropertyChanged(nameof(LatestLeftMaximumDropProfile));
+            OnPropertyChanged(nameof(LatestRightMaximumDropProfile));
+            OnPropertyChanged(nameof(LatestLeftMaximumDropProfileSegments));
+            OnPropertyChanged(nameof(LatestRightMaximumDropProfileSegments));
+            OnPropertyChanged(nameof(CanViewMaximumDropProfile));
             return _latestRepresentativePoints;
         }
         catch
         {
             _latestRepresentativePoints = new List<RailProfilePoint>();
+            _latestMaximumDropProfilePoints = new List<RailProfilePoint>();
+            _latestMaximumDropProfileSegments = Array.Empty<IReadOnlyList<RailProfilePoint>>();
+            _latestLeftMaximumDropProfile = null;
+            _latestRightMaximumDropProfile = null;
             _results.Clear();
             ResultCountText = "0";
             OnPropertyChanged(nameof(LatestRepresentativePoints));
+            OnPropertyChanged(nameof(LatestMaximumDropProfilePoints));
+            OnPropertyChanged(nameof(LatestMaximumDropProfileSegments));
+            OnPropertyChanged(nameof(LatestLeftMaximumDropProfile));
+            OnPropertyChanged(nameof(LatestRightMaximumDropProfile));
+            OnPropertyChanged(nameof(LatestLeftMaximumDropProfileSegments));
+            OnPropertyChanged(nameof(LatestRightMaximumDropProfileSegments));
+            OnPropertyChanged(nameof(CanViewMaximumDropProfile));
             throw;
         }
         finally
         {
             IsBusy = false;
         }
+    }
+
+    private static string BuildSideSummary(
+        double representativeY,
+        int pointCount,
+        MaximumDropProfileResult? maximumDropProfile)
+    {
+        string representativeText =
+            $"代表Y={representativeY.ToString("F3", CultureInfo.InvariantCulture)}，点数={pointCount.ToString(CultureInfo.InvariantCulture)}";
+        if (maximumDropProfile == null)
+        {
+            return $"{representativeText}；未检测到有效向下掉块";
+        }
+
+        return $"{representativeText}；最大掉块={maximumDropProfile.MaximumDropDepth.ToString("F3", CultureInfo.InvariantCulture)} mm，" +
+               $"Y={maximumDropProfile.ProfileY.ToString("F3", CultureInfo.InvariantCulture)}";
     }
 
     public void SetErrorStatus(string message)

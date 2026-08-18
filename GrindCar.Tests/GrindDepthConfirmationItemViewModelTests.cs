@@ -66,6 +66,31 @@ public class GrindDepthConfirmationItemViewModelTests
     }
 
     [Fact]
+    public void Constructor_WithCombinedDepths_UsesFinalDepthAndPreservesSources()
+    {
+        var source = new MeasurementGrindingTimesResult(
+            10,
+            regularAverageDepth: 0.08,
+            defectDepth: 0.12,
+            finalGrindDepth: 0.12,
+            grindingTimes: 3);
+        var item = new GrindDepthConfirmationItemViewModel(source)
+        {
+            ConfirmedDepthText = "0.15"
+        };
+
+        MeasurementGrindingTimesResult result = item.ToConfirmedResult();
+
+        Assert.Equal(0.08, item.RegularAverageDepth, 6);
+        Assert.Equal(0.12, item.DefectDepth, 6);
+        Assert.Equal(0.12, item.FinalGrindDepth, 6);
+        Assert.Equal(0.08, result.RegularAverageDepth, 6);
+        Assert.Equal(0.12, result.DefectDepth, 6);
+        Assert.Equal(0.15, result.FinalGrindDepth, 6);
+        Assert.Equal(3, result.GrindingTimes);
+    }
+
+    [Fact]
     public void CalculateGrindingTimes_WithNegativeDepth_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>

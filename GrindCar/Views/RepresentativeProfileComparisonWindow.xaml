@@ -39,10 +39,31 @@
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource PrimaryTextBrush}"
-                               Text="代表轨面与标准轨面曲线对比" />
+                               Text="{Binding HeaderText}" />
                     <TextBlock Margin="0,6,0,0"
                                Foreground="{DynamicResource MutedTextBrush}"
-                               Text="绿色为代表拟合曲线，橙色为标准轨面曲线。" />
+                               Text="{Binding CurveDescriptionText}" />
+                    <StackPanel Margin="0,10,0,0"
+                                Orientation="Horizontal"
+                                Visibility="{Binding MaximumDropLegendVisibility}">
+                        <Ellipse Width="10"
+                                 Height="10"
+                                 Margin="0,0,6,0"
+                                 VerticalAlignment="Center"
+                                 Fill="{DynamicResource LeftBrush}" />
+                        <TextBlock Margin="0,0,20,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource LeftBrush}"
+                                   Text="{Binding LeftStatusText}" />
+                        <Ellipse Width="10"
+                                 Height="10"
+                                 Margin="0,0,6,0"
+                                 VerticalAlignment="Center"
+                                 Fill="{DynamicResource RightBrush}" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{DynamicResource RightBrush}"
+                                   Text="{Binding RightStatusText}" />
+                    </StackPanel>
                 </StackPanel>
 
                 <Button Grid.Column="1"
@@ -65,7 +86,7 @@
 
                 <StackPanel>
                     <TextBlock Foreground="{DynamicResource MutedTextBrush}"
-                               Text="代表点数量" />
+                               Text="{Binding PointCountLabelText}" />
                     <TextBlock
                                Margin="0,8,0,0"
                                FontSize="28"
@@ -132,6 +153,18 @@
                           StrokeStartLineCap="Round"
                           StrokeEndLineCap="Round"
                           Data="{Binding RepresentativeCurveGeometry}" />
+                    <Path
+                          Stroke="{DynamicResource LeftBrush}"
+                          StrokeThickness="3"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Data="{Binding LeftCurveGeometry}" />
+                    <Path
+                          Stroke="{DynamicResource RightBrush}"
+                          StrokeThickness="3"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Data="{Binding RightCurveGeometry}" />
                     <ItemsControl ItemsSource="{Binding RepresentativePointItems}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -151,6 +184,50 @@
                                 <Ellipse Width="5"
                                          Height="5"
                                          Fill="{DynamicResource PointBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl ItemsSource="{Binding LeftPointItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left"
+                                        Value="{Binding Left}" />
+                                <Setter Property="Canvas.Top"
+                                        Value="{Binding Top}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Ellipse Width="5"
+                                         Height="5"
+                                         Fill="{DynamicResource LeftBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl ItemsSource="{Binding RightPointItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left"
+                                        Value="{Binding Left}" />
+                                <Setter Property="Canvas.Top"
+                                        Value="{Binding Top}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Ellipse Width="5"
+                                         Height="5"
+                                         Fill="{DynamicResource RightBrush}" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

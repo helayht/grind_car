@@ -217,7 +217,9 @@ public partial class MainWindow : Window
         try
         {
             MeasurementGrindingWorkflowResult result = await Measurement.StartMeasurementMotionAsync();
-            var confirmationWindow = new GrindDepthConfirmationWindow(result.Results)
+            var confirmationWindow = new GrindDepthConfirmationWindow(
+                result.Results,
+                result.MaximumDropProfile)
             {
                 Owner = this
             };

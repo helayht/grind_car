@@ -77,6 +77,15 @@ public static class RepresentativeSectionCaptureService
         PointCloudCaptureSettings captureSettings,
         MeasurementPointCloudArchiveContext? archiveContext = null)
     {
+        return CaptureDeviceAnalysis(device, captureSettings, archiveContext)
+            .ExtractionResult.ProfilePoints;
+    }
+
+    public static PointCloudMedianSectionCaptureResult CaptureDeviceAnalysis(
+        ConfiguredPointCloudDevice device,
+        PointCloudCaptureSettings captureSettings,
+        MeasurementPointCloudArchiveContext? archiveContext = null)
+    {
         if (string.IsNullOrWhiteSpace(device.SerialNumber))
         {
             throw new InvalidOperationException("点云设备序列号为空，无法采集代表截面。");
@@ -95,6 +104,6 @@ public static class RepresentativeSectionCaptureService
                 captureSettings,
                 archiveContext);
 
-        return result.ExtractionResult.ProfilePoints;
+        return result;
     }
 }

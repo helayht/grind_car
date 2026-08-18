@@ -118,6 +118,45 @@ public static class RailSurfaceService
     }
 
     /// <summary>
+    /// 基于单侧最大掉块廓形计算各角度的附加打磨深度。
+    /// 仅将标准轨面法向支撑值高于测量廓形的部分计为向下缺失深度。
+    /// </summary>
+    public static IReadOnlyList<GrindDepthResult> CalculateDefectGrindDepths(
+        IReadOnlyList<int> angles,
+        IReadOnlyList<RailProfilePoint> adjustedDefectProfilePoints)
+    {
+        if (angles == null)
+        {
+            throw new ArgumentNullException(nameof(angles));
+        }
+
+        if (adjustedDefectProfilePoints == null)
+        {
+            throw new ArgumentNullException(nameof(adjustedDefectProfilePoints));
+        }
+
+        if (adjustedDefectProfilePoints.Count == 0)
+        {
+            throw new InvalidOperationException("最大掉块廓形点集不能为空。");
+        }
+
+        var results = new List<GrindDepthResult>(angles.Count);
+        for (int index = 0; index < angles.Count; index++)
+        {
+            int angle = angles[index];
+            double angleRadians = CalculateAngleRadians(angle);
+            double profileOffset = StandardRailProfileSolver.GetRepresentativeNormalOffset(
+                angleRadians,
+                adjustedDefectProfilePoints);
+            double standardOffset = StandardRailProfileSolver.SolveNormalOffset(angleRadians);
+            double defectDepth = Math.Max(0.0, standardOffset - profileOffset);
+            results.Add(new GrindDepthResult(angle, defectDepth));
+        }
+
+        return results;
+    }
+
+    /// <summary>
     /// 基于指定代表廓形点集生成检测基线。
     /// </summary>
     public static GrindingDepthBaseline CreateGrindingDepthBaseline(
@@ -251,16 +290,27 @@ public static class RailSurfaceService
 
     private static double GetGrindDepth(int angle, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
     {
-        double k = CalculateSlopeFromAngle(angle);
-        double representativeB = StandardRailProfileSolver.GetRepresentativeB(k, representativeSectionPoints);
-        double standardB = StandardRailProfileSolver.SolveB(k);
-        return Math.Abs(representativeB - standardB);
+        double angleRadians = CalculateAngleRadians(angle);
+        double representativeOffset = StandardRailProfileSolver.GetRepresentativeNormalOffset(
+            angleRadians,
+            representativeSectionPoints);
+        double standardOffset = StandardRailProfileSolver.SolveNormalOffset(angleRadians);
+        return Math.Abs(representativeOffset - standardOffset);
     }
 
     private static double CalculateSlopeFromAngle(int angle)
     {
-        double radians = angle * DegreesToRadiansFactor;
-        return Math.Tan(radians);
+        return Math.Tan(CalculateAngleRadians(angle));
+    }
+
+    internal static bool IsDefectAngleApplicable(PointCloudDeviceSide side, int angle)
+    {
+        return side == PointCloudDeviceSide.Left ? angle >= 0 : angle <= 0;
+    }
+
+    private static double CalculateAngleRadians(int angle)
+    {
+        return angle * DegreesToRadiansFactor;
     }
 
     private static PointCloudCaptureSettings LoadPointCloudCaptureSettings()

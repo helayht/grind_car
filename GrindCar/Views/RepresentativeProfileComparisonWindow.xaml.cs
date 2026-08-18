@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Windows;
 using GrindCar.Models.Rail;
+using GrindCar.Services.Rail.Debug;
 using GrindCar.ViewModels;
 
 namespace GrindCar.Views;
@@ -16,10 +17,40 @@ public partial class RepresentativeProfileComparisonWindow : Window
     /// 初始化代表轨面与标准轨面对比窗口。
     /// </summary>
     /// <param name="representativePoints">待展示的代表截面点集。</param>
-    public RepresentativeProfileComparisonWindow(IReadOnlyList<RailProfilePoint> representativePoints)
+    public RepresentativeProfileComparisonWindow(
+        IReadOnlyList<RailProfilePoint> representativePoints,
+        RepresentativeProfileCurveStyle curveStyle = RepresentativeProfileCurveStyle.Smooth)
+        : this(
+            new IReadOnlyList<RailProfilePoint>[] { representativePoints },
+            curveStyle)
+    {
+    }
+
+    /// <summary>
+    /// 初始化包含多个独立片段的代表轨面与标准轨面对比窗口。
+    /// </summary>
+    public RepresentativeProfileComparisonWindow(
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> representativeSegments,
+        RepresentativeProfileCurveStyle curveStyle)
     {
         InitializeComponent();
-        _viewModel = new RepresentativeProfileComparisonViewModel(representativePoints);
+        _viewModel = new RepresentativeProfileComparisonViewModel(representativeSegments, curveStyle);
+        DataContext = _viewModel;
+        Loaded += RepresentativeProfileComparisonWindow_Loaded;
+    }
+
+    /// <summary>
+    /// 初始化 Left/Right 最大掉块廓形同图对比窗口。
+    /// </summary>
+    public RepresentativeProfileComparisonWindow(
+        MaximumDropProfileResult? leftMaximumDropProfile,
+        MaximumDropProfileResult? rightMaximumDropProfile)
+    {
+        InitializeComponent();
+        Title = "Left/Right 最大掉块廓形与标准轨面对比";
+        _viewModel = new RepresentativeProfileComparisonViewModel(
+            leftMaximumDropProfile,
+            rightMaximumDropProfile);
         DataContext = _viewModel;
         Loaded += RepresentativeProfileComparisonWindow_Loaded;
     }

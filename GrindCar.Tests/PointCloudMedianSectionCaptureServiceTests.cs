@@ -98,12 +98,152 @@ public class PointCloudMedianSectionCaptureServiceTests
         Assert.Equal(0, representativeService.CsvExtractionCallCount);
     }
 
+    [Fact]
+    public void CaptureMedianSectionProfile_OnlineExtraction_ReturnsMaximumDropProfile()
+    {
+        var points = new List<PointCloudPoint3D>();
+        for (int x = -35; x <= 35; x++)
+        {
+            double residual = x >= -1 && x <= 1 ? -1.5 : 0.0;
+            points.Add(new PointCloudPoint3D(
+                x,
+                1.0,
+                StandardRailProfileSolver.RailSurfaceFun(x) + residual));
+        }
+
+        var exportService = new FakePointCloudExportService(points);
+        var representativeService = new FakeRepresentativeProfileService();
+        MaximumDropProfileService maximumDropProfileService = CreateMaximumDropProfileService();
+        var service = new PointCloudMedianSectionCaptureService(
+            exportService,
+            representativeService,
+            maximumDropProfileService,
+            CreateLogDirectoryPath());
+
+        PointCloudMedianSectionCaptureResult result = service.CaptureMedianSectionProfile(
+            "SN-001",
+            PointCloudDeviceSide.Left,
+            new PointCloudCaptureSettings(1.0, 10),
+            new MeasurementPointCloudArchiveContext(
+                3,
+                1,
+                "SN-001",
+                PointCloudDeviceSide.Left,
+                null));
+
+        Assert.NotNull(result.MaximumDropProfile);
+        Assert.Equal(3, result.MaximumDropProfile!.SampleIndex);
+        Assert.Equal(1.5, result.MaximumDropProfile.MaximumDropDepth, 6);
+    }
+
+    [Fact]
+    public void CaptureMedianSectionProfile_SharedOnlineAnalysisRunsOnce()
+    {
+        var exportService = new FakePointCloudExportService(new[]
+        {
+            new PointCloudPoint3D(1.0, 2.0, 3.0)
+        });
+        var representativeService = new FakeRepresentativeProfileService();
+        var analysisService = new FakePointCloudProfileAnalysisService();
+        var service = new PointCloudMedianSectionCaptureService(
+            exportService,
+            representativeService,
+            null,
+            CreateLogDirectoryPath(),
+            analysisService);
+
+        PointCloudMedianSectionCaptureResult result = service.CaptureMedianSectionProfile(
+            "SN-001",
+            PointCloudDeviceSide.Left,
+            new PointCloudCaptureSettings(1.0, 10));
+
+        Assert.Equal(1, analysisService.PointAnalysisCallCount);
+        Assert.Equal(0, analysisService.CsvAnalysisCallCount);
+        Assert.Equal(0, representativeService.PointExtractionCallCount);
+        Assert.Equal(string.Empty, result.CsvPath);
+        Assert.NotNull(result.MaximumDropProfile);
+    }
+
+    [Fact]
+    public void CaptureMedianSectionProfile_SharedOnlineAnalysisWithoutDropDoesNotFallBackToCsv()
+    {
+        var exportService = new FakePointCloudExportService(new[]
+        {
+            new PointCloudPoint3D(1.0, 2.0, 3.0)
+        });
+        var representativeService = new FakeRepresentativeProfileService();
+        var analysisService = new FakePointCloudProfileAnalysisService
+        {
+            ReturnNoDropProfile = true
+        };
+        var service = new PointCloudMedianSectionCaptureService(
+            exportService,
+            representativeService,
+            null,
+            CreateLogDirectoryPath(),
+            analysisService);
+
+        PointCloudMedianSectionCaptureResult result = service.CaptureMedianSectionProfile(
+            "SN-001",
+            PointCloudDeviceSide.Left,
+            new PointCloudCaptureSettings(1.0, 10));
+
+        Assert.Equal(1, analysisService.PointAnalysisCallCount);
+        Assert.Equal(0, analysisService.CsvAnalysisCallCount);
+        Assert.False(exportService.ExportCalled);
+        Assert.Null(result.MaximumDropProfile);
+    }
+
+    [Fact]
+    public void CaptureMedianSectionProfile_SharedCsvFallbackAnalyzesOnce()
+    {
+        var exportService = new FakePointCloudExportService(Array.Empty<PointCloudPoint3D>());
+        var representativeService = new FakeRepresentativeProfileService();
+        var analysisService = new FakePointCloudProfileAnalysisService();
+        var service = new PointCloudMedianSectionCaptureService(
+            exportService,
+            representativeService,
+            null,
+            CreateLogDirectoryPath(),
+            analysisService);
+
+        PointCloudMedianSectionCaptureResult result = service.CaptureMedianSectionProfile(
+            "SN-001",
+            PointCloudDeviceSide.Right,
+            new PointCloudCaptureSettings(1.0, 10));
+
+        Assert.True(exportService.ExportCalled);
+        Assert.Equal(0, analysisService.PointAnalysisCallCount);
+        Assert.Equal(1, analysisService.CsvAnalysisCallCount);
+        Assert.Equal(0, representativeService.CsvExtractionCallCount);
+        Assert.False(string.IsNullOrWhiteSpace(result.CsvPath));
+        Assert.NotNull(result.MaximumDropProfile);
+    }
+
     private static string CreateLogDirectoryPath()
     {
         return System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
             "GrindCar.Tests",
             Guid.NewGuid().ToString("N"));
+    }
+
+    private static MaximumDropProfileService CreateMaximumDropProfileService()
+    {
+        string settingsPath = Path.Combine(
+            Path.GetTempPath(),
+            "GrindCar.Tests",
+            Guid.NewGuid().ToString("N"),
+            "point-cloud-profile-registration.json");
+        var settingsStore = new ProfileRegistrationSettingsStore(settingsPath);
+        settingsStore.Save(new ProfileRegistrationSettings
+        {
+            Left = new ProfileRegistrationParameters(),
+            Right = new ProfileRegistrationParameters()
+        });
+        return new MaximumDropProfileService(
+            settingsStore,
+            new ProfileRegistrationTransformService());
     }
 
     private sealed class FakePointCloudExportService : IPointCloudExportService
@@ -172,6 +312,45 @@ public class PointCloudMedianSectionCaptureServiceTests
             }
 
             return _result;
+        }
+    }
+
+    private sealed class FakePointCloudProfileAnalysisService : IPointCloudProfileAnalysisService
+    {
+        public bool ReturnNoDropProfile { get; init; }
+
+        public int PointAnalysisCallCount { get; private set; }
+
+        public int CsvAnalysisCallCount { get; private set; }
+
+        public PointCloudProfileAnalysisResult AnalyzePoints(
+            IReadOnlyList<PointCloudPoint3D> points,
+            PointCloudDeviceSide side,
+            int sampleIndex = 0)
+        {
+            PointAnalysisCallCount++;
+            return CreateResult(side, sampleIndex);
+        }
+
+        public PointCloudProfileAnalysisResult AnalyzeCsv(
+            string csvPath,
+            PointCloudDeviceSide side,
+            int sampleIndex = 0)
+        {
+            CsvAnalysisCallCount++;
+            return CreateResult(side, sampleIndex);
+        }
+
+        private PointCloudProfileAnalysisResult CreateResult(
+            PointCloudDeviceSide side,
+            int sampleIndex)
+        {
+            var profilePoints = new[] { new RailProfilePoint(1.0, 1.0) };
+            return new PointCloudProfileAnalysisResult(
+                new MedianSectionExtractionResult(1.0, profilePoints),
+                ReturnNoDropProfile
+                    ? null
+                    : new MaximumDropProfileResult(side, sampleIndex, 1.0, 0.5, profilePoints));
         }
     }
 }

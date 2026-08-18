@@ -178,6 +178,135 @@ public class MeasurementParameterServiceTests
     }
 
     [Fact]
+    public async Task RunMeasurementWorkflowAsync_KeepsRegularAverageAndGlobalMaximumDrop()
+    {
+        var plcClient = new FakePlcClient(
+            positionCompletedValues: new[]
+            {
+                false, false, false, false, false, false, false, true
+            },
+            captureTriggerValues: new[]
+            {
+                true, false, true, false, true, false, true
+            });
+        var devices = new[]
+        {
+            new ConfiguredPointCloudDevice("SN-LEFT", PointCloudDeviceSide.Left),
+            new ConfiguredPointCloudDevice("SN-RIGHT", PointCloudDeviceSide.Right)
+        };
+        int regularCalculationCount = 0;
+        var defectAngleCalls = new List<(double Marker, int[] Angles)>();
+        var service = new MeasurementParameterService(
+            (ipAddress, port) => plcClient,
+            configuredDeviceProvider: () => devices,
+            captureSettingsProvider: () => new PointCloudCaptureSettings(1.0, 10),
+            grindDepthCalculator: (angles, points) =>
+            {
+                regularCalculationCount++;
+                double depth = regularCalculationCount == 1 ? 0.1 : 0.3;
+                return new GrindDepthCalculationResult(
+                    angles.Select(angle => new GrindDepthResult(angle, depth)).ToArray(),
+                    points);
+            },
+            deviceAnalysisCapture: (device, settings, archiveContext) =>
+            {
+                int sampleIndex = archiveContext!.SampleIndex;
+                double maximumDropDepth = device.Side == PointCloudDeviceSide.Left
+                    ? (sampleIndex == 1 ? 1.0 : 3.0)
+                    : (sampleIndex == 1 ? 0.5 : 2.0);
+                double defectMarker = device.Side == PointCloudDeviceSide.Left
+                    ? (sampleIndex == 1 ? 0.1 : 0.4)
+                    : (sampleIndex == 1 ? 0.1 : 0.25);
+                var maximumDropProfile = new MaximumDropProfileResult(
+                    device.Side,
+                    sampleIndex,
+                    sampleIndex,
+                    maximumDropDepth,
+                    new[] { new RailProfilePoint(0.0, defectMarker) });
+                return new PointCloudMedianSectionCaptureResult(
+                    string.Empty,
+                    new MedianSectionExtractionResult(
+                        sampleIndex,
+                        new[] { new RailProfilePoint(0.0, 0.0) }),
+                    maximumDropProfile);
+            },
+            defectGrindDepthCalculator: (angles, points) =>
+            {
+                defectAngleCalls.Add((points[0].Y, angles.ToArray()));
+                return angles.Select(angle => new GrindDepthResult(angle, points[0].Y)).ToArray();
+            });
+
+        MeasurementGrindingWorkflowResult result = await service.RunMeasurementWorkflowAsync(
+            "127.0.0.1",
+            502);
+
+        MeasurementGrindingTimesResult zeroAngleResult =
+            result.Results.Single(item => item.Angle == 0);
+        Assert.Equal(2, result.SampleCount);
+        Assert.Equal(0.2, zeroAngleResult.RegularAverageDepth, 6);
+        Assert.Equal(0.4, zeroAngleResult.DefectDepth, 6);
+        Assert.Equal(0.4, zeroAngleResult.FinalGrindDepth, 6);
+        Assert.Equal(8, zeroAngleResult.GrindingTimes);
+        Assert.NotNull(result.MaximumDropProfile);
+        Assert.Equal(PointCloudDeviceSide.Left, result.MaximumDropProfile!.Side);
+        Assert.Equal(2, result.MaximumDropProfile.SampleIndex);
+        Assert.Equal(3.0, result.MaximumDropProfile.MaximumDropDepth, 6);
+        (double Marker, int[] Angles) leftCall = defectAngleCalls.Single(call => call.Marker == 0.4);
+        (double Marker, int[] Angles) rightCall = defectAngleCalls.Single(call => call.Marker == 0.25);
+        Assert.All(leftCall.Angles, angle => Assert.True(angle >= 0));
+        Assert.Contains(90, leftCall.Angles);
+        Assert.DoesNotContain(-35, leftCall.Angles);
+        Assert.All(rightCall.Angles, angle => Assert.True(angle <= 0));
+        Assert.Contains(-35, rightCall.Angles);
+        Assert.DoesNotContain(90, rightCall.Angles);
+    }
+
+    [Fact]
+    public async Task RunMeasurementWorkflowAsync_NoDropProfiles_CompletesWithZeroDefectDepth()
+    {
+        var plcClient = new FakePlcClient(
+            positionCompletedValues: new[] { false, false, false, true },
+            captureTriggerValues: new[] { true, false, true });
+        var devices = new[]
+        {
+            new ConfiguredPointCloudDevice("SN-LEFT", PointCloudDeviceSide.Left),
+            new ConfiguredPointCloudDevice("SN-RIGHT", PointCloudDeviceSide.Right)
+        };
+        int defectCalculationCount = 0;
+        var service = new MeasurementParameterService(
+            (ipAddress, port) => plcClient,
+            configuredDeviceProvider: () => devices,
+            captureSettingsProvider: () => new PointCloudCaptureSettings(1.0, 10),
+            grindDepthCalculator: (angles, points) =>
+                new GrindDepthCalculationResult(
+                    angles.Select(angle => new GrindDepthResult(angle, 0.2)).ToArray(),
+                    points),
+            deviceAnalysisCapture: (device, settings, archiveContext) =>
+                new PointCloudMedianSectionCaptureResult(
+                    string.Empty,
+                    new MedianSectionExtractionResult(
+                        archiveContext!.SampleIndex,
+                        new[] { new RailProfilePoint(0.0, 0.0) }),
+                    null),
+            defectGrindDepthCalculator: (angles, points) =>
+            {
+                defectCalculationCount++;
+                return angles.Select(angle => new GrindDepthResult(angle, 99.0)).ToArray();
+            });
+
+        MeasurementGrindingWorkflowResult result = await service.RunMeasurementWorkflowAsync(
+            "127.0.0.1",
+            502);
+
+        MeasurementGrindingTimesResult zeroAngleResult =
+            result.Results.Single(item => item.Angle == 0);
+        Assert.Equal(0.0, zeroAngleResult.DefectDepth, 6);
+        Assert.Equal(0.2, zeroAngleResult.FinalGrindDepth, 6);
+        Assert.Equal(0, defectCalculationCount);
+        Assert.Null(result.MaximumDropProfile);
+    }
+
+    [Fact]
     public void MeasurementWorkflowAddresses_UseUpdatedM60M61M62Mapping()
     {
         Assert.Equal((ushort)8252, MotorParameterDefinitions.MeasurementProfileCaptureStartAddress);

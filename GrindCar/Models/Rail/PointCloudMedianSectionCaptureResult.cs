@@ -11,12 +11,23 @@ public sealed class PointCloudMedianSectionCaptureResult
     /// <param name="csvPath">导出的点云 CSV 路径；在线模式下为空字符串。</param>
     /// <param name="extractionResult">代表截面提取结果。</param>
     public PointCloudMedianSectionCaptureResult(string csvPath, MedianSectionExtractionResult extractionResult)
+        : this(csvPath, extractionResult, null)
+    {
+    }
+
+    public PointCloudMedianSectionCaptureResult(
+        string csvPath,
+        MedianSectionExtractionResult extractionResult,
+        MaximumDropProfileResult? maximumDropProfile)
     {
         CsvPath = csvPath;
         ExtractionResult = extractionResult;
+        MaximumDropProfile = maximumDropProfile;
     }
 
     public string CsvPath { get; }
 
     public MedianSectionExtractionResult ExtractionResult { get; }
+
+    public MaximumDropProfileResult? MaximumDropProfile { get; }
 }

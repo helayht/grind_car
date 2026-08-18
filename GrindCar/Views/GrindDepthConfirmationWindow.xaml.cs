@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using GrindCar.Services.Measurement;
+using GrindCar.Models.Rail;
 using GrindCar.ViewModels;
 
 namespace GrindCar.Views;
@@ -15,11 +16,18 @@ namespace GrindCar.Views;
 public partial class GrindDepthConfirmationWindow : Window
 {
     public GrindDepthConfirmationWindow(IReadOnlyList<MeasurementGrindingTimesResult> results)
+        : this(results, null)
+    {
+    }
+
+    public GrindDepthConfirmationWindow(
+        IReadOnlyList<MeasurementGrindingTimesResult> results,
+        MaximumDropProfileResult? maximumDropProfile)
     {
         InitializeComponent();
         Items = new ObservableCollection<GrindDepthConfirmationItemViewModel>(
             results.Select(result => new GrindDepthConfirmationItemViewModel(result)));
-        SummaryText = $"共 {Items.Count.ToString(CultureInfo.CurrentCulture)} 个角度";
+        SummaryText = BuildSummaryText(Items.Count, maximumDropProfile);
         DataContext = this;
     }
 
@@ -58,5 +66,20 @@ public partial class GrindDepthConfirmationWindow : Window
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
+    }
+
+    private static string BuildSummaryText(
+        int angleCount,
+        MaximumDropProfileResult? maximumDropProfile)
+    {
+        string angleText = $"共 {angleCount.ToString(CultureInfo.CurrentCulture)} 个角度";
+        if (maximumDropProfile == null)
+        {
+            return angleText;
+        }
+
+        return $"{angleText}；最大掉块 {maximumDropProfile.MaximumDropDepth.ToString("F3", CultureInfo.CurrentCulture)} mm，" +
+               $"来源 {maximumDropProfile.Side}，第 {maximumDropProfile.SampleIndex.ToString(CultureInfo.CurrentCulture)} 组，" +
+               $"Y={maximumDropProfile.ProfileY.ToString("F3", CultureInfo.CurrentCulture)} mm";
     }
 }

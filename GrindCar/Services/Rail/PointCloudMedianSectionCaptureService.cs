@@ -20,6 +20,8 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
     private const string CsvFilePrefix = "point-cloud";
     private readonly IPointCloudExportService _pointCloudExportService;
     private readonly IPointCloudRepresentativeProfileService _representativeProfileService;
+    private readonly MaximumDropProfileService? _maximumDropProfileService;
+    private readonly IPointCloudProfileAnalysisService? _profileAnalysisService;
     private readonly string _logDirectoryPath;
 
     /// <summary>
@@ -29,7 +31,9 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
         : this(
             new PointCloudExportServiceAdapter(new PointCloudExportService()),
             new PointCloudRepresentativeProfileService(),
-            Path.Combine(Environment.CurrentDirectory, DefaultLogDirectoryName))
+            new MaximumDropProfileService(),
+            Path.Combine(Environment.CurrentDirectory, DefaultLogDirectoryName),
+            new PointCloudProfileAnalysisService())
     {
     }
 
@@ -46,6 +50,7 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
         : this(
             new PointCloudExportServiceAdapter(pointCloudExportService),
             representativeProfileService,
+            new MaximumDropProfileService(),
             logDirectoryPath)
     {
     }
@@ -54,9 +59,35 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
         IPointCloudExportService pointCloudExportService,
         IPointCloudRepresentativeProfileService representativeProfileService,
         string logDirectoryPath)
+        : this(pointCloudExportService, representativeProfileService, null, logDirectoryPath, null)
+    {
+    }
+
+    internal PointCloudMedianSectionCaptureService(
+        IPointCloudExportService pointCloudExportService,
+        IPointCloudRepresentativeProfileService representativeProfileService,
+        MaximumDropProfileService? maximumDropProfileService,
+        string logDirectoryPath)
+        : this(
+            pointCloudExportService,
+            representativeProfileService,
+            maximumDropProfileService,
+            logDirectoryPath,
+            null)
+    {
+    }
+
+    internal PointCloudMedianSectionCaptureService(
+        IPointCloudExportService pointCloudExportService,
+        IPointCloudRepresentativeProfileService representativeProfileService,
+        MaximumDropProfileService? maximumDropProfileService,
+        string logDirectoryPath,
+        IPointCloudProfileAnalysisService? profileAnalysisService)
     {
         _pointCloudExportService = pointCloudExportService ?? throw new ArgumentNullException(nameof(pointCloudExportService));
         _representativeProfileService = representativeProfileService ?? throw new ArgumentNullException(nameof(representativeProfileService));
+        _maximumDropProfileService = maximumDropProfileService;
+        _profileAnalysisService = profileAnalysisService;
         _logDirectoryPath = string.IsNullOrWhiteSpace(logDirectoryPath)
             ? throw new ArgumentException("Log 目录不能为空。", nameof(logDirectoryPath))
             : logDirectoryPath;
@@ -96,7 +127,8 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
             throw new ArgumentNullException(nameof(captureSettings));
         }
 
-        if (_representativeProfileService is IPointCloudRepresentativeProfilePointExtractor representativeProfileService)
+        if (_profileAnalysisService != null ||
+            _representativeProfileService is IPointCloudRepresentativeProfilePointExtractor)
         {
             IReadOnlyList<PointCloudPoint3D>? points = null;
             try
@@ -113,9 +145,32 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
                 MeasurementPointCloudArchiveService.QueueArchive(archiveContext, points);
                 try
                 {
+                    if (_profileAnalysisService != null)
+                    {
+                        PointCloudProfileAnalysisResult analysisResult =
+                            _profileAnalysisService.AnalyzePoints(
+                                points,
+                                side,
+                                archiveContext?.SampleIndex ?? 0);
+                        return new PointCloudMedianSectionCaptureResult(
+                            string.Empty,
+                            analysisResult.ExtractionResult,
+                            analysisResult.MaximumDropProfile);
+                    }
+
+                    var representativeProfileService =
+                        (IPointCloudRepresentativeProfilePointExtractor)_representativeProfileService;
                     MedianSectionExtractionResult onlineExtractionResult =
                         representativeProfileService.ExtractMedianSectionProfileFromPoints(points, side);
-                    return new PointCloudMedianSectionCaptureResult(string.Empty, onlineExtractionResult);
+                    MaximumDropProfileResult? maximumDropProfile =
+                        _maximumDropProfileService?.AnalyzePoints(
+                            points,
+                            side,
+                            archiveContext?.SampleIndex ?? 0);
+                    return new PointCloudMedianSectionCaptureResult(
+                        string.Empty,
+                        onlineExtractionResult,
+                        maximumDropProfile);
                 }
                 catch (RepresentativeProfileExtractionException)
                 {
@@ -128,10 +183,32 @@ public sealed class PointCloudMedianSectionCaptureService : IPointCloudMedianSec
         string csvPath = BuildCsvPath();
         _pointCloudExportService.ExportPointCloud(serialNumber, csvPath, PointCloudExportFormat.Csv, captureSettings);
 
-        MedianSectionExtractionResult extractionResult =
-            _representativeProfileService.ExtractMedianSectionProfileFromCsv(csvPath, side);
+        MedianSectionExtractionResult extractionResult;
+        MaximumDropProfileResult? csvMaximumDropProfile;
+        if (_profileAnalysisService != null)
+        {
+            PointCloudProfileAnalysisResult analysisResult = _profileAnalysisService.AnalyzeCsv(
+                csvPath,
+                side,
+                archiveContext?.SampleIndex ?? 0);
+            extractionResult = analysisResult.ExtractionResult;
+            csvMaximumDropProfile = analysisResult.MaximumDropProfile;
+        }
+        else
+        {
+            extractionResult = _representativeProfileService.ExtractMedianSectionProfileFromCsv(
+                csvPath,
+                side);
+            csvMaximumDropProfile = _maximumDropProfileService?.AnalyzeCsv(
+                csvPath,
+                side,
+                archiveContext?.SampleIndex ?? 0);
+        }
 
-        return new PointCloudMedianSectionCaptureResult(csvPath, extractionResult);
+        return new PointCloudMedianSectionCaptureResult(
+            csvPath,
+            extractionResult,
+            csvMaximumDropProfile);
     }
 
     /// <summary>

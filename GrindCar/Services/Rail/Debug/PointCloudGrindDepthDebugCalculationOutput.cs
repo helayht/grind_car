@@ -13,8 +13,10 @@ public sealed class PointCloudGrindDepthDebugCalculationOutput
         int leftPointCount,
         double rightRepresentativeY,
         int rightPointCount,
-        IReadOnlyList<GrindDepthResult> results,
-        IReadOnlyList<RailProfilePoint> representativePoints)
+        IReadOnlyList<CombinedGrindDepthResult> results,
+        IReadOnlyList<RailProfilePoint> representativePoints,
+        MaximumDropProfileResult? leftMaximumDropProfile,
+        MaximumDropProfileResult? rightMaximumDropProfile)
     {
         LeftRepresentativeY = leftRepresentativeY;
         LeftPointCount = leftPointCount;
@@ -22,6 +24,8 @@ public sealed class PointCloudGrindDepthDebugCalculationOutput
         RightPointCount = rightPointCount;
         Results = results;
         RepresentativePoints = representativePoints;
+        LeftMaximumDropProfile = leftMaximumDropProfile;
+        RightMaximumDropProfile = rightMaximumDropProfile;
     }
 
     public double LeftRepresentativeY { get; }
@@ -32,7 +36,31 @@ public sealed class PointCloudGrindDepthDebugCalculationOutput
 
     public int RightPointCount { get; }
 
-    public IReadOnlyList<GrindDepthResult> Results { get; }
+    public IReadOnlyList<CombinedGrindDepthResult> Results { get; }
 
     public IReadOnlyList<RailProfilePoint> RepresentativePoints { get; }
+
+    public MaximumDropProfileResult? LeftMaximumDropProfile { get; }
+
+    public MaximumDropProfileResult? RightMaximumDropProfile { get; }
+
+    public MaximumDropProfileResult? GlobalMaximumDropProfile
+    {
+        get
+        {
+            if (LeftMaximumDropProfile == null)
+            {
+                return RightMaximumDropProfile;
+            }
+
+            if (RightMaximumDropProfile == null)
+            {
+                return LeftMaximumDropProfile;
+            }
+
+            return LeftMaximumDropProfile.MaximumDropDepth >= RightMaximumDropProfile.MaximumDropDepth
+                ? LeftMaximumDropProfile
+                : RightMaximumDropProfile;
+        }
+    }
 }

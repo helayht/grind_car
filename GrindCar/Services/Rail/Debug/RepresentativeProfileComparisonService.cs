@@ -10,6 +10,15 @@ using GrindCar.Services;
 namespace GrindCar.Services.Rail.Debug;
 
 /// <summary>
+/// 代表廓形曲线的绘制方式。
+/// </summary>
+public enum RepresentativeProfileCurveStyle
+{
+    Smooth,
+    Polyline
+}
+
+/// <summary>
 /// 代表轨面与标准轨面对比计算服务。
 /// </summary>
 public sealed class RepresentativeProfileComparisonService
@@ -31,14 +40,28 @@ public sealed class RepresentativeProfileComparisonService
             throw new ArgumentNullException(nameof(representativePoints));
         }
 
-        if (representativePoints.Count < 2)
+        return BuildSnapshot(new IReadOnlyList<RailProfilePoint>[] { representativePoints });
+    }
+
+    /// <summary>
+    /// 基于多个独立代表点片段构建对比展示所需的静态数据。
+    /// </summary>
+    public RepresentativeProfileComparisonSnapshot BuildSnapshot(
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> representativeSegments)
+    {
+        if (representativeSegments == null)
+        {
+            throw new ArgumentNullException(nameof(representativeSegments));
+        }
+
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> alignedSegments =
+            AlignSegments(representativeSegments, nameof(representativeSegments));
+        IReadOnlyList<RailProfilePoint> alignedRepresentativePoints = FlattenAndSort(alignedSegments);
+        if (alignedRepresentativePoints.Count < 2)
         {
             throw new InvalidOperationException("代表点数量不足，无法绘制曲线。");
         }
 
-        IReadOnlyList<RailProfilePoint> alignedRepresentativePoints = representativePoints
-            .OrderBy(point => point.X)
-            .ToArray();
         IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints(alignedRepresentativePoints);
         RepresentativeProfileBounds bounds = BuildBounds(alignedRepresentativePoints, standardPoints);
 
@@ -49,11 +72,72 @@ public sealed class RepresentativeProfileComparisonService
 
         return new RepresentativeProfileComparisonSnapshot(
             alignedRepresentativePoints,
+            alignedSegments,
             standardPoints,
             bounds,
             pointCountText,
             xRangeText,
             yRangeText);
+    }
+
+    /// <summary>
+    /// 基于 Left/Right 各自的最大掉块廓形构建同坐标系展示快照。
+    /// </summary>
+    public MaximumDropProfileComparisonSnapshot BuildMaximumDropSnapshot(
+        MaximumDropProfileResult? leftMaximumDropProfile,
+        MaximumDropProfileResult? rightMaximumDropProfile)
+    {
+        ValidateMaximumDropSide(
+            leftMaximumDropProfile,
+            PointCloudDeviceSide.Left,
+            nameof(leftMaximumDropProfile));
+        ValidateMaximumDropSide(
+            rightMaximumDropProfile,
+            PointCloudDeviceSide.Right,
+            nameof(rightMaximumDropProfile));
+
+        if (leftMaximumDropProfile == null && rightMaximumDropProfile == null)
+        {
+            throw new InvalidOperationException("至少需要一侧有效的最大掉块廓形。");
+        }
+
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> leftSegments =
+            leftMaximumDropProfile == null
+                ? Array.Empty<IReadOnlyList<RailProfilePoint>>()
+                : AlignSegments(
+                    leftMaximumDropProfile.ProfileSegments,
+                    nameof(leftMaximumDropProfile));
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> rightSegments =
+            rightMaximumDropProfile == null
+                ? Array.Empty<IReadOnlyList<RailProfilePoint>>()
+                : AlignSegments(
+                    rightMaximumDropProfile.ProfileSegments,
+                    nameof(rightMaximumDropProfile));
+        IReadOnlyList<RailProfilePoint> leftPoints = FlattenAndSort(leftSegments);
+        IReadOnlyList<RailProfilePoint> rightPoints = FlattenAndSort(rightSegments);
+        IReadOnlyList<RailProfilePoint> combinedPoints = leftPoints
+            .Concat(rightPoints)
+            .OrderBy(point => point.X)
+            .ToArray();
+        if (combinedPoints.Count < 2)
+        {
+            throw new InvalidOperationException("最大掉块廓形点数量不足，无法绘制曲线。");
+        }
+
+        IReadOnlyList<RailProfilePoint> standardPoints = BuildStandardPoints(combinedPoints);
+        RepresentativeProfileBounds bounds = BuildBounds(combinedPoints, standardPoints);
+        IEnumerable<RailProfilePoint> allPoints = combinedPoints.Concat(standardPoints);
+
+        return new MaximumDropProfileComparisonSnapshot(
+            leftPoints,
+            leftSegments,
+            rightPoints,
+            rightSegments,
+            standardPoints,
+            bounds,
+            $"Left {leftPoints.Count.ToString(CultureInfo.InvariantCulture)} / Right {rightPoints.Count.ToString(CultureInfo.InvariantCulture)}",
+            $"{allPoints.Min(point => point.X):0.###} ~ {allPoints.Max(point => point.X):0.###}",
+            $"{allPoints.Min(point => point.Y):0.###} ~ {allPoints.Max(point => point.Y):0.###}");
     }
 
     /// <summary>
@@ -66,7 +150,8 @@ public sealed class RepresentativeProfileComparisonService
     public RepresentativeProfilePlotResult BuildPlot(
         RepresentativeProfileComparisonSnapshot snapshot,
         double plotWidth,
-        double plotHeight)
+        double plotHeight,
+        RepresentativeProfileCurveStyle curveStyle = RepresentativeProfileCurveStyle.Smooth)
     {
         if (snapshot == null)
         {
@@ -80,6 +165,8 @@ public sealed class RepresentativeProfileComparisonService
 
         IReadOnlyList<Point> representativeScreenPoints =
             MapToScreen(snapshot.AlignedRepresentativePoints, snapshot.Bounds, plotWidth, plotHeight);
+        IReadOnlyList<IReadOnlyList<Point>> representativeScreenSegments =
+            MapSegmentsToScreen(snapshot.AlignedRepresentativeSegments, snapshot.Bounds, plotWidth, plotHeight);
         IReadOnlyList<Point> standardScreenPoints =
             MapToScreen(snapshot.StandardPoints, snapshot.Bounds, plotWidth, plotHeight);
 
@@ -93,8 +180,12 @@ public sealed class RepresentativeProfileComparisonService
                     point.Y - PointDiameter / 2.0))
                 .ToArray();
 
+        Geometry representativeCurveGeometry = curveStyle == RepresentativeProfileCurveStyle.Polyline
+            ? BuildSegmentedPolylineGeometry(representativeScreenSegments)
+            : BuildSmoothGeometry(representativeScreenPoints);
+
         return new RepresentativeProfilePlotResult(
-            BuildSmoothGeometry(representativeScreenPoints),
+            representativeCurveGeometry,
             BuildPolylineGeometry(standardScreenPoints),
             pointItems,
             PlotPadding,
@@ -105,6 +196,106 @@ public sealed class RepresentativeProfileComparisonService
             yAxisX,
             PlotPadding,
             plotHeight - PlotPadding);
+    }
+
+    /// <summary>
+    /// 将 Left/Right 最大掉块廓形映射到同一绘图坐标系。
+    /// </summary>
+    public MaximumDropProfilePlotResult BuildMaximumDropPlot(
+        MaximumDropProfileComparisonSnapshot snapshot,
+        double plotWidth,
+        double plotHeight)
+    {
+        if (snapshot == null)
+        {
+            throw new ArgumentNullException(nameof(snapshot));
+        }
+
+        if (plotWidth <= PlotPadding * 2.0 || plotHeight <= PlotPadding * 2.0)
+        {
+            return MaximumDropProfilePlotResult.Empty;
+        }
+
+        IReadOnlyList<Point> leftScreenPoints =
+            MapToScreen(snapshot.AlignedLeftPoints, snapshot.Bounds, plotWidth, plotHeight);
+        IReadOnlyList<IReadOnlyList<Point>> leftScreenSegments =
+            MapSegmentsToScreen(snapshot.AlignedLeftSegments, snapshot.Bounds, plotWidth, plotHeight);
+        IReadOnlyList<Point> rightScreenPoints =
+            MapToScreen(snapshot.AlignedRightPoints, snapshot.Bounds, plotWidth, plotHeight);
+        IReadOnlyList<IReadOnlyList<Point>> rightScreenSegments =
+            MapSegmentsToScreen(snapshot.AlignedRightSegments, snapshot.Bounds, plotWidth, plotHeight);
+        IReadOnlyList<Point> standardScreenPoints =
+            MapToScreen(snapshot.StandardPoints, snapshot.Bounds, plotWidth, plotHeight);
+
+        double xAxisY = MapY(0.0, snapshot.Bounds, plotHeight);
+        double yAxisX = MapX(0.0, snapshot.Bounds, plotWidth);
+
+        return new MaximumDropProfilePlotResult(
+            BuildSegmentedPolylineGeometry(leftScreenSegments),
+            BuildSegmentedPolylineGeometry(rightScreenSegments),
+            BuildPolylineGeometry(standardScreenPoints),
+            BuildPointItems(leftScreenPoints),
+            BuildPointItems(rightScreenPoints),
+            PlotPadding,
+            plotWidth - PlotPadding,
+            xAxisY,
+            xAxisY,
+            yAxisX,
+            yAxisX,
+            PlotPadding,
+            plotHeight - PlotPadding);
+    }
+
+    private static IReadOnlyList<IReadOnlyList<RailProfilePoint>> AlignSegments(
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> segments,
+        string parameterName)
+    {
+        var alignedSegments = new List<IReadOnlyList<RailProfilePoint>>(segments.Count);
+        for (int segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+        {
+            IReadOnlyList<RailProfilePoint> segment = segments[segmentIndex] ??
+                throw new ArgumentException("廓形点片段不能为空。", parameterName);
+            if (segment.Count == 0)
+            {
+                continue;
+            }
+
+            alignedSegments.Add(segment.OrderBy(point => point.X).ToArray());
+        }
+
+        return alignedSegments.AsReadOnly();
+    }
+
+    private static IReadOnlyList<RailProfilePoint> FlattenAndSort(
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> segments)
+    {
+        return segments
+            .SelectMany(segment => segment)
+            .OrderBy(point => point.X)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<RepresentativeProfileScreenPoint> BuildPointItems(
+        IReadOnlyList<Point> screenPoints)
+    {
+        return screenPoints
+            .Select(point => new RepresentativeProfileScreenPoint(
+                point.X - PointDiameter / 2.0,
+                point.Y - PointDiameter / 2.0))
+            .ToArray();
+    }
+
+    private static void ValidateMaximumDropSide(
+        MaximumDropProfileResult? maximumDropProfile,
+        PointCloudDeviceSide expectedSide,
+        string parameterName)
+    {
+        if (maximumDropProfile != null && maximumDropProfile.Side != expectedSide)
+        {
+            throw new ArgumentException(
+                $"最大掉块廓形侧别应为 {expectedSide}。",
+                parameterName);
+        }
     }
 
     private static IReadOnlyList<Point> MapToScreen(
@@ -118,6 +309,21 @@ public sealed class RepresentativeProfileComparisonService
                 MapX(point.X, bounds, plotWidth),
                 MapY(point.Y, bounds, plotHeight)))
             .ToArray();
+    }
+
+    private static IReadOnlyList<IReadOnlyList<Point>> MapSegmentsToScreen(
+        IReadOnlyList<IReadOnlyList<RailProfilePoint>> segments,
+        RepresentativeProfileBounds bounds,
+        double plotWidth,
+        double plotHeight)
+    {
+        var screenSegments = new List<IReadOnlyList<Point>>(segments.Count);
+        for (int segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+        {
+            screenSegments.Add(MapToScreen(segments[segmentIndex], bounds, plotWidth, plotHeight));
+        }
+
+        return screenSegments.AsReadOnly();
     }
 
     private static double MapX(double x, RepresentativeProfileBounds bounds, double plotWidth)
@@ -149,6 +355,37 @@ public sealed class RepresentativeProfileComparisonService
         for (int index = 1; index < points.Count; index++)
         {
             context.LineTo(points[index], true, false);
+        }
+
+        geometry.Freeze();
+        return geometry;
+    }
+
+    private static Geometry BuildSegmentedPolylineGeometry(
+        IReadOnlyList<IReadOnlyList<Point>> segments)
+    {
+        var geometry = new StreamGeometry();
+        using StreamGeometryContext context = geometry.Open();
+        bool hasPoints = false;
+        for (int segmentIndex = 0; segmentIndex < segments.Count; segmentIndex++)
+        {
+            IReadOnlyList<Point> segment = segments[segmentIndex];
+            if (segment.Count == 0)
+            {
+                continue;
+            }
+
+            hasPoints = true;
+            context.BeginFigure(segment[0], false, false);
+            for (int pointIndex = 1; pointIndex < segment.Count; pointIndex++)
+            {
+                context.LineTo(segment[pointIndex], true, false);
+            }
+        }
+
+        if (!hasPoints)
+        {
+            return Geometry.Empty;
         }
 
         geometry.Freeze();
@@ -260,6 +497,21 @@ public sealed class RepresentativeProfileComparisonService
 /// <param name="YRangeText">Y 范围文本。</param>
 public sealed record RepresentativeProfileComparisonSnapshot(
     IReadOnlyList<RailProfilePoint> AlignedRepresentativePoints,
+    IReadOnlyList<IReadOnlyList<RailProfilePoint>> AlignedRepresentativeSegments,
+    IReadOnlyList<RailProfilePoint> StandardPoints,
+    RepresentativeProfileBounds Bounds,
+    string PointCountText,
+    string XRangeText,
+    string YRangeText);
+
+/// <summary>
+/// Left/Right 最大掉块廓形的同坐标系展示快照。
+/// </summary>
+public sealed record MaximumDropProfileComparisonSnapshot(
+    IReadOnlyList<RailProfilePoint> AlignedLeftPoints,
+    IReadOnlyList<IReadOnlyList<RailProfilePoint>> AlignedLeftSegments,
+    IReadOnlyList<RailProfilePoint> AlignedRightPoints,
+    IReadOnlyList<IReadOnlyList<RailProfilePoint>> AlignedRightSegments,
     IReadOnlyList<RailProfilePoint> StandardPoints,
     RepresentativeProfileBounds Bounds,
     string PointCountText,
@@ -312,6 +564,40 @@ public sealed record RepresentativeProfilePlotResult(
     public static RepresentativeProfilePlotResult Empty { get; } = new(
         Geometry.Empty,
         Geometry.Empty,
+        Array.Empty<RepresentativeProfileScreenPoint>(),
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0);
+}
+
+/// <summary>
+/// Left/Right 最大掉块廓形的绘制结果。
+/// </summary>
+public sealed record MaximumDropProfilePlotResult(
+    Geometry LeftCurveGeometry,
+    Geometry RightCurveGeometry,
+    Geometry StandardCurveGeometry,
+    IReadOnlyList<RepresentativeProfileScreenPoint> LeftPoints,
+    IReadOnlyList<RepresentativeProfileScreenPoint> RightPoints,
+    double XAxisX1,
+    double XAxisX2,
+    double XAxisY1,
+    double XAxisY2,
+    double YAxisX1,
+    double YAxisX2,
+    double YAxisY1,
+    double YAxisY2)
+{
+    public static MaximumDropProfilePlotResult Empty { get; } = new(
+        Geometry.Empty,
+        Geometry.Empty,
+        Geometry.Empty,
+        Array.Empty<RepresentativeProfileScreenPoint>(),
         Array.Empty<RepresentativeProfileScreenPoint>(),
         0.0,
         0.0,

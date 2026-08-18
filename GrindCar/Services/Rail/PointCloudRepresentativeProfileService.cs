@@ -23,13 +23,6 @@ public sealed class PointCloudRepresentativeProfileService :
     private const double Tolerance = 1e-7;
 
     /// <summary>
-    /// Y 方向截面分组容差 (mm)。
-    /// 与廓形仪 Y 方向物理分辨率匹配，避免传感器噪声导致同一物理截面被错误拆分为多个伪截面。
-    /// 典型廓形仪 Y 分辨率约 0.2~1.0 mm，此处取 0.25 mm（半分辨率）作为默认容差。
-    /// </summary>
-    private const double DefaultYSplitToleranceMm = 0.25;
-
-    /// <summary>
     /// 最低有效截面数。低于此阈值意味着传感器数据质量异常，不应继续计算。
     /// 实际廓形仪一帧通常产生 10~50 个有效截面，设为 5 可在保证可用性的同时拦截严重退化的数据。
     /// </summary>
@@ -38,7 +31,7 @@ public sealed class PointCloudRepresentativeProfileService :
     private const double MadScaleFactor = 1.4826;
     private const double ZOutlierSigmaFactor = 3.0;
     private const double MinZOutlierThreshold = 0.001;
-    private readonly ProfileRegistrationSettingsStore _registrationSettingsStore;
+    private readonly IPointCloudProfilePreprocessor _preprocessor;
     private readonly ProfileRegistrationTransformService _registrationTransformService;
 
     public PointCloudRepresentativeProfileService()
@@ -50,8 +43,24 @@ public sealed class PointCloudRepresentativeProfileService :
         ProfileRegistrationSettingsStore registrationSettingsStore,
         ProfileRegistrationTransformService? registrationTransformService = null)
     {
-        _registrationSettingsStore = registrationSettingsStore ?? throw new ArgumentNullException(nameof(registrationSettingsStore));
+        if (registrationSettingsStore == null)
+        {
+            throw new ArgumentNullException(nameof(registrationSettingsStore));
+        }
+
         _registrationTransformService = registrationTransformService ?? new ProfileRegistrationTransformService();
+        _preprocessor = new PointCloudProfilePreprocessor(
+            registrationSettingsStore,
+            _registrationTransformService);
+    }
+
+    internal PointCloudRepresentativeProfileService(
+        IPointCloudProfilePreprocessor preprocessor,
+        ProfileRegistrationTransformService registrationTransformService)
+    {
+        _preprocessor = preprocessor ?? throw new ArgumentNullException(nameof(preprocessor));
+        _registrationTransformService = registrationTransformService ??
+            throw new ArgumentNullException(nameof(registrationTransformService));
     }
 
     /// <summary>
@@ -125,31 +134,22 @@ public sealed class PointCloudRepresentativeProfileService :
         PointCloudDeviceSide? side,
         ProfileRegistrationParameters? explicitParameters)
     {
-        if (points == null || points.Count == 0)
+        PreparedPointCloudProfileData preparedData = _preprocessor.Prepare(
+            points,
+            side,
+            explicitParameters);
+        return ExtractMedianSectionProfile(preparedData);
+    }
+
+    internal MedianSectionExtractionResult ExtractMedianSectionProfile(
+        PreparedPointCloudProfileData preparedData)
+    {
+        if (preparedData == null)
         {
-            throw new RepresentativeProfileExtractionException("点云数据中未解析到有效坐标点。");
+            throw new ArgumentNullException(nameof(preparedData));
         }
 
-        List<PointCloudPoint3D> validPoints = FilterValidPoints(points);
-        if (validPoints.Count == 0)
-        {
-            throw new RepresentativeProfileExtractionException("点云数据中未解析到有效坐标点。");
-        }
-
-        double representativeY = ResolveAverageY(validPoints);
-        ProfileRegistrationParameters? registrationParameters = null;
-        IReadOnlyList<PointCloudPoint3D> pointsForExtraction = validPoints;
-        if (side.HasValue)
-        {
-            registrationParameters = explicitParameters ??
-                _registrationSettingsStore.LoadRequired().GetParameters(side.Value);
-            pointsForExtraction = _registrationTransformService.ApplyRawOrientation(
-                validPoints,
-                registrationParameters,
-                side.Value);
-        }
-
-        List<RailProfilePoint> sectionPoints = CreateAverageSectionPoints(pointsForExtraction);
+        List<RailProfilePoint> sectionPoints = CreateAverageSectionPoints(preparedData.Sections);
         if (sectionPoints.Count == 0)
         {
             throw new RepresentativeProfileExtractionException("未找到平均代表截面的有效 X/Z 点。");
@@ -158,69 +158,21 @@ public sealed class PointCloudRepresentativeProfileService :
         List<RailProfilePoint> filteredSectionPoints =
             RepresentativeProfilePointProcessor.FilterOutlierRepresentativePoints(sectionPoints);
         List<RailProfilePoint> profilePoints = filteredSectionPoints;
-        if (registrationParameters != null)
+        if (preparedData.RegistrationParameters != null)
         {
             profilePoints = new List<RailProfilePoint>(
                 _registrationTransformService.ApplyTranslationAndCrop(
                     filteredSectionPoints,
-                    registrationParameters));
+                    preparedData.RegistrationParameters));
         }
 
-        return new MedianSectionExtractionResult(representativeY, profilePoints);
+        return new MedianSectionExtractionResult(preparedData.RepresentativeY, profilePoints);
     }
 
-    private static List<PointCloudPoint3D> FilterValidPoints(IReadOnlyList<PointCloudPoint3D> points)
+    private static List<RailProfilePoint> CreateAverageSectionPoints(
+        IReadOnlyList<IReadOnlyList<PointCloudPoint3D>> rawSections)
     {
-        var validPoints = new List<PointCloudPoint3D>(points.Count);
-        for (int index = 0; index < points.Count; index++)
-        {
-            PointCloudPoint3D point = points[index];
-            if (IsZeroPoint(point))
-            {
-                continue;
-            }
-
-            validPoints.Add(point);
-        }
-
-        return validPoints;
-    }
-
-    /// <summary>
-    /// 计算代表 Y 坐标。
-    /// 取所有唯一 Y 值的中位数，避免采样密度不均匀（如中间密、两端疏）导致算术平均向密集区偏移。
-    /// </summary>
-    /// <param name="points">有效点云点集。</param>
-    /// <returns>代表 Y 值。</returns>
-    private static double ResolveAverageY(IReadOnlyList<PointCloudPoint3D> points)
-    {
-        var uniqueYSet = new HashSet<double>();
-        for (int index = 0; index < points.Count; index++)
-        {
-            uniqueYSet.Add(points[index].Y);
-        }
-
-        if (uniqueYSet.Count == 0)
-        {
-            throw new RepresentativeProfileExtractionException("点云 CSV 中未解析到有效的 Y 坐标。");
-        }
-
-        double[] sortedUniqueY = new double[uniqueYSet.Count];
-        uniqueYSet.CopyTo(sortedUniqueY);
-        Array.Sort(sortedUniqueY);
-
-        int mid = sortedUniqueY.Length / 2;
-        if (sortedUniqueY.Length % 2 == 0)
-        {
-            return (sortedUniqueY[mid - 1] + sortedUniqueY[mid]) / 2.0;
-        }
-
-        return sortedUniqueY[mid];
-    }
-
-    private static List<RailProfilePoint> CreateAverageSectionPoints(IReadOnlyList<PointCloudPoint3D> points)
-    {
-        List<List<SectionPoint>> sections = BuildValidSections(points);
+        List<List<SectionPoint>> sections = BuildValidSections(rawSections);
         if (sections.Count < MinValidSectionCount)
         {
             throw new RepresentativeProfileExtractionException("有效轮廓数量不足，无法计算平均代表截面。");
@@ -345,9 +297,9 @@ public sealed class PointCloudRepresentativeProfileService :
             : median;
     }
 
-    private static List<List<SectionPoint>> BuildValidSections(IReadOnlyList<PointCloudPoint3D> points)
+    private static List<List<SectionPoint>> BuildValidSections(
+        IReadOnlyList<IReadOnlyList<PointCloudPoint3D>> rawSections)
     {
-        List<List<PointCloudPoint3D>> rawSections = SplitSectionsByY(points);
         var sections = new List<List<SectionPoint>>();
         for (int index = 0; index < rawSections.Count; index++)
         {
@@ -361,48 +313,15 @@ public sealed class PointCloudRepresentativeProfileService :
         return sections;
     }
 
-    private static List<List<PointCloudPoint3D>> SplitSectionsByY(IReadOnlyList<PointCloudPoint3D> points)
-    {
-        List<PointCloudPoint3D> sortedPoints = new(points);
-        sortedPoints.Sort((left, right) =>
-        {
-            int yComparison = left.Y.CompareTo(right.Y);
-            return yComparison != 0 ? yComparison : left.X.CompareTo(right.X);
-        });
-
-        var sections = new List<List<PointCloudPoint3D>>();
-        List<PointCloudPoint3D>? currentSection = null;
-        double currentY = 0.0;
-        for (int index = 0; index < sortedPoints.Count; index++)
-        {
-            PointCloudPoint3D point = sortedPoints[index];
-            // 使用与传感器物理分辨率匹配的 Y 方向容差进行截面分组，
-            // 避免因传感器微小噪声将同一物理截面拆成多个点数极少的伪截面。
-            if (currentSection == null || Math.Abs(point.Y - currentY) > DefaultYSplitToleranceMm)
-            {
-                currentSection = new List<PointCloudPoint3D>();
-                sections.Add(currentSection);
-                currentY = point.Y;
-            }
-
-            currentSection.Add(point);
-        }
-
-        return sections;
-    }
-
     private static List<SectionPoint> NormalizeSection(IReadOnlyList<PointCloudPoint3D> points)
     {
-        List<PointCloudPoint3D> sortedPoints = new(points);
-        sortedPoints.Sort((left, right) => left.X.CompareTo(right.X));
-
         var section = new List<SectionPoint>();
         var xAccumulator = new AverageAccumulator();
         var zAccumulator = new AverageAccumulator();
-        double currentX = sortedPoints[0].X;
-        for (int index = 0; index < sortedPoints.Count; index++)
+        double currentX = points[0].X;
+        for (int index = 0; index < points.Count; index++)
         {
-            PointCloudPoint3D point = sortedPoints[index];
+            PointCloudPoint3D point = points[index];
             if (Math.Abs(point.X - currentX) > Tolerance)
             {
                 section.Add(new SectionPoint(xAccumulator.Average, zAccumulator.Average));
@@ -561,13 +480,6 @@ public sealed class PointCloudRepresentativeProfileService :
         }
 
         return QuickSelect.SelectKthSmallest(firstSelectionValues, mid);
-    }
-
-    private static bool IsZeroPoint(PointCloudPoint3D point)
-    {
-        return Math.Abs(point.X) < Tolerance &&
-               Math.Abs(point.Y) < Tolerance &&
-               Math.Abs(point.Z) < Tolerance;
     }
 
     private sealed class AverageAccumulator

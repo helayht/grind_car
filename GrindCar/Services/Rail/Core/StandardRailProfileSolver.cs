@@ -51,16 +51,108 @@ public static class StandardRailProfileSolver
                 continue;
             }
 
-            double value = arc.R * arc.R - Math.Pow(x - arc.C, 2);
-            if (value < 0)
-            {
-                value = 0;
-            }
-
-            return Math.Sqrt(value) + arc.D + StandardProfileVerticalOffset;
+            return CalculateArcHeight(arc, x);
         }
 
         return double.NaN;
+    }
+
+    /// <summary>
+    /// 获取当前标准轨面在完整定义域内的最低高度。
+    /// </summary>
+    internal static double GetMinimumProfileHeight()
+    {
+        return GetMinimumProfileHeight(CurrentProfileType);
+    }
+
+    /// <summary>
+    /// 获取当前标准轨面在指定 X 区间内的最低高度。
+    /// 输入区间会与标准轨面定义域求交集。
+    /// </summary>
+    internal static double GetMinimumProfileHeight(double minimumX, double maximumX)
+    {
+        return GetMinimumProfileHeight(CurrentProfileType, minimumX, maximumX);
+    }
+
+    /// <summary>
+    /// 获取指定标准轨面在完整定义域内的最低高度。
+    /// 每段轨面均为上半圆弧，其区间最小值必定位于左右边界。
+    /// </summary>
+    internal static double GetMinimumProfileHeight(RailProfileType type)
+    {
+        return GetMinimumProfileHeight(type, LeftBoundaryX, RightBoundaryX);
+    }
+
+    /// <summary>
+    /// 获取指定标准轨面在给定 X 区间内的最低高度。
+    /// 每段轨面均为上半圆弧，相交区间的最小值必定位于区间端点。
+    /// </summary>
+    internal static double GetMinimumProfileHeight(
+        RailProfileType type,
+        double minimumX,
+        double maximumX)
+    {
+        if (!IsFinite(minimumX) || !IsFinite(maximumX))
+        {
+            throw new ArgumentException("标准轨面最低高度计算的 X 范围必须是有限数值。");
+        }
+
+        if (minimumX > maximumX)
+        {
+            throw new ArgumentException("标准轨面最低高度计算的 X 最小值不能大于最大值。");
+        }
+
+        double clampedMinimumX = Math.Max(minimumX, LeftBoundaryX);
+        double clampedMaximumX = Math.Min(maximumX, RightBoundaryX);
+        if (clampedMinimumX > clampedMaximumX)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(minimumX),
+                "指定 X 范围与标准轨面定义域没有交集。");
+        }
+
+        Arc[] arcs = type == RailProfileType.Kg50 ? Arcs50Kg : Arcs60Kg;
+        double minimumHeight = double.PositiveInfinity;
+        for (int index = 0; index < arcs.Length; index++)
+        {
+            Arc arc = arcs[index];
+            double overlapMinimumX = Math.Max(clampedMinimumX, arc.XMin);
+            double overlapMaximumX = Math.Min(clampedMaximumX, arc.XMax);
+            if (overlapMinimumX > overlapMaximumX)
+            {
+                continue;
+            }
+
+            minimumHeight = Math.Min(
+                minimumHeight,
+                CalculateArcHeight(arc, overlapMinimumX));
+            minimumHeight = Math.Min(
+                minimumHeight,
+                CalculateArcHeight(arc, overlapMaximumX));
+        }
+
+        if (double.IsPositiveInfinity(minimumHeight))
+        {
+            throw new InvalidOperationException("标准轨面未包含可用于计算最低高度的圆弧。");
+        }
+
+        return minimumHeight;
+    }
+
+    private static bool IsFinite(double value)
+    {
+        return !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private static double CalculateArcHeight(Arc arc, double x)
+    {
+        double value = arc.R * arc.R - Math.Pow(x - arc.C, 2);
+        if (value < 0)
+        {
+            value = 0;
+        }
+
+        return Math.Sqrt(value) + arc.D + StandardProfileVerticalOffset;
     }
 
     public static double SolveB(double k)
@@ -72,6 +164,59 @@ public static class StandardRailProfileSolver
     {
         TangentSolution solution = GetOrAddTangentSolution(k);
         return (solution.B, solution.XTouch);
+    }
+
+    /// <summary>
+    /// 计算标准轨面沿指定打磨角度单位法向量的最大支撑值。
+    /// 使用 c = y*cos(angle) - x*sin(angle)，避免接近 90° 时 tan(angle) 发散。
+    /// </summary>
+    internal static double SolveNormalOffset(double angleRadians)
+    {
+        ValidateNormalAngle(angleRadians);
+        double sinValue = Math.Sin(angleRadians);
+        double cosValue = Math.Cos(angleRadians);
+        var candidates = new List<double>();
+
+        for (int index = 0; index < _activeArcs.Length; index++)
+        {
+            Arc arc = _activeArcs[index];
+            if (arc.LeftClosed)
+            {
+                candidates.Add(arc.XMin);
+            }
+
+            if (arc.RightClosed)
+            {
+                candidates.Add(arc.XMax);
+            }
+
+            double xTouch = arc.C - arc.R * sinValue;
+            if (arc.Contains(xTouch))
+            {
+                candidates.Add(xTouch);
+            }
+        }
+
+        double bestOffset = double.NegativeInfinity;
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            double x = candidates[index];
+            double y = RailSurfaceFun(x);
+            if (double.IsNaN(y))
+            {
+                continue;
+            }
+
+            double offset = y * cosValue - x * sinValue;
+            bestOffset = Math.Max(bestOffset, offset);
+        }
+
+        if (double.IsNegativeInfinity(bestOffset))
+        {
+            throw new InvalidOperationException("未找到有效的标准轨面法向接触点。");
+        }
+
+        return bestOffset;
     }
 
     private static TangentSolution GetOrAddTangentSolution(double k)
@@ -205,6 +350,43 @@ public static class StandardRailProfileSolver
             candidates[index] = point.Y - k * point.X;
         }
 
+        return GetRobustMaximum(candidates);
+    }
+
+    /// <summary>
+    /// 计算测量廓形沿指定打磨角度单位法向量的代表支撑值。
+    /// </summary>
+    internal static double GetRepresentativeNormalOffset(
+        double angleRadians,
+        IReadOnlyList<RailProfilePoint> representativeSectionPoints)
+    {
+        ValidateNormalAngle(angleRadians);
+        if (representativeSectionPoints == null)
+        {
+            throw new ArgumentNullException(nameof(representativeSectionPoints));
+        }
+
+        if (representativeSectionPoints.Count == 0)
+        {
+            throw new InvalidOperationException("代表截面点集不能为空。");
+        }
+
+        double sinValue = Math.Sin(angleRadians);
+        double cosValue = Math.Cos(angleRadians);
+        var candidates = new double[representativeSectionPoints.Count];
+        for (int index = 0; index < representativeSectionPoints.Count; index++)
+        {
+            RailProfilePoint point = representativeSectionPoints[index];
+            candidates[index] = point.Y * cosValue - point.X * sinValue;
+        }
+
+        return GetRobustMaximum(candidates);
+    }
+
+    private static double GetRobustMaximum(double[] candidates)
+    {
+        int count = candidates.Length;
+
         // 取前 0.5% 最大值的平均，对抗单个飞点的干扰。
         // 至少保留 1 个点，避免小数截断导致 topCount = 0。
         int topCount = Math.Max(1, count / 200);
@@ -249,6 +431,23 @@ public static class StandardRailProfileSolver
         }
 
         return sum / included;
+    }
+
+    private static void ValidateNormalAngle(double angleRadians)
+    {
+        if (double.IsNaN(angleRadians) || double.IsInfinity(angleRadians))
+        {
+            throw new ArgumentException("打磨角度必须为有限数值。", nameof(angleRadians));
+        }
+
+        const double angleTolerance = 1e-12;
+        if (angleRadians < -Math.PI / 2.0 - angleTolerance ||
+            angleRadians > Math.PI / 2.0 + angleTolerance)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(angleRadians),
+                "单位法向计算仅支持 -90° 到 90°。");
+        }
     }
 
     private readonly struct Arc
