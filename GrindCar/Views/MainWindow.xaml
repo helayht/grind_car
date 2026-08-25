@@ -134,10 +134,6 @@
                                 Click="OpenPointCloudExportWindow_Click" />
                         <Button Style="{StaticResource SecondaryButtonStyle}"
                                 Margin="0,0,8,8"
-                                Content="打磨深度调试"
-                                Click="OpenGrindDepthDebugWindow_Click" />
-                        <Button Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="0,0,8,8"
                                 Content="点云算法验证"
                                 Click="OpenPointCloudGrindDepthDebugWindow_Click" />
                         <Button Style="{StaticResource SecondaryButtonStyle}"

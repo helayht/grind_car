@@ -90,34 +90,6 @@ public static class RailSurfaceService
     }
 
     /// <summary>
-    /// 基于给定代表截面点集批量计算各角度对应的 b 值。
-    /// </summary>
-    public static IReadOnlyList<AngleBValue> CalculateBValues(
-        IReadOnlyList<int> angles,
-        IReadOnlyList<RailProfilePoint> representativeSectionPoints)
-    {
-        if (angles == null)
-        {
-            throw new ArgumentNullException(nameof(angles));
-        }
-
-        if (representativeSectionPoints == null)
-        {
-            throw new ArgumentNullException(nameof(representativeSectionPoints));
-        }
-
-        var results = new List<AngleBValue>(angles.Count);
-        for (int index = 0; index < angles.Count; index++)
-        {
-            int angle = angles[index];
-            double b = CalculateBByAngle(angle, representativeSectionPoints);
-            results.Add(new AngleBValue(angle, b));
-        }
-
-        return results;
-    }
-
-    /// <summary>
     /// 基于单侧最大掉块廓形计算各角度的附加打磨深度。
     /// 仅将标准轨面法向支撑值高于测量廓形的部分计为向下缺失深度。
     /// </summary>
@@ -154,105 +126,6 @@ public static class RailSurfaceService
         }
 
         return results;
-    }
-
-    /// <summary>
-    /// 基于指定代表廓形点集生成检测基线。
-    /// </summary>
-    public static GrindingDepthBaseline CreateGrindingDepthBaseline(
-        IReadOnlyList<int> angles,
-        IReadOnlyList<RailProfilePoint> representativePoints)
-    {
-        if (angles == null)
-        {
-            throw new ArgumentNullException(nameof(angles));
-        }
-
-        if (angles.Count == 0)
-        {
-            throw new InvalidOperationException("角度列表不能为空。");
-        }
-
-        if (representativePoints == null)
-        {
-            throw new ArgumentNullException(nameof(representativePoints));
-        }
-
-        IReadOnlyList<AngleBValue> baselineBValues = CalculateBValues(angles, representativePoints);
-        int[] angleArray = new int[angles.Count];
-        for (int index = 0; index < angles.Count; index++)
-        {
-            angleArray[index] = angles[index];
-        }
-
-        return new GrindingDepthBaseline(DateTime.Now, angleArray, baselineBValues);
-    }
-
-    /// <summary>
-    /// 保存最新检测基线数据。
-    /// </summary>
-    public static void SaveGrindingDepthBaseline(GrindingDepthBaseline baseline, string? baselineFilePath = null)
-    {
-        GrindingDepthBaselineStore.Save(baseline, baselineFilePath);
-    }
-
-    /// <summary>
-    /// 加载最新检测基线数据。
-    /// </summary>
-    public static GrindingDepthBaseline? LoadLatestGrindingDepthBaseline(string? baselineFilePath = null)
-    {
-        return GrindingDepthBaselineStore.LoadLatest(baselineFilePath);
-    }
-
-    /// <summary>
-    /// 基于已保存的检测基线重新采集代表廓形并检测已打磨深度。
-    /// </summary>
-    public static IReadOnlyList<DetectedGrindDepthResult> DetectGrindingDepths(GrindingDepthBaseline baseline)
-    {
-        if (baseline == null)
-        {
-            throw new ArgumentNullException(nameof(baseline));
-        }
-
-        if (baseline.Angles == null || baseline.Angles.Count == 0)
-        {
-            throw new InvalidOperationException("基线角度列表为空。");
-        }
-
-        PointCloudCaptureSettings captureSettings = LoadPointCloudCaptureSettings();
-        IReadOnlyList<RailProfilePoint> representativePoints = CaptureRepresentativeSectionPoints(captureSettings);
-        IReadOnlyList<AngleBValue> currentBValues = CalculateBValues(baseline.Angles, representativePoints);
-
-        var baselineMap = new Dictionary<int, double>(baseline.BaselineBValues.Count);
-        for (int index = 0; index < baseline.BaselineBValues.Count; index++)
-        {
-            AngleBValue item = baseline.BaselineBValues[index];
-            baselineMap[item.Angle] = item.B;
-        }
-
-        var results = new List<DetectedGrindDepthResult>(currentBValues.Count);
-        for (int index = 0; index < currentBValues.Count; index++)
-        {
-            AngleBValue currentValue = currentBValues[index];
-            if (!baselineMap.TryGetValue(currentValue.Angle, out double baselineB))
-            {
-                throw new InvalidOperationException($"检测基线中缺少角度 {currentValue.Angle} 的 b 值。");
-            }
-
-            double detectedDepth = Math.Abs(currentValue.B - baselineB);
-            results.Add(new DetectedGrindDepthResult(currentValue.Angle, baselineB, currentValue.B, detectedDepth));
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// 基于给定代表截面点集计算指定角度对应的 b 值。
-    /// </summary>
-    public static double CalculateBByAngle(int angle, IReadOnlyList<RailProfilePoint> representativeSectionPoints)
-    {
-        double k = CalculateSlopeFromAngle(angle);
-        return StandardRailProfileSolver.GetRepresentativeB(k, representativeSectionPoints);
     }
 
     /// <summary>
@@ -296,11 +169,6 @@ public static class RailSurfaceService
             representativeSectionPoints);
         double standardOffset = StandardRailProfileSolver.SolveNormalOffset(angleRadians);
         return Math.Abs(representativeOffset - standardOffset);
-    }
-
-    private static double CalculateSlopeFromAngle(int angle)
-    {
-        return Math.Tan(CalculateAngleRadians(angle));
     }
 
     internal static bool IsDefectAngleApplicable(PointCloudDeviceSide side, int angle)

@@ -126,18 +126,6 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 打开打磨深度调试窗口。
-    /// </summary>
-    private void OpenGrindDepthDebugWindow_Click(object sender, RoutedEventArgs e)
-    {
-        var window = new GrindDepthDebugWindow
-        {
-            Owner = this
-        };
-        window.Show();
-    }
-
-    /// <summary>
     /// 打开 Left/Right 原始点云算法验证窗口。
     /// </summary>
     private void OpenPointCloudGrindDepthDebugWindow_Click(object sender, RoutedEventArgs e)

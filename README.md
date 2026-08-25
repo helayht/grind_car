@@ -5,10 +5,10 @@ GrindCar 是一个基于 `.NET 6 + WPF` 的轨面打磨设备上位机项目，�
 
 - 驾驶舱首页展示电量、速度、连接状态等运行信息
 - 电机调试窗口通过 `Modbus TCP` 与 PLC 建立连接，完成参数轮询、写入和调试
-- 点云调试链路支持设备枚举、深度图转点云单帧导出、在线点云平均代表截面提取（失败时自动回退 CSV）、需要打磨深度计算与已打磨深度检测
+- 点云调试链路支持设备枚举、深度图转点云单帧导出、在线点云平均代表截面提取（失败时自动回退 CSV）和打磨深度算法验证
 - 主界面内置参数设置，可写入“测量起点位置/测量终点位置”与“打磨起点位置/打磨终点位置”，并可配置点云在线采集速度、单次测量总条数和计算帧率；PLC 连接参数通过独立窗口维护
 - 主界面支持测量运行流程：按 `M31/M60/M61/M62` 交互，两台廓形仪按顺序采集并合并为一组测量，累计多组后计算平均打磨深度并写回各角度打磨次数；并支持独立写入打磨运动启动 `M32`
-- 轨面服务层提供标准轨面函数、代表截面提取、多角度打磨深度计算和按角度计算代表廓形 `b` 值的能力
+- 轨面服务层提供标准轨面函数、代表截面提取和多角度打磨深度计算能力
 
 该项目当前不依赖 Web 服务，也不依赖环境变量配置，主要作为本地运行的 HMI/调试工具使用。
 
@@ -34,7 +34,7 @@ GrindCar.sln
 │  │  ├─ Measurement/     # 主界面测量参数解析与写入服务
 │  │  ├─ PointCloud/      # 点云设备 SDK 封装与导出
 │  │  └─ Rail/            # 平均代表截面与代表廓形提取
-│  │     ├─ Core/         # 轨面求解、基线存储、代表截面采集核心服务
+│  │     ├─ Core/         # 轨面求解、配准、代表截面采集核心服务
 │  │     └─ Processing/   # 代表廓形点集处理与 CSV 解析
 │  ├─ ViewModels/         # ViewModel
 │  ├─ Views/              # WPF 窗口
@@ -51,7 +51,7 @@ GrindCar.sln
 - 启动后默认进入首页
 - 展示电量、速度、连接状态和当前时间
 - 首页中的电量和速度当前为“未接入数据”占位展示
-- 可从首页进入点云导出、打磨深度调试、点云算法验证、代表廓形配准和电机调试窗口
+- 可从首页进入点云导出、点云算法验证、代表廓形配准和电机调试窗口
 - 首页参数区可直接设置“测量起点位置/测量终点位置”并写入 PLC
 - 测量参数与测量运行流程共用独立的“PLC连接设置”窗口维护 IP/Port
 
@@ -92,10 +92,8 @@ GrindCar.sln
 - `RailSurfaceService.RailSurfaceFun(double x)` 提供标准轨面函数
 - `RailSurfaceService.CalculateGrindDepths(IReadOnlyList<int> angles)` 支持多角度批量计算
 - 批量计算时只采集一次代表截面点集，避免重复调用点云设备
-- “计算需要打磨深度”时会同步保存当前各角度的代表廓形 `b` 值作为检测基线
-- “检测已打磨深度”时会重新采集代表截面，并将当前 `b` 与基线 `b` 逐角度做差
-- 检测基线默认保存到运行目录下的 `Log/grind-depth-baseline.json`
-- “打磨深度调试”窗口支持导出最近一次计算使用的代表点坐标（CSV）
+- “点云算法验证”窗口可基于 Left / Right 原始点云 CSV 对比常规深度、掉块深度和最终深度
+- 主界面测量流程会汇总多组测量结果，并在用户确认后回写各角度打磨次数
 
 ## 环境要求
 ### 软件要求
@@ -160,7 +158,7 @@ dotnet clean GrindCar.sln
 ### 首页入口
 1. 启动应用后进入“轨面打磨驾驶舱”首页。
 2. 通过右上角按钮可打开对应功能窗口。
-3. 当前可进入的窗口包括：`点云导出`、`打磨深度调试`、`点云算法验证`、`代表廓形配准`、`电机调试`。
+3. 当前可进入的窗口包括：`点云导出`、`点云算法验证`、`代表廓形配准`、`电机调试`。
 4. 首页下方参数区可直接设置并写入：`测量起点位置`、`测量终点位置`、`打磨起点位置`、`打磨终点位置`。
 5. 点击“设置PLC连接”可打开独立窗口维护测量参数写入用的 `IP/Port`。
 
@@ -184,9 +182,7 @@ dotnet clean GrindCar.sln
 2. 打开“点云导出”窗口，选择设备并导出 Left / Right 原始点云 CSV。
 3. 打开“代表廓形配准”窗口，分别选择 Left / Right CSV，通过 X/Y 平移、旋转、镜像选项以及 X 范围裁切将两侧代表廓形对齐到标准参考线。镜像和旋转会先作用于原始点，再重新生成平均代表廓形；自动精对齐直接对当前缓存的平均代表廓形执行一次稳健 ICP，合并参数后仅重建一次当前侧廓形，不会循环处理原始点。
 4. 参数编辑后点击“确认调整”同步重新处理原始点并刷新预览，确认无误后点击“保存参数”，系统会将 Left / Right 配准参数和算法版本保存到当前轨型对应的配置文件。
-5. 打开“打磨深度调试”窗口，输入一个或多个角度后点击“计算需要打磨深度”。点云算法验证窗口会同时显示常规深度、掉块深度和两者的最终最大值，并可查看最大掉块廓形。
-6. 系统在完成需要打磨深度计算后，会自动保存当前各角度的 `b` 值作为检测基线。
-7. 机器完成打磨后，点击“检测已打磨深度”以重新采集点云并输出各角度的已打磨深度。
+5. 打开“点云算法验证”窗口，选择 Left / Right 原始点云 CSV 并输入角度。窗口会显示常规深度、掉块深度和两者的最终最大值，并可查看最大掉块廓形。
 
 点云设备侧别配置示例：
 
@@ -231,12 +227,10 @@ dotnet clean GrindCar.sln
 - `GrindCar/Views/MainWindow.xaml`：驾驶舱首页
 - `GrindCar/Views/MotorDebugWindow.xaml`：电机调试窗口
 - `GrindCar/Views/PointCloudExportWindow.xaml`：点云导出窗口
-- `GrindCar/Views/GrindDepthDebugWindow.xaml`：打磨深度调试窗口
 - `GrindCar/Views/ProfileRegistrationWindow.xaml`：代表廓形手动配准窗口
 - `GrindCar/Views/PlcConnectionSettingsWindow.xaml`：PLC连接设置窗口（供首页参数区写入测量参数使用）
 - `GrindCar/ViewModels/MotorViewModel.cs`：PLC 连接、轮询、写入、首页演示数据和状态文本管理
 - `GrindCar/ViewModels/MainWindowMeasurementViewModel.cs`：主界面测量参数区状态与操作编排
-- `GrindCar/ViewModels/GrindDepthDebugViewModel.cs`：打磨深度调试窗口状态与命令编排
 - `GrindCar/ViewModels/PointCloudExportViewModel.cs`：点云导出窗口设备刷新、导出状态与流程编排
 - `GrindCar/ViewModels/ProfileRegistrationViewModel.cs`：代表廓形手动配准、误差反馈和参数保存
 - `GrindCar/ViewModels/RepresentativeProfileComparisonViewModel.cs`：代表轨面与标准轨面对比窗口状态与绘图数据编排
@@ -250,9 +244,7 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Measurement/MeasurementParameterService.cs`：主界面测量参数写入、测量运行轮询、平均打磨深度汇总与打磨次数写回
 - `GrindCar/Services/Measurement/MeasurementGrindingWorkflowResult.cs`：测量运行流程结果汇总模型
 - `GrindCar/Services/Measurement/MeasurementGrindingTimesResult.cs`：单角度平均深度与打磨次数模型
-- `GrindCar/Services/Rail/Debug/GrindDepthDebugWorkflowService.cs`：打磨深度调试业务编排
 - `GrindCar/Services/Rail/Debug/GrindDepthAngleParser.cs`：角度输入解析
-- `GrindCar/Services/Rail/Debug/RepresentativePointsCsvExporter.cs`：代表点 CSV 导出
 - `GrindCar/Services/Rail/Debug/RepresentativeProfileComparisonService.cs`：代表轨面与标准轨面对比、采样与绘图数据计算
 - `GrindCar/Services/PointCloud/PointCloudExportService.cs`：点云设备枚举、Range 深度图采集、深度图转点云、采集参数写入和文件导出
 - `GrindCar/Models/PointCloud/PointCloudCaptureSettings.cs`：点云在线采集参数模型，包含小车速度(m/min)、单次测量总条数和按 1 cm 间距计算的帧率
@@ -268,7 +260,6 @@ dotnet clean GrindCar.sln
 - `GrindCar/Services/Rail/MaximumDropProfileService.cs`：按原始点云 Y 截面定位连续向下缺失，应用连续 3 点残差中位抗飞点，并保留滤波后廓形的原始高度
 - `GrindCar/Services/Rail/Core/RepresentativeSectionCaptureService.cs`：代表截面点采集
 - `GrindCar/Services/Rail/Core/RobustIcpRegistrationService.cs`：纯 C# 稳健 ICP（迭代最近点）二维精对齐服务。采用截断匹配策略（保留 80% 最佳拟合点对）以抵抗边缘噪点和局部离群；多轮迭代中按刚体变换矩阵规则复合旋转和平移，保证返回参数能准确复现内部对齐结果
-- `GrindCar/Services/Rail/Core/GrindingDepthBaselineStore.cs`：检测基线持久化
 - `GrindCar/Services/RailSurfaceService.cs`：轨面计算外观层（Facade），对 UI 保持稳定调用入口
 
 ## 坐标与算法说明
@@ -304,13 +295,7 @@ dotnet clean GrindCar.sln
 - 深度计算使用稳定的单位法向支撑值 `c = Z*cos(angle) - X*sin(angle)`，不再通过 `tan(angle)` 计算，因此 `90°` 不会发生数值发散
 - 结果基于标准轨面函数与采集到的代表截面点集计算得出
 - 标准轨面函数整体下移 `176`，标准与测量廓形的法向支撑值都使用下移后的坐标系
-- **代表支撑值的抗异常值计算**：测量廓形取前 0.5% 最大候选 `c` 的算术平均；点数较少时退化为取单个最大值。原有 `b` 值接口继续用于已打磨深度基线兼容，不参与本次常规/掉块建议深度计算
-
-### 已打磨深度检测说明
-- 系统会在“计算需要打磨深度”时记录当前各角度对应的代表廓形 `b` 值
-- 检测阶段会重新采集当前代表截面，并重新计算各角度的 `b`
-- 每个角度的已打磨深度计算公式为 `|b_current - b_baseline|`
-- 检测必须依赖已保存的基线；若不存在基线，界面会提示先执行一次需要打磨深度计算
+- **代表支撑值的抗异常值计算**：测量廓形取前 0.5% 最大候选 `c` 的算术平均；点数较少时退化为取单个最大值
 
 ### 最大掉块深度与最终打磨深度说明
 - Left/Right 原始点云分别按前进方向 `Y` 拆成二维 `(X,Z)` 廓形，不进行纵向匹配，也不使用平均代表廓形定位掉块
@@ -375,22 +360,9 @@ IReadOnlyList<RailProfilePoint> sectionPoints = captureResult.ExtractionResult.P
 using GrindCar.Models.Rail;
 using GrindCar.Services;
 
-IReadOnlyList<GrindDepthResult> results =
-    RailSurfaceService.GetGrindDepths(new[] { 0, 5, 10, 15 });
-```
-
-### 检测已打磨深度
-```csharp
-using GrindCar.Models.Rail;
-using GrindCar.Services;
-
-GrindingDepthBaseline baseline =
-    RailSurfaceService.CreateGrindingDepthBaseline(new[] { 0, 5, 10, 15 });
-RailSurfaceService.SaveGrindingDepthBaseline(baseline);
-
-IReadOnlyList<DetectedGrindDepthResult> detectedResults =
-    RailSurfaceService.DetectGrindingDepths(
-        RailSurfaceService.LoadLatestGrindingDepthBaseline()!);
+GrindDepthCalculationResult calculation =
+    RailSurfaceService.CalculateGrindDepths(new[] { 0, 5, 10, 15 });
+IReadOnlyList<GrindDepthResult> results = calculation.Results;
 ```
 
 ## API 示例
@@ -403,7 +375,7 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 - `PointCloudCaptureSettingsStore`：点云在线采集参数持久化
 - `IPointCloudRepresentativeProfileService`：从在线点集/CSV 提取平均代表截面
 - `IPointCloudMedianSectionCaptureService`：采集点云并提取截面
-- `RailSurfaceService`：标准轨面、打磨深度、代表廓形 `b` 值、检测基线生成/持久化及已打磨深度检测
+- `RailSurfaceService`：标准轨面、代表截面采集和打磨深度计算
 
 ## 构建与兼容性说明
 - 当前命令行构建命令为 `dotnet build GrindCar.sln`
@@ -429,6 +401,5 @@ IReadOnlyList<DetectedGrindDepthResult> detectedResults =
 - 主界面测量运行流程使用地址 `M31`（启动）、`M60`（当前廓形测量启动触发）、`M61`（测量定位完成/测量运行结束）、`M62`（当前廓形测量完成）
 - 主界面支持打磨运动启动地址 `M32`（启动）
 - 打磨次数结果写回区为 `D1800~D1836`（步长 2，对应 19 个固定测算角度，`D1800 + (N-1) * 2`）
-- 打磨深度检测基线默认保存在 `Log/grind-depth-baseline.json`
 - `bin/`、`obj/`、`tmp_obj/` 等构建产物不应提交到版本库
 - 首页电量与速度当前为占位显示，不等同于实时设备遥测
