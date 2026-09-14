@@ -79,5 +79,6 @@
     <SolidColorBrush x:Key="RightBrush" Color="#0F7A6C" />
     <SolidColorBrush x:Key="RepresentativeBrush" Color="#0F7A6C" />
     <SolidColorBrush x:Key="PointBrush" Color="#125A51" />
+    <SolidColorBrush x:Key="MaximumDepthBrush" Color="#F87171" />
 
 </ResourceDictionary>

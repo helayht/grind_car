@@ -111,17 +111,17 @@ public class PointCloudGrindDepthDebugWorkflowServiceTests
         var maximumDropService = new MaximumDropProfileService(
             settingsStore,
             new ProfileRegistrationTransformService());
-        var defectPointSets = new List<IReadOnlyList<RailProfilePoint>>();
+        var defectProfiles = new List<MaximumDropProfileResult>();
         var service = new PointCloudGrindDepthDebugWorkflowService(
             new FakeProfileService(),
             maximumDropService,
             (angles, points) => new GrindDepthCalculationResult(
                 angles.Select(angle => new GrindDepthResult(angle, 0.2)).ToArray(),
                 points),
-            (angles, points) =>
+            (angles, profile) =>
             {
-                defectPointSets.Add(points.ToArray());
-                double depth = defectPointSets.Count == 1 ? 0.3 : 0.5;
+                defectProfiles.Add(profile);
+                double depth = defectProfiles.Count == 1 ? 0.3 : 0.5;
                 return angles.Select(angle => new GrindDepthResult(angle, depth)).ToArray();
             });
 
@@ -137,9 +137,9 @@ public class PointCloudGrindDepthDebugWorkflowServiceTests
         Assert.NotNull(output.GlobalMaximumDropProfile);
         Assert.Equal(PointCloudDeviceSide.Right, output.GlobalMaximumDropProfile!.Side);
         Assert.Equal(2.0, output.GlobalMaximumDropProfile.MaximumDropDepth, 6);
-        Assert.Equal(2, defectPointSets.Count);
-        Assert.All(defectPointSets, profilePoints =>
-            Assert.Contains(profilePoints, point =>
+        Assert.Equal(2, defectProfiles.Count);
+        Assert.All(defectProfiles, profile =>
+            Assert.Contains(profile.ProfilePoints, point =>
                 point.Y < StandardRailProfileSolver.RailSurfaceFun(point.X)));
     }
 
@@ -152,8 +152,8 @@ public class PointCloudGrindDepthDebugWorkflowServiceTests
             (angles, points) => new GrindDepthCalculationResult(
                 angles.Select(angle => new GrindDepthResult(angle, 0.2)).ToArray(),
                 points),
-            (angles, points) => angles
-                .Select(angle => new GrindDepthResult(angle, points[0].Y))
+            (angles, profile) => angles
+                .Select(angle => new GrindDepthResult(angle, profile.ProfilePoints[0].Y))
                 .ToArray());
 
         PointCloudGrindDepthDebugCalculationOutput output = service.Calculate(
@@ -180,11 +180,11 @@ public class PointCloudGrindDepthDebugWorkflowServiceTests
             (angles, points) => new GrindDepthCalculationResult(
                 angles.Select(angle => new GrindDepthResult(angle, 0.1)).ToArray(),
                 points),
-            (angles, points) =>
+            (angles, profile) =>
             {
-                defectCalls.Add((points[0].Y, angles.ToArray()));
+                defectCalls.Add((profile.ProfilePoints[0].Y, angles.ToArray()));
                 return angles
-                    .Select(angle => new GrindDepthResult(angle, points[0].Y))
+                    .Select(angle => new GrindDepthResult(angle, profile.ProfilePoints[0].Y))
                     .ToArray();
             });
 

@@ -217,61 +217,6 @@ public sealed class ProfileRegistrationTransformService
         };
     }
 
-    internal ProfileRegistrationParameters ComposeWithGlobalDelta(
-        IReadOnlyList<RailProfilePoint> basePoints,
-        ProfileRegistrationParameters currentParameters,
-        ProfileRegistrationParameters globalDelta,
-        PointCloudDeviceSide side)
-    {
-        if (basePoints == null)
-        {
-            throw new ArgumentNullException(nameof(basePoints));
-        }
-
-        if (currentParameters == null)
-        {
-            throw new ArgumentNullException(nameof(currentParameters));
-        }
-
-        if (globalDelta == null)
-        {
-            throw new ArgumentNullException(nameof(globalDelta));
-        }
-
-        if (basePoints.Count == 0)
-        {
-            throw new InvalidOperationException("配准参数换算至少需要一个原始廓形点。");
-        }
-
-        currentParameters.Validate("当前配准");
-        globalDelta.Validate("ICP 增量配准");
-
-        IReadOnlyList<RailProfilePoint> orientedBasePoints = currentParameters.IsMirrored
-            ? MirrorAcrossSideBoundary(basePoints, side)
-            : basePoints;
-        (double centerX, double centerY) = CalculateCentroid(orientedBasePoints);
-
-        double deltaRadians = globalDelta.RotationDegrees * DegreesToRadiansFactor;
-        double deltaCosValue = Math.Cos(deltaRadians);
-        double deltaSinValue = Math.Sin(deltaRadians);
-        double currentCentroidX = centerX + currentParameters.Dx;
-        double currentCentroidY = centerY + currentParameters.Dy;
-        double composedCentroidX =
-            currentCentroidX * deltaCosValue - currentCentroidY * deltaSinValue + globalDelta.Dx;
-        double composedCentroidY =
-            currentCentroidX * deltaSinValue + currentCentroidY * deltaCosValue + globalDelta.Dy;
-
-        return new ProfileRegistrationParameters(
-            composedCentroidX - centerX,
-            composedCentroidY - centerY,
-            currentParameters.RotationDegrees + globalDelta.RotationDegrees,
-            currentParameters.IsMirrored)
-        {
-            XMin = currentParameters.XMin,
-            XMax = currentParameters.XMax
-        };
-    }
-
     internal ProfileRegistrationErrorMetrics CalculateStandardErrorMetrics(
         IReadOnlyList<RailProfilePoint> points,
         IReadOnlyList<RailProfilePoint> standardPoints)

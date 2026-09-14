@@ -25,6 +25,7 @@ public sealed class RepresentativeProfileComparisonService
 {
     private const double PlotPadding = 36.0;
     private const double PointDiameter = 5.0;
+    private const double MaximumDropMarkerDiameter = 12.0;
     private const int RepresentativeInterpolationSteps = 10;
     private const int StandardSampleCount = 240;
 
@@ -105,13 +106,13 @@ public sealed class RepresentativeProfileComparisonService
             leftMaximumDropProfile == null
                 ? Array.Empty<IReadOnlyList<RailProfilePoint>>()
                 : AlignSegments(
-                    leftMaximumDropProfile.ProfileSegments,
+                    leftMaximumDropProfile.ShiftedProfileSegments,
                     nameof(leftMaximumDropProfile));
         IReadOnlyList<IReadOnlyList<RailProfilePoint>> rightSegments =
             rightMaximumDropProfile == null
                 ? Array.Empty<IReadOnlyList<RailProfilePoint>>()
                 : AlignSegments(
-                    rightMaximumDropProfile.ProfileSegments,
+                    rightMaximumDropProfile.ShiftedProfileSegments,
                     nameof(rightMaximumDropProfile));
         IReadOnlyList<RailProfilePoint> leftPoints = FlattenAndSort(leftSegments);
         IReadOnlyList<RailProfilePoint> rightPoints = FlattenAndSort(rightSegments);
@@ -133,6 +134,8 @@ public sealed class RepresentativeProfileComparisonService
             leftSegments,
             rightPoints,
             rightSegments,
+            BuildMaximumDropMarker(leftMaximumDropProfile),
+            BuildMaximumDropMarker(rightMaximumDropProfile),
             standardPoints,
             bounds,
             $"Left {leftPoints.Count.ToString(CultureInfo.InvariantCulture)} / Right {rightPoints.Count.ToString(CultureInfo.InvariantCulture)}",
@@ -236,6 +239,16 @@ public sealed class RepresentativeProfileComparisonService
             BuildPolylineGeometry(standardScreenPoints),
             BuildPointItems(leftScreenPoints),
             BuildPointItems(rightScreenPoints),
+            MapMaximumDropMarker(
+                snapshot.LeftMaximumDropMarker,
+                snapshot.Bounds,
+                plotWidth,
+                plotHeight),
+            MapMaximumDropMarker(
+                snapshot.RightMaximumDropMarker,
+                snapshot.Bounds,
+                plotWidth,
+                plotHeight),
             PlotPadding,
             plotWidth - PlotPadding,
             xAxisY,
@@ -244,6 +257,45 @@ public sealed class RepresentativeProfileComparisonService
             yAxisX,
             PlotPadding,
             plotHeight - PlotPadding);
+    }
+
+    private static MaximumDropProfileMarker? BuildMaximumDropMarker(
+        MaximumDropProfileResult? maximumDropProfile)
+    {
+        if (maximumDropProfile == null)
+        {
+            return null;
+        }
+
+        RailProfilePoint originalPoint = maximumDropProfile.MaximumDropPoint;
+        return new MaximumDropProfileMarker(
+            maximumDropProfile.Side,
+            originalPoint,
+            maximumDropProfile.ShiftedMaximumDropPoint,
+            maximumDropProfile.MaximumDropDepth,
+            $"{maximumDropProfile.Side}\n" +
+            $"X={originalPoint.X.ToString("F3", CultureInfo.InvariantCulture)} mm\n" +
+            $"原始Z={originalPoint.Y.ToString("F3", CultureInfo.InvariantCulture)} mm\n" +
+            $"深度={maximumDropProfile.MaximumDropDepth.ToString("F3", CultureInfo.InvariantCulture)} mm");
+    }
+
+    private static MaximumDropProfileScreenMarker? MapMaximumDropMarker(
+        MaximumDropProfileMarker? marker,
+        RepresentativeProfileBounds bounds,
+        double plotWidth,
+        double plotHeight)
+    {
+        if (marker == null)
+        {
+            return null;
+        }
+
+        double screenX = MapX(marker.DisplayPoint.X, bounds, plotWidth);
+        double screenY = MapY(marker.DisplayPoint.Y, bounds, plotHeight);
+        return new MaximumDropProfileScreenMarker(
+            screenX - MaximumDropMarkerDiameter / 2.0,
+            screenY - MaximumDropMarkerDiameter / 2.0,
+            marker.Label);
     }
 
     private static IReadOnlyList<IReadOnlyList<RailProfilePoint>> AlignSegments(
@@ -512,11 +564,23 @@ public sealed record MaximumDropProfileComparisonSnapshot(
     IReadOnlyList<IReadOnlyList<RailProfilePoint>> AlignedLeftSegments,
     IReadOnlyList<RailProfilePoint> AlignedRightPoints,
     IReadOnlyList<IReadOnlyList<RailProfilePoint>> AlignedRightSegments,
+    MaximumDropProfileMarker? LeftMaximumDropMarker,
+    MaximumDropProfileMarker? RightMaximumDropMarker,
     IReadOnlyList<RailProfilePoint> StandardPoints,
     RepresentativeProfileBounds Bounds,
     string PointCountText,
     string XRangeText,
     string YRangeText);
+
+/// <summary>
+/// 最大掉块点的原始、显示坐标与标签信息。
+/// </summary>
+public sealed record MaximumDropProfileMarker(
+    PointCloudDeviceSide Side,
+    RailProfilePoint OriginalPoint,
+    RailProfilePoint DisplayPoint,
+    double Depth,
+    string Label);
 
 /// <summary>
 /// 绘图边界。
@@ -533,6 +597,11 @@ public readonly record struct RepresentativeProfileBounds(double MinX, double Ma
 /// <param name="Left">屏幕左坐标。</param>
 /// <param name="Top">屏幕上坐标。</param>
 public readonly record struct RepresentativeProfileScreenPoint(double Left, double Top);
+
+/// <summary>
+/// 最大掉块标记的屏幕坐标与显示文本。
+/// </summary>
+public sealed record MaximumDropProfileScreenMarker(double Left, double Top, string Label);
 
 /// <summary>
 /// 绘制结果。
@@ -584,6 +653,8 @@ public sealed record MaximumDropProfilePlotResult(
     Geometry StandardCurveGeometry,
     IReadOnlyList<RepresentativeProfileScreenPoint> LeftPoints,
     IReadOnlyList<RepresentativeProfileScreenPoint> RightPoints,
+    MaximumDropProfileScreenMarker? LeftMaximumDropMarker,
+    MaximumDropProfileScreenMarker? RightMaximumDropMarker,
     double XAxisX1,
     double XAxisX2,
     double XAxisY1,
@@ -599,6 +670,8 @@ public sealed record MaximumDropProfilePlotResult(
         Geometry.Empty,
         Array.Empty<RepresentativeProfileScreenPoint>(),
         Array.Empty<RepresentativeProfileScreenPoint>(),
+        null,
+        null,
         0.0,
         0.0,
         0.0,

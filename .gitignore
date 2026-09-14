@@ -15,3 +15,6 @@ GrindCar.Tests/codex_obj/
 .test-bin/
 ~$*
 ~WRL*.tmp
+/tmp/
+/GrindCar/tmp/
+/GrindCar.Tests/tmp/

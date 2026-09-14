@@ -231,6 +231,47 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <ItemsControl Panel.ZIndex="10"
+                                  ItemsSource="{Binding MaximumDropMarkerItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left"
+                                        Value="{Binding Left}" />
+                                <Setter Property="Canvas.Top"
+                                        Value="{Binding Top}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Ellipse Width="12"
+                                             Height="12"
+                                             HorizontalAlignment="Left"
+                                             VerticalAlignment="Top"
+                                             Fill="{DynamicResource MaximumDepthBrush}"
+                                             Stroke="{DynamicResource CanvasBackgroundBrush}"
+                                             StrokeThickness="2" />
+                                    <Border Margin="16,-22,0,0"
+                                            Padding="6,4"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"
+                                            Background="{DynamicResource CardBackgroundBrush}"
+                                            BorderBrush="{DynamicResource MaximumDepthBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4">
+                                        <TextBlock Foreground="{DynamicResource PrimaryTextBrush}"
+                                                   FontSize="11"
+                                                   Text="{Binding Label}" />
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Canvas>
             </Grid>
         </Border>

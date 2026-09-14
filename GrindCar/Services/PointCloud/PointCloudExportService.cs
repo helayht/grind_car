@@ -372,13 +372,28 @@ public sealed class PointCloudExportService
             throw new PointCloudSdkException("点云图像数据为空。");
         }
 
-        if (pointCloudImage.pData == IntPtr.Zero || pointCloudImage.nDataLen == 0)
+        return DecodePointCloudBuffer(new PointCloudImageBuffer(
+            pointCloudImage.pData,
+            pointCloudImage.nDataLen,
+            pointCloudImage.nWidth,
+            pointCloudImage.nHeight,
+            pointCloudImage.fXScale,
+            pointCloudImage.fYScale,
+            pointCloudImage.fZScale,
+            pointCloudImage.nXOffset,
+            pointCloudImage.nYOffset,
+            pointCloudImage.nZOffset));
+    }
+
+    internal static IReadOnlyList<PointCloudPoint3D> DecodePointCloudBuffer(PointCloudImageBuffer pointCloudImage)
+    {
+        if (pointCloudImage.DataPointer == IntPtr.Zero || pointCloudImage.DataLength == 0)
         {
             throw new PointCloudSdkException("点云图像数据缓冲区为空。");
         }
 
-        ulong pointCountByShape = (ulong)pointCloudImage.nWidth * pointCloudImage.nHeight;
-        int dataLength = checked((int)pointCloudImage.nDataLen);
+        ulong pointCountByShape = (ulong)pointCloudImage.Width * pointCloudImage.Height;
+        int dataLength = checked((int)pointCloudImage.DataLength);
         DecodeFormat decodeFormat = ResolveDecodeFormat(dataLength, pointCountByShape);
 
         if (decodeFormat.PointCount <= 0)
@@ -441,10 +456,12 @@ public sealed class PointCloudExportService
         throw new PointCloudSdkException($"点云数据长度异常，无法识别坐标格式。DataLen={dataLength}");
     }
 
-    private static IReadOnlyList<PointCloudPoint3D> DecodeFloatPointCloud(MV3D_LP_IMAGE_DATA pointCloudImage, int pointCount)
+    private static IReadOnlyList<PointCloudPoint3D> DecodeFloatPointCloud(
+        PointCloudImageBuffer pointCloudImage,
+        int pointCount)
     {
         var rawValues = new float[pointCount * PointCoordinateCount];
-        Marshal.Copy(pointCloudImage.pData, rawValues, 0, rawValues.Length);
+        Marshal.Copy(pointCloudImage.DataPointer, rawValues, 0, rawValues.Length);
 
         var points = new List<PointCloudPoint3D>(pointCount);
         for (int index = 0; index < pointCount; index++)
@@ -465,17 +482,19 @@ public sealed class PointCloudExportService
         return points;
     }
 
-    private static IReadOnlyList<PointCloudPoint3D> DecodeInt16PointCloud(MV3D_LP_IMAGE_DATA pointCloudImage, int pointCount)
+    private static IReadOnlyList<PointCloudPoint3D> DecodeInt16PointCloud(
+        PointCloudImageBuffer pointCloudImage,
+        int pointCount)
     {
         var rawValues = new short[pointCount * PointCoordinateCount];
-        Marshal.Copy(pointCloudImage.pData, rawValues, 0, rawValues.Length);
+        Marshal.Copy(pointCloudImage.DataPointer, rawValues, 0, rawValues.Length);
 
-        float xScale = pointCloudImage.fXScale;
-        float yScale = pointCloudImage.fYScale;
-        float zScale = pointCloudImage.fZScale;
-        int xOffset = pointCloudImage.nXOffset;
-        int yOffset = pointCloudImage.nYOffset;
-        int zOffset = pointCloudImage.nZOffset;
+        float xScale = pointCloudImage.XScale;
+        float yScale = pointCloudImage.YScale;
+        float zScale = pointCloudImage.ZScale;
+        int xOffset = pointCloudImage.XOffset;
+        int yOffset = pointCloudImage.YOffset;
+        int zOffset = pointCloudImage.ZOffset;
 
         var points = new List<PointCloudPoint3D>(pointCount);
         for (int index = 0; index < pointCount; index++)
@@ -568,3 +587,15 @@ public sealed class PointCloudExportService
         }
     }
 }
+
+internal readonly record struct PointCloudImageBuffer(
+    IntPtr DataPointer,
+    uint DataLength,
+    uint Width,
+    uint Height,
+    float XScale,
+    float YScale,
+    float ZScale,
+    int XOffset,
+    int YOffset,
+    int ZOffset);

@@ -14,7 +14,7 @@ public class PointCloudGrindDepthDebugWorkflowService
     private readonly MaximumDropProfileService? _maximumDropProfileService;
     private readonly IPointCloudProfileAnalysisService? _profileAnalysisService;
     private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult> _grindDepthCalculator;
-    private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, IReadOnlyList<GrindDepthResult>> _defectGrindDepthCalculator;
+    private readonly Func<IReadOnlyList<int>, MaximumDropProfileResult, IReadOnlyList<GrindDepthResult>> _defectGrindDepthCalculator;
 
     public PointCloudGrindDepthDebugWorkflowService()
         : this(
@@ -35,7 +35,7 @@ public class PointCloudGrindDepthDebugWorkflowService
         IPointCloudRepresentativeProfileService profileService,
         MaximumDropProfileService? maximumDropProfileService,
         Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult> grindDepthCalculator,
-        Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, IReadOnlyList<GrindDepthResult>> defectGrindDepthCalculator)
+        Func<IReadOnlyList<int>, MaximumDropProfileResult, IReadOnlyList<GrindDepthResult>> defectGrindDepthCalculator)
     {
         _profileService = profileService ?? throw new ArgumentNullException(nameof(profileService));
         _maximumDropProfileService = maximumDropProfileService;
@@ -48,7 +48,7 @@ public class PointCloudGrindDepthDebugWorkflowService
     internal PointCloudGrindDepthDebugWorkflowService(
         IPointCloudProfileAnalysisService profileAnalysisService,
         Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult> grindDepthCalculator,
-        Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, IReadOnlyList<GrindDepthResult>> defectGrindDepthCalculator)
+        Func<IReadOnlyList<int>, MaximumDropProfileResult, IReadOnlyList<GrindDepthResult>> defectGrindDepthCalculator)
     {
         _profileAnalysisService = profileAnalysisService ??
             throw new ArgumentNullException(nameof(profileAnalysisService));
@@ -227,7 +227,7 @@ public class PointCloudGrindDepthDebugWorkflowService
 
         IReadOnlyList<GrindDepthResult> results = _defectGrindDepthCalculator(
             applicableAngles,
-            maximumDropProfile.ProfilePoints);
+            maximumDropProfile);
         var calculatedAngles = new HashSet<int>();
         for (int index = 0; index < results.Count; index++)
         {

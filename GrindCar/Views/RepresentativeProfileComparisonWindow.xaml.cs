@@ -47,7 +47,7 @@ public partial class RepresentativeProfileComparisonWindow : Window
         MaximumDropProfileResult? rightMaximumDropProfile)
     {
         InitializeComponent();
-        Title = "Left/Right 最大掉块廓形与标准轨面对比";
+        Title = "Left/Right 标准对齐后最大掉块廓形与标准轨面对比";
         _viewModel = new RepresentativeProfileComparisonViewModel(
             leftMaximumDropProfile,
             rightMaximumDropProfile);

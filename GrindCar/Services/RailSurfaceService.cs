@@ -90,8 +90,25 @@ public static class RailSurfaceService
     }
 
     /// <summary>
-    /// 基于单侧最大掉块廓形计算各角度的附加打磨深度。
-    /// 仅将标准轨面法向支撑值高于测量廓形的部分计为向下缺失深度。
+    /// 基于单侧最大掉块结果计算各角度的附加打磨深度。
+    /// 计算前会将掉块廓形按标准轨面的最小对齐量整体向上平移。
+    /// </summary>
+    public static IReadOnlyList<GrindDepthResult> CalculateDefectGrindDepths(
+        IReadOnlyList<int> angles,
+        MaximumDropProfileResult maximumDropProfile)
+    {
+        if (maximumDropProfile == null)
+        {
+            throw new ArgumentNullException(nameof(maximumDropProfile));
+        }
+
+        return CalculateDefectGrindDepths(angles, maximumDropProfile.ShiftedProfilePoints);
+    }
+
+    /// <summary>
+    /// 基于已调整的单侧掉块廓形计算各角度的附加打磨深度。
+    /// 调用方需自行确保点集已完成所需的高度调整。
+    /// 仅将测量廓形法向支撑值高于标准轨面的部分计为打磨深度。
     /// </summary>
     public static IReadOnlyList<GrindDepthResult> CalculateDefectGrindDepths(
         IReadOnlyList<int> angles,
@@ -121,7 +138,7 @@ public static class RailSurfaceService
                 angleRadians,
                 adjustedDefectProfilePoints);
             double standardOffset = StandardRailProfileSolver.SolveNormalOffset(angleRadians);
-            double defectDepth = Math.Max(0.0, standardOffset - profileOffset);
+            double defectDepth = Math.Max(0.0, profileOffset - standardOffset);
             results.Add(new GrindDepthResult(angle, defectDepth));
         }
 
@@ -168,7 +185,7 @@ public static class RailSurfaceService
             angleRadians,
             representativeSectionPoints);
         double standardOffset = StandardRailProfileSolver.SolveNormalOffset(angleRadians);
-        return Math.Abs(representativeOffset - standardOffset);
+        return Math.Max(0.0, representativeOffset - standardOffset);
     }
 
     internal static bool IsDefectAngleApplicable(PointCloudDeviceSide side, int angle)

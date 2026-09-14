@@ -25,7 +25,7 @@ public class MeasurementParameterService : IMeasurementParameterService
     private readonly Func<PointCloudCaptureSettings> _captureSettingsProvider;
     private readonly Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, PointCloudMedianSectionCaptureResult> _deviceAnalysisCapture;
     private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult> _grindDepthCalculator;
-    private readonly Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, IReadOnlyList<GrindDepthResult>> _defectGrindDepthCalculator;
+    private readonly Func<IReadOnlyList<int>, MaximumDropProfileResult, IReadOnlyList<GrindDepthResult>> _defectGrindDepthCalculator;
 
     public MeasurementParameterService()
         : this(CreateDefaultPlcClient)
@@ -39,7 +39,7 @@ public class MeasurementParameterService : IMeasurementParameterService
         Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, IReadOnlyList<RailProfilePoint>>? representativePointCapture = null,
         Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, GrindDepthCalculationResult>? grindDepthCalculator = null,
         Func<ConfiguredPointCloudDevice, PointCloudCaptureSettings, MeasurementPointCloudArchiveContext?, PointCloudMedianSectionCaptureResult>? deviceAnalysisCapture = null,
-        Func<IReadOnlyList<int>, IReadOnlyList<RailProfilePoint>, IReadOnlyList<GrindDepthResult>>? defectGrindDepthCalculator = null)
+        Func<IReadOnlyList<int>, MaximumDropProfileResult, IReadOnlyList<GrindDepthResult>>? defectGrindDepthCalculator = null)
     {
         _plcClientFactory = plcClientFactory ?? throw new ArgumentNullException(nameof(plcClientFactory));
         _configuredDeviceProvider = configuredDeviceProvider ?? RepresentativeSectionCaptureService.GetAvailableConfiguredDevicesInOrder;
@@ -439,7 +439,7 @@ public class MeasurementParameterService : IMeasurementParameterService
 
         IReadOnlyList<GrindDepthResult> results = _defectGrindDepthCalculator(
             applicableAngles,
-            maximumDropProfile.ProfilePoints);
+            maximumDropProfile);
         var calculatedAngles = new HashSet<int>();
         for (int index = 0; index < results.Count; index++)
         {

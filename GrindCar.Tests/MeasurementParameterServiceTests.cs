@@ -230,10 +230,10 @@ public class MeasurementParameterServiceTests
                         new[] { new RailProfilePoint(0.0, 0.0) }),
                     maximumDropProfile);
             },
-            defectGrindDepthCalculator: (angles, points) =>
+            defectGrindDepthCalculator: (angles, profile) =>
             {
-                defectAngleCalls.Add((points[0].Y, angles.ToArray()));
-                return angles.Select(angle => new GrindDepthResult(angle, points[0].Y)).ToArray();
+                defectAngleCalls.Add((profile.ProfilePoints[0].Y, angles.ToArray()));
+                return angles.Select(angle => new GrindDepthResult(angle, profile.ProfilePoints[0].Y)).ToArray();
             });
 
         MeasurementGrindingWorkflowResult result = await service.RunMeasurementWorkflowAsync(

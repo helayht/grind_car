@@ -172,51 +172,6 @@ public class ProfileRegistrationTransformServiceTests
         Assert.InRange(error, 0.0, 0.02);
     }
 
-    [Theory]
-    [InlineData(PointCloudDeviceSide.Left, false)]
-    [InlineData(PointCloudDeviceSide.Left, true)]
-    [InlineData(PointCloudDeviceSide.Right, false)]
-    [InlineData(PointCloudDeviceSide.Right, true)]
-    public void ComposeWithGlobalDelta_WithCurrentParameters_MatchesSequentialTransform(
-        PointCloudDeviceSide side,
-        bool isMirrored)
-    {
-        var service = new ProfileRegistrationTransformService();
-        var basePoints = new List<RailProfilePoint>
-        {
-            new(-4.0, 1.0),
-            new(-1.0, 5.0),
-            new(3.0, 2.0),
-            new(6.0, 8.0)
-        };
-        var currentParameters = new ProfileRegistrationParameters(4.0, -3.0, 12.0, isMirrored)
-        {
-            XMin = -100.0,
-            XMax = 100.0
-        };
-        var globalDelta = new ProfileRegistrationParameters(1.2, -0.7, 3.0);
-        IReadOnlyList<RailProfilePoint> currentPoints = service.Transform(basePoints, currentParameters, side);
-        IReadOnlyList<RailProfilePoint> expectedPoints = ApplyGlobalTransform(currentPoints, globalDelta);
-
-        ProfileRegistrationParameters composedParameters = service.ComposeWithGlobalDelta(
-            basePoints,
-            currentParameters,
-            globalDelta,
-            side);
-        IReadOnlyList<RailProfilePoint> actualPoints = service.Transform(basePoints, composedParameters, side);
-
-        Assert.Equal(expectedPoints.Count, actualPoints.Count);
-        for (int index = 0; index < expectedPoints.Count; index++)
-        {
-            Assert.Equal(expectedPoints[index].X, actualPoints[index].X, 10);
-            Assert.Equal(expectedPoints[index].Y, actualPoints[index].Y, 10);
-        }
-
-        Assert.Equal(isMirrored, composedParameters.IsMirrored);
-        Assert.Equal(currentParameters.XMin, composedParameters.XMin);
-        Assert.Equal(currentParameters.XMax, composedParameters.XMax);
-    }
-
     [Fact]
     public void CalculateStandardErrorMetrics_WithTwentyPercentOutliers_UsesIcpInlierRule()
     {

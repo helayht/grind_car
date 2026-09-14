@@ -80,8 +80,8 @@ public sealed class RepresentativeProfileComparisonViewModel : INotifyPropertyCh
         PointCountLabelText = "掉块廓形点数";
         XRangeText = _maximumDropSnapshot.XRangeText;
         YRangeText = _maximumDropSnapshot.YRangeText;
-        HeaderText = "Left/Right 最大掉块廓形与标准轨面对比";
-        CurveDescriptionText = "蓝色为 Left 原始折线，绿色为 Right 原始折线，橙色为标准轨面曲线。";
+        HeaderText = "Left/Right 标准对齐后最大掉块廓形与标准轨面对比";
+        CurveDescriptionText = "蓝色为 Left 标准对齐后折线，绿色为 Right 标准对齐后折线，橙色为标准轨面曲线，红色标记为各侧原始最大掉块位置。";
         LeftStatusText = BuildMaximumDropStatus("Left", leftMaximumDropProfile);
         RightStatusText = BuildMaximumDropStatus("Right", rightMaximumDropProfile);
         MaximumDropLegendVisibility = Visibility.Visible;
@@ -94,6 +94,8 @@ public sealed class RepresentativeProfileComparisonViewModel : INotifyPropertyCh
     public ObservableCollection<RepresentativeProfileScreenPoint> LeftPointItems { get; } = new();
 
     public ObservableCollection<RepresentativeProfileScreenPoint> RightPointItems { get; } = new();
+
+    public ObservableCollection<MaximumDropProfileScreenMarker> MaximumDropMarkerItems { get; } = new();
 
     public string PointCountLabelText { get; }
 
@@ -253,6 +255,7 @@ public sealed class RepresentativeProfileComparisonViewModel : INotifyPropertyCh
 
         LeftPointItems.Clear();
         RightPointItems.Clear();
+        MaximumDropMarkerItems.Clear();
 
         UpdateAxes(plot);
     }
@@ -280,6 +283,17 @@ public sealed class RepresentativeProfileComparisonViewModel : INotifyPropertyCh
         for (int index = 0; index < plot.RightPoints.Count; index++)
         {
             RightPointItems.Add(plot.RightPoints[index]);
+        }
+
+        MaximumDropMarkerItems.Clear();
+        if (plot.LeftMaximumDropMarker != null)
+        {
+            MaximumDropMarkerItems.Add(plot.LeftMaximumDropMarker);
+        }
+
+        if (plot.RightMaximumDropMarker != null)
+        {
+            MaximumDropMarkerItems.Add(plot.RightMaximumDropMarker);
         }
 
         XAxisX1 = plot.XAxisX1;

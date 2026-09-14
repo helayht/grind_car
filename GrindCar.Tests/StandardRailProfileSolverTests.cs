@@ -92,7 +92,7 @@ public class StandardRailProfileSolverTests
     [Theory]
     [InlineData(90)]
     [InlineData(-90)]
-    public void CalculateGrindDepths_VerticalAngle_ReturnsFiniteHorizontalGap(int angle)
+    public void CalculateGrindDepths_VerticalAngle_ReturnsZeroWhenProfileSupportIsBelowStandard(int angle)
     {
         var profilePoints = new[]
         {
@@ -106,6 +106,27 @@ public class StandardRailProfileSolverTests
             profilePoints);
 
         Assert.True(double.IsFinite(result.Results[0].GrindDepth));
-        Assert.Equal(0.4, result.Results[0].GrindDepth, 9);
+        Assert.Equal(0.0, result.Results[0].GrindDepth, 9);
+    }
+
+    [Theory]
+    [InlineData(1.0, 1.0)]
+    [InlineData(-1.0, 0.0)]
+    public void CalculateGrindDepths_ZeroAngle_OnlyCountsProfileAboveStandard(
+        double profileHeightOffset,
+        double expectedDepth)
+    {
+        var profilePoints = new[]
+        {
+            new RailProfilePoint(-1.0, StandardRailProfileSolver.RailSurfaceFun(-1.0) + profileHeightOffset),
+            new RailProfilePoint(0.0, StandardRailProfileSolver.RailSurfaceFun(0.0) + profileHeightOffset),
+            new RailProfilePoint(1.0, StandardRailProfileSolver.RailSurfaceFun(1.0) + profileHeightOffset)
+        };
+
+        GrindDepthCalculationResult result = RailSurfaceService.CalculateGrindDepths(
+            new[] { 0 },
+            profilePoints);
+
+        Assert.Equal(expectedDepth, result.Results[0].GrindDepth, 6);
     }
 }

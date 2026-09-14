@@ -33,7 +33,6 @@ public class PointCloudCaptureSettingsTests
             exception.Message.Contains("小车运行速度") ||
             exception.Message.Contains("单次测量总条数"));
     }
-
     [Fact]
     public void Store_SaveAndLoad_ReturnsSettings()
     {
@@ -136,6 +135,7 @@ public class PointCloudCaptureSettingsTests
         Assert.Equal(33.0, points[1].Z, 6);
     }
 
+    
     [Fact]
     public void DecodePointCloudImage_WithShapeMatchingFloatLength_DecodesFloatPoints()
     {
@@ -154,16 +154,20 @@ public class PointCloudCaptureSettingsTests
         IntPtr buffer = Marshal.AllocHGlobal(12);
         try
         {
-            var image = new MV3D_LP_IMAGE_DATA
-            {
-                nWidth = 0,
-                nHeight = 0,
-                nDataLen = 12,
-                pData = buffer
-            };
+            var image = new PointCloudImageBuffer(
+                buffer,
+                12,
+                0,
+                0,
+                0.0f,
+                0.0f,
+                0.0f,
+                0,
+                0,
+                0);
 
             PointCloudSdkException exception = Assert.Throws<PointCloudSdkException>(() =>
-                PointCloudExportService.DecodePointCloudImage(image));
+                PointCloudExportService.DecodePointCloudBuffer(image));
 
             Assert.Contains("格式歧义", exception.Message);
         }
@@ -182,15 +186,19 @@ public class PointCloudCaptureSettingsTests
         try
         {
             Marshal.Copy(rawValues, 0, buffer, rawValues.Length);
-            var image = new MV3D_LP_IMAGE_DATA
-            {
-                nWidth = width,
-                nHeight = height,
-                nDataLen = (uint)(rawValues.Length * sizeof(float)),
-                pData = buffer
-            };
+            var image = new PointCloudImageBuffer(
+                buffer,
+                (uint)(rawValues.Length * sizeof(float)),
+                width,
+                height,
+                0.0f,
+                0.0f,
+                0.0f,
+                0,
+                0,
+                0);
 
-            return PointCloudExportService.DecodePointCloudImage(image);
+            return PointCloudExportService.DecodePointCloudBuffer(image);
         }
         finally
         {
@@ -207,21 +215,19 @@ public class PointCloudCaptureSettingsTests
         try
         {
             Marshal.Copy(rawValues, 0, buffer, rawValues.Length);
-            var image = new MV3D_LP_IMAGE_DATA
-            {
-                nWidth = width,
-                nHeight = height,
-                nDataLen = (uint)(rawValues.Length * sizeof(short)),
-                pData = buffer,
-                fXScale = 0.5f,
-                fYScale = 0.5f,
-                fZScale = 0.5f,
-                nXOffset = 10,
-                nYOffset = 20,
-                nZOffset = 30
-            };
+            var image = new PointCloudImageBuffer(
+                buffer,
+                (uint)(rawValues.Length * sizeof(short)),
+                width,
+                height,
+                0.5f,
+                0.5f,
+                0.5f,
+                10,
+                20,
+                30);
 
-            return PointCloudExportService.DecodePointCloudImage(image);
+            return PointCloudExportService.DecodePointCloudBuffer(image);
         }
         finally
         {
