@@ -27,5 +27,6 @@ public interface IMeasurementParameterService
         int port,
         IProgress<string>? progress = null,
         Action? measurementEnded = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IProgress<MeasurementWorkflowStage>? stageProgress = null);
 }

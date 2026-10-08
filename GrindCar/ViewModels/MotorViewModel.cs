@@ -55,7 +55,7 @@ public class MotorViewModel : INotifyPropertyChanged
     private bool _isConnecting;
     private string _speedUnit = string.Empty;
     private string _speedStatus = "暂无数据";
-    private string _dashboardTimestamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
+    private string _dashboardTimestamp = DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss", CultureInfo.CurrentCulture);
 
     /// <summary>
     /// 初始化电机调试视图模型，构建参数集合、命令和首页演示数据。
@@ -615,7 +615,7 @@ public class MotorViewModel : INotifyPropertyChanged
 
     private void DashboardTimerTick(object? sender, EventArgs e)
     {
-        DashboardTimestamp = DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture);
+        DashboardTimestamp = DateTime.Now.ToString("yyyy-MM-dd  HH:mm:ss", CultureInfo.CurrentCulture);
     }
 
     private MotorParameterItemViewModel AddReadOnly(string name)

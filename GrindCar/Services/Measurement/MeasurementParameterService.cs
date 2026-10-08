@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GrindCar.Definitions;
+using GrindCar.Models.Measurement;
 using GrindCar.Models.PointCloud;
 using GrindCar.Models.Rail;
 using GrindCar.Services.PointCloud;
@@ -189,7 +190,8 @@ public partial class MeasurementParameterService : IMeasurementParameterService
         int port,
         IProgress<string>? progress = null,
         Action? measurementEnded = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<MeasurementWorkflowStage>? stageProgress = null)
     {
         IReadOnlyList<int> angles = MotorParameterDefinitions.MeasurementGrindingAngles;
         PointCloudCaptureSettings captureSettings = _captureSettingsProvider();
@@ -216,6 +218,7 @@ public partial class MeasurementParameterService : IMeasurementParameterService
         await plcClient.WriteSingleCoilAsync(MotorParameterDefinitions.MeasurementMotionStartAddress, true)
             .ConfigureAwait(false);
         Report(progress, "已写入测量运行启动信号，开始等待触发。");
+        stageProgress?.Report(MeasurementWorkflowStage.Positioning);
 
         int sampleCount = 0;
         bool lastCaptureTrigger = false;
@@ -229,6 +232,7 @@ public partial class MeasurementParameterService : IMeasurementParameterService
             {
                 measurementEnded?.Invoke();
                 Report(progress, "检测到测量定位完成信号，开始汇总打磨深度。");
+                stageProgress?.Report(MeasurementWorkflowStage.Calculating);
                 break;
             }
 
@@ -242,6 +246,7 @@ public partial class MeasurementParameterService : IMeasurementParameterService
 
             lastCaptureTrigger = captureTrigger;
             ConfiguredPointCloudDevice device = configuredDevices[nextDeviceIndex];
+            stageProgress?.Report(MeasurementWorkflowStage.Capturing);
             Report(
                 progress,
                 $"检测到当前廓形测量启动上升沿，正在采集第 {nextDeviceIndex + 1} 台廓形仪 ({device.Side})。");
@@ -294,6 +299,7 @@ public partial class MeasurementParameterService : IMeasurementParameterService
             }
 
             Report(progress, $"两台廓形仪测量完成，正在计算第 {sampleCount + 1} 组打磨深度。");
+            stageProgress?.Report(MeasurementWorkflowStage.Calculating);
             GrindDepthCalculationResult calculationResult =
                 _grindDepthCalculator(angles, pendingRepresentativePoints);
             AccumulateSingleMeasurement(depthAccumulatorMap, calculationResult.Results);
@@ -318,6 +324,7 @@ public partial class MeasurementParameterService : IMeasurementParameterService
             pendingRightDropProfile = null;
             nextDeviceIndex = 0;
             Report(progress, $"第 {sampleCount} 组测量计算完成。");
+            stageProgress?.Report(MeasurementWorkflowStage.Capturing);
         }
 
         if (nextDeviceIndex != 0)

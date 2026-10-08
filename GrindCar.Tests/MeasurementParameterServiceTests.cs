@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using GrindCar.Definitions;
 using GrindCar.Models.PointCloud;
+using GrindCar.Models.Measurement;
 using GrindCar.Models.Rail;
 using GrindCar.Services;
 using GrindCar.Services.Measurement;
@@ -14,6 +15,13 @@ namespace GrindCar.Tests;
 
 public class MeasurementParameterServiceTests
 {
+    private sealed class ImmediateProgress<T> : IProgress<T>
+    {
+        private readonly Action<T> _report;
+        public ImmediateProgress(Action<T> report) => _report = report;
+        public void Report(T value) => _report(value);
+    }
+
     [Fact]
     public async Task WriteGrindingTimesAsync_WithUnsupportedAngles_RejectsEntireBatchBeforeConnecting()
     {
@@ -71,6 +79,7 @@ public class MeasurementParameterServiceTests
         };
         var capturedSerialNumbers = new List<string>();
         bool measurementEnded = false;
+        var stages = new List<MeasurementWorkflowStage>();
         var service = new MeasurementParameterService(
             (ipAddress, port) => plcClient,
             () => devices,
@@ -88,8 +97,14 @@ public class MeasurementParameterServiceTests
         MeasurementGrindingWorkflowResult result = await service.RunMeasurementWorkflowAsync(
             "127.0.0.1",
             502,
-            measurementEnded: () => measurementEnded = true);
+            measurementEnded: () => measurementEnded = true,
+            stageProgress: new ImmediateProgress<MeasurementWorkflowStage>(stages.Add));
 
+        Assert.Equal(MeasurementWorkflowStage.Positioning, stages.First());
+        Assert.Equal(MeasurementWorkflowStage.Calculating, stages.Last());
+        Assert.Contains(MeasurementWorkflowStage.Capturing, stages);
+        Assert.Equal(2, stages.Count(stage => stage == MeasurementWorkflowStage.Calculating));
+        Assert.DoesNotContain(MeasurementWorkflowStage.Writing, stages);
         Assert.True(measurementEnded);
         Assert.Equal(1, result.SampleCount);
         Assert.Single(result.RepresentativeProfiles);

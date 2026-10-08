@@ -224,7 +224,7 @@ public partial class MainWindow : Window
 
     /// <summary>正式测量和 CSV 验证共用流程锁及后处理入口。</summary>
     private async Task RunResultWorkflowAsync(
-        Window owner, Func<Task<MeasurementGrindingWorkflowResult>> calculateAsync)
+        Window owner, Func<Task<MeasurementGrindingWorkflowResult>> calculateAsync, bool offline = false)
     {
         if (!Measurement.CanOperate)
         {
@@ -240,8 +240,14 @@ public partial class MainWindow : Window
         {
             foreach (Window window in otherWindows)
                 window.SetCurrentValue(IsEnabledProperty, false);
+            if (offline) Measurement.Activity.Begin(offline: true);
             MeasurementGrindingWorkflowResult result = await calculateAsync();
             await ProcessGrindingResultAsync(owner, result);
+        }
+        catch (Exception ex)
+        {
+            Measurement.SetErrorStatus($"流程执行失败：{ex.Message}");
+            throw;
         }
         finally
         {
@@ -257,6 +263,7 @@ public partial class MainWindow : Window
     {
         try
         {
+            Measurement.Activity.SetStage(GrindCar.Models.Measurement.MeasurementWorkflowStage.Confirming);
             ShowMeasurementProfileComparison(owner, result);
             var confirmationWindow = new GrindDepthConfirmationWindow(result.Results, result.MaximumDropProfile)
             {

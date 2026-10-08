@@ -28,6 +28,9 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
     private readonly PointCloudCaptureSettingsStore _pointCloudCaptureSettingsStore;
     private readonly MeasurementPositionSettingsStore _positionSettingsStore;
     public DashboardTelemetryViewModel Telemetry { get; }
+    public DashboardActivityViewModel Activity { get; } = new();
+    private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
+    public bool IsPlcConnected => _plcConnection.IsConnected;
     private string _profilerPositionText = string.Empty;
     private string _avoidancePositionText = string.Empty;
     private string _positionSaveStatus = "测量位置参数尚未保存。";
@@ -102,6 +105,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
             }
         }
         catch (Exception ex) { PositionSaveStatus = ex.Message; }
+        Activity.AddMessage(StatusMessage);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -202,6 +206,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
         get => _statusMessage;
         private set
         {
+            Activity.AddMessage(value);
             if (_statusMessage == value)
             {
                 return;
@@ -308,11 +313,13 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
     {
         try { _positionSettingsStore.Save(CreatePositions()); PositionSaveStatus = "测量位置参数已保存到本地，未写入PLC。"; }
         catch (Exception ex) { PositionSaveStatus = $"保存失败：{ex.Message}"; }
+        StatusMessage = PositionSaveStatus;
     }
 
 
     public async Task<MeasurementGrindingWorkflowResult> StartMeasurementMotionAsync()
     {
+        Activity.Begin();
         try
         {
             IsBusy = true;
@@ -321,14 +328,15 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
             StatusMessage =
                 $"点云采集参数已保存，帧率 {captureSettings.FrameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz，正在启动测量流程...";
 
-            var progress = new Progress<string>(message => StatusMessage = message);
+            var progress = new UiProgress<string>(_uiContext, message => StatusMessage = message);
             SynchronizationContext? uiContext = SynchronizationContext.Current;
             MeasurementGrindingWorkflowResult result =
                 await _measurementParameterService.RunMeasurementWorkflowAsync(
                     _plcIpAddress,
                     _plcPort,
                     progress,
-                    () => NotifyMeasurementEnded(uiContext)).ConfigureAwait(true);
+                    () => NotifyMeasurementEnded(uiContext),
+                    stageProgress: new UiProgress<MeasurementWorkflowStage>(_uiContext, Activity.SetStage)).ConfigureAwait(true);
 
             StatusMessage =
                 $"测量流程完成：累计 {result.SampleCount.ToString(CultureInfo.CurrentCulture)} 次测量，已生成 {result.Results.Count.ToString(CultureInfo.CurrentCulture)} 个角度的打磨深度。";
@@ -345,6 +353,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
         try
         {
             IsBusy = true;
+            Activity.SetStage(MeasurementWorkflowStage.Writing);
             StatusMessage = "正在写入确认后的打磨次数...";
 
             await _measurementParameterService.WriteGrindingTimesAsync(
@@ -354,6 +363,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
 
             StatusMessage =
                 $"打磨次数已写入 PLC，共写入 {results.Count.ToString(CultureInfo.CurrentCulture)} 个角度。";
+            Activity.Complete();
         }
         finally
         {
@@ -363,6 +373,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
 
     public void SetMeasurementWriteCanceled()
     {
+        Activity.Cancel();
         StatusMessage = "已取消写入 PLC。";
     }
 
@@ -387,6 +398,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
 
     public void SetErrorStatus(string message)
     {
+        Activity.Fail();
         StatusMessage = message;
     }
 
@@ -441,11 +453,21 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
 
     private void PlcConnection_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        OnPropertyChanged(nameof(CanWriteMeasurementParameters));
-        if (e.PropertyName == nameof(SharedPlcConnectionService.ConnectionStatus))
+        string connectionStatus = PlcConnectionStatus;
+        void Update()
         {
-            OnPropertyChanged(nameof(PlcConnectionStatus));
+            OnPropertyChanged(nameof(CanWriteMeasurementParameters));
+            OnPropertyChanged(nameof(IsPlcConnected));
+            if (e.PropertyName == nameof(SharedPlcConnectionService.ConnectionStatus))
+            {
+                OnPropertyChanged(nameof(PlcConnectionStatus));
+                Activity.AddMessage(connectionStatus);
+            }
         }
+        // Connection notifications can originate while the PLC operation lock is held.
+        // Post instead of blocking that worker on the dispatcher.
+        if (_uiContext == null || SynchronizationContext.Current == _uiContext) Update();
+        else _uiContext.Post(_ => Update(), null);
     }
 
     private void TelemetryChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(nameof(CanWriteMeasurementParameters));
@@ -462,6 +484,22 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
         OnPropertyChanged(nameof(EndpointText));
         OnPropertyChanged(nameof(PlcIpAddress));
         OnPropertyChanged(nameof(PlcPort));
+    }
+
+    private sealed class UiProgress<T> : IProgress<T>
+    {
+        private readonly SynchronizationContext? _context;
+        private readonly Action<T> _report;
+        public UiProgress(SynchronizationContext? context, Action<T> report)
+        {
+            _context = context;
+            _report = report;
+        }
+        public void Report(T value)
+        {
+            if (_context == null || SynchronizationContext.Current == _context) _report(value);
+            else _context.Send(_ => _report(value), null);
+        }
     }
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
