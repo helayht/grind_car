@@ -80,6 +80,7 @@ public class MeasurementParameterServiceTests
         var capturedSerialNumbers = new List<string>();
         bool measurementEnded = false;
         var stages = new List<MeasurementWorkflowStage>();
+        var profiles = new List<MeasurementRepresentativeProfile>();
         var service = new MeasurementParameterService(
             (ipAddress, port) => plcClient,
             () => devices,
@@ -98,7 +99,8 @@ public class MeasurementParameterServiceTests
             "127.0.0.1",
             502,
             measurementEnded: () => measurementEnded = true,
-            stageProgress: new ImmediateProgress<MeasurementWorkflowStage>(stages.Add));
+            stageProgress: new ImmediateProgress<MeasurementWorkflowStage>(stages.Add),
+            profileProgress: new ImmediateProgress<MeasurementRepresentativeProfile>(profiles.Add));
 
         Assert.Equal(MeasurementWorkflowStage.Positioning, stages.First());
         Assert.Equal(MeasurementWorkflowStage.Calculating, stages.Last());
@@ -107,6 +109,8 @@ public class MeasurementParameterServiceTests
         Assert.DoesNotContain(MeasurementWorkflowStage.Writing, stages);
         Assert.True(measurementEnded);
         Assert.Equal(1, result.SampleCount);
+        Assert.Single(profiles);
+        Assert.Same(profiles[0], result.RepresentativeProfiles[0]);
         Assert.Single(result.RepresentativeProfiles);
         Assert.Equal(new[] { new RailProfilePoint(1, 1), new RailProfilePoint(2, 1) },
             result.RepresentativeProfiles[0].Points);
@@ -115,6 +119,15 @@ public class MeasurementParameterServiceTests
         Assert.Equal(1, plcClient.CountWrites(MotorParameterDefinitions.MeasurementMotionStartAddress, true));
         Assert.Equal(trailingHalfGroup ? 3 : 2,
             plcClient.CountWrites(MotorParameterDefinitions.MeasurementCurrentProfileCompletedAddress, true));
+        plcClient = new FakePlcClient(
+            positionCompletedValues: new[] { false, false, false, true },
+            captureTriggerValues: new[] { true, false, true });
+        var messages = new List<string>();
+        MeasurementGrindingWorkflowResult completed = await service.RunMeasurementWorkflowAsync("127.0.0.1", 502,
+            progress: new ImmediateProgress<string>(messages.Add),
+            profileProgress: new ImmediateProgress<MeasurementRepresentativeProfile>(_ => throw new InvalidOperationException("绘图通知故障")));
+        Assert.Equal(1, completed.SampleCount);
+        Assert.Contains(messages, message => message.Contains("首页廓形通知失败"));
     }
 
     [Fact]
@@ -282,13 +295,17 @@ public class MeasurementParameterServiceTests
                 return angles.Select(angle => new GrindDepthResult(angle, profile.ProfilePoints[0].Y)).ToArray();
             });
 
+        var published = new List<MeasurementRepresentativeProfile>();
         MeasurementGrindingWorkflowResult result = await service.RunMeasurementWorkflowAsync(
             "127.0.0.1",
-            502);
+            502, profileProgress: new ImmediateProgress<MeasurementRepresentativeProfile>(published.Add));
 
         MeasurementGrindingTimesResult zeroAngleResult =
             result.Results.Single(item => item.Angle == 0);
         Assert.Equal(2, result.SampleCount);
+        Assert.Equal(new[] { 1, 2 }, published.Select(profile => profile.SampleIndex));
+        Assert.Same(published[0], result.RepresentativeProfiles[0]);
+        Assert.Same(published[1], result.RepresentativeProfiles[1]);
         Assert.Equal(new[] { 1, 2 }, result.RepresentativeProfiles.Select(profile => profile.SampleIndex));
         Assert.All(result.RepresentativeProfiles, profile => Assert.NotEmpty(profile.Points));
         Assert.Equal(0.2, zeroAngleResult.RegularAverageDepth, 6);

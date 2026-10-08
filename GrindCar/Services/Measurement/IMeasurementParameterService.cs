@@ -28,5 +28,6 @@ public interface IMeasurementParameterService
         IProgress<string>? progress = null,
         Action? measurementEnded = null,
         CancellationToken cancellationToken = default,
-        IProgress<MeasurementWorkflowStage>? stageProgress = null);
+        IProgress<MeasurementWorkflowStage>? stageProgress = null,
+        IProgress<MeasurementRepresentativeProfile>? profileProgress = null);
 }

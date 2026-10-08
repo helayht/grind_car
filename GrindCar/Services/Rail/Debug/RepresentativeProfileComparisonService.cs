@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Media;
 using GrindCar.Models.Rail;
 using GrindCar.Services;
+using GrindCar.Services.Rail.Core;
 
 namespace GrindCar.Services.Rail.Debug;
 
@@ -28,6 +29,19 @@ public sealed class RepresentativeProfileComparisonService
     private const double MaximumDropMarkerDiameter = 12.0;
     private const int RepresentativeInterpolationSteps = 10;
     private const int StandardSampleCount = 240;
+
+    /// <summary>无需实测数据即可生成当前轨型完整定义域内的标准廓形。</summary>
+    public RepresentativeProfileComparisonSnapshot BuildStandardSnapshot()
+    {
+        IReadOnlyList<RailProfilePoint> points = BuildStandardPoints(new[]
+        {
+            new RailProfilePoint(StandardRailProfileSolver.LeftBoundaryX, 0),
+            new RailProfilePoint(StandardRailProfileSolver.RightBoundaryX, 0)
+        });
+        return new RepresentativeProfileComparisonSnapshot(Array.Empty<RailProfilePoint>(),
+            Array.Empty<IReadOnlyList<RailProfilePoint>>(), points,
+            BuildBounds(Array.Empty<RailProfilePoint>(), points), "0", string.Empty, string.Empty);
+    }
 
     /// <summary>
     /// 基于代表点构建对比展示所需的静态数据。
@@ -213,7 +227,7 @@ public sealed class RepresentativeProfileComparisonService
             yAxisX,
             yAxisX,
             PlotPadding,
-            plotHeight - PlotPadding);
+            plotHeight - PlotPadding) { Bounds = snapshot.Bounds };
     }
 
     /// <summary>
@@ -645,6 +659,9 @@ public sealed record RepresentativeProfilePlotResult(
     double YAxisY1,
     double YAxisY2)
 {
+    /// <summary>实际等比例映射后的坐标范围，供坐标刻度使用。</summary>
+    public RepresentativeProfileBounds? Bounds { get; init; }
+
     public static RepresentativeProfilePlotResult Empty { get; } = new(
         Geometry.Empty,
         Geometry.Empty,

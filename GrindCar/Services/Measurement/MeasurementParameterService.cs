@@ -191,7 +191,8 @@ public partial class MeasurementParameterService : IMeasurementParameterService
         IProgress<string>? progress = null,
         Action? measurementEnded = null,
         CancellationToken cancellationToken = default,
-        IProgress<MeasurementWorkflowStage>? stageProgress = null)
+        IProgress<MeasurementWorkflowStage>? stageProgress = null,
+        IProgress<MeasurementRepresentativeProfile>? profileProgress = null)
     {
         IReadOnlyList<int> angles = MotorParameterDefinitions.MeasurementGrindingAngles;
         PointCloudCaptureSettings captureSettings = _captureSettingsProvider();
@@ -318,7 +319,10 @@ public partial class MeasurementParameterService : IMeasurementParameterService
             }
 
             sampleCount++;
-            representativeProfiles.Add(new MeasurementRepresentativeProfile(sampleCount, pendingRepresentativePoints));
+            var profile = new MeasurementRepresentativeProfile(sampleCount, pendingRepresentativePoints);
+            representativeProfiles.Add(profile);
+            try { profileProgress?.Report(profile); }
+            catch (Exception ex) { Report(progress, $"首页廓形通知失败：{ex.Message}"); }
             pendingRepresentativePoints.Clear();
             pendingLeftDropProfile = null;
             pendingRightDropProfile = null;

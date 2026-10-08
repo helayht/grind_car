@@ -29,6 +29,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
     private readonly MeasurementPositionSettingsStore _positionSettingsStore;
     public DashboardTelemetryViewModel Telemetry { get; }
     public DashboardActivityViewModel Activity { get; } = new();
+    public DashboardProfileViewModel Profile { get; }
     private readonly SynchronizationContext? _uiContext = SynchronizationContext.Current;
     public bool IsPlcConnected => _plcConnection.IsConnected;
     private string _profilerPositionText = string.Empty;
@@ -67,6 +68,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
 
             _selectedProfileType = value;
             RailSurfaceService.SwitchProfile(value);
+            Profile.Reset(value);
             string profileName = GetProfileTypeDisplayName(value);
             StatusMessage = $"已切换为标准轨面型号：{profileName}";
             OnPropertyChanged();
@@ -82,6 +84,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
         MeasurementPositionSettingsStore? positionSettingsStore = null,
         DashboardTelemetryViewModel? telemetry = null)
     {
+        Profile = new DashboardProfileViewModel(Activity.AddMessage, _uiContext);
         _measurementParameterService = measurementParameterService ?? throw new ArgumentNullException(nameof(measurementParameterService));
         _plcConnection = plcConnection ?? throw new ArgumentNullException(nameof(plcConnection));
         _pointCloudCaptureSettingsStore = pointCloudCaptureSettingsStore ?? new PointCloudCaptureSettingsStore();
@@ -320,6 +323,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
     public async Task<MeasurementGrindingWorkflowResult> StartMeasurementMotionAsync()
     {
         Activity.Begin();
+        long profileRun = Profile.Begin(SelectedProfileType);
         try
         {
             IsBusy = true;
@@ -336,11 +340,22 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
                     _plcPort,
                     progress,
                     () => NotifyMeasurementEnded(uiContext),
-                    stageProgress: new UiProgress<MeasurementWorkflowStage>(_uiContext, Activity.SetStage)).ConfigureAwait(true);
+                    stageProgress: new UiProgress<MeasurementWorkflowStage>(_uiContext, stage =>
+                    {
+                        Activity.SetStage(stage);
+                        Profile.SetStage(profileRun, stage);
+                    }),
+                    profileProgress: Profile.CreateProgress(profileRun)).ConfigureAwait(true);
 
             StatusMessage =
                 $"测量流程完成：累计 {result.SampleCount.ToString(CultureInfo.CurrentCulture)} 次测量，已生成 {result.Results.Count.ToString(CultureInfo.CurrentCulture)} 个角度的打磨深度。";
+            Profile.End(profileRun, failed: false);
             return result;
+        }
+        catch
+        {
+            Profile.End(profileRun, failed: true);
+            throw;
         }
         finally
         {
@@ -474,6 +489,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposabl
 
     public void Dispose()
     {
+        Profile.Reset(SelectedProfileType);
         Telemetry.PropertyChanged -= TelemetryChanged;
         Telemetry.Dispose();
         _plcConnection.PropertyChanged -= PlcConnection_PropertyChanged;
