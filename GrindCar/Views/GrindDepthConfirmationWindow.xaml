@@ -44,11 +44,7 @@
             <Setter Property="Padding" Value="8,4" />
         </Style>
 
-        <Style TargetType="TextBox">
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-            <Setter Property="Background" Value="{DynamicResource WindowBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
-            <Setter Property="CaretBrush" Value="{DynamicResource PrimaryTextBrush}" />
+        <Style TargetType="TextBox" BasedOn="{StaticResource RoundedTextBoxStyle}">
             <Setter Property="Padding" Value="6,3" />
         </Style>
 
@@ -74,48 +70,27 @@
                                         IsReadOnly="True"
                                         Binding="{Binding Angle}" />
                     <DataGridTextColumn Width="*"
-                                        Header="常规平均深度"
-                                        IsReadOnly="True"
-                                        Binding="{Binding RegularAverageDepth, StringFormat=F6}" />
-                    <DataGridTextColumn Width="*"
-                                        Header="掉块深度"
-                                        IsReadOnly="True"
-                                        Binding="{Binding DefectDepth, StringFormat=F6}" />
-                    <DataGridTextColumn Width="*"
-                                        Header="最终建议深度"
+                                        Header="打磨深度"
                                         IsReadOnly="True"
                                         Binding="{Binding FinalGrindDepth, StringFormat=F6}" />
                     <DataGridTextColumn Width="*"
                                         Header="确认打磨深度"
+                                        EditingElementStyle="{StaticResource CompactTextBoxStyle}"
                                         Binding="{Binding ConfirmedDepthText, UpdateSourceTrigger=PropertyChanged}" />
-                    <DataGridTextColumn Width="120"
-                                        Header="打磨次数"
-                                        IsReadOnly="True"
-                                        Binding="{Binding GrindingTimes}" />
-                    <DataGridTextColumn Width="1.2*"
-                                        Header="校验"
-                                        IsReadOnly="True"
-                                        Binding="{Binding ErrorMessage}" />
                 </DataGrid.Columns>
             </DataGrid>
         </Border>
 
         <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
             <DockPanel LastChildFill="False">
-                <TextBlock DockPanel.Dock="Left"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource SecondaryTextBrush}"
-                           Text="{Binding SummaryText}" />
                 <StackPanel DockPanel.Dock="Right"
                             Orientation="Horizontal">
                     <Button Width="92"
-                            Height="34"
                             Margin="0,0,10,0"
                             Style="{DynamicResource SecondaryButtonStyle}"
                             Content="取消"
                             Click="Cancel_Click" />
                     <Button Width="92"
-                            Height="34"
                             Style="{DynamicResource PrimaryButtonStyle}"
                             Content="确认"
                             Click="Confirm_Click" />

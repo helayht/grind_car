@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GrindCar.Definitions;
@@ -15,7 +16,7 @@ namespace GrindCar.Services.Measurement;
 /// <summary>
 /// 通过 Modbus 写入测量参数。
 /// </summary>
-public class MeasurementParameterService : IMeasurementParameterService
+public partial class MeasurementParameterService : IMeasurementParameterService
 {
     private const byte DefaultUnitId = 1;
     private const int DefaultPollIntervalMs = 300;
@@ -157,6 +158,15 @@ public class MeasurementParameterService : IMeasurementParameterService
             throw new InvalidOperationException("没有可写入的打磨次数。");
         }
 
+        int[] unsupportedAngles = results.Select(result => result.Angle)
+            .Where(angle => !MotorParameterDefinitions.MeasurementGrindingTimesAddresses.ContainsKey(angle))
+            .Distinct().ToArray();
+        if (unsupportedAngles.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"角度 {string.Join(", ", unsupportedAngles)} 未配置打磨次数写入地址，整批未写入 PLC，请调整角度后重试。");
+        }
+
         using IPlcClient plcClient = _plcClientFactory(ipAddress, port);
         await plcClient.ConnectAsync().ConfigureAwait(false);
 
@@ -192,6 +202,7 @@ public class MeasurementParameterService : IMeasurementParameterService
 
         var depthAccumulatorMap = CreateDepthAccumulatorMap(angles);
         var pendingRepresentativePoints = new List<RailProfilePoint>();
+        var representativeProfiles = new List<MeasurementRepresentativeProfile>();
         MaximumDropProfileResult? pendingLeftDropProfile = null;
         MaximumDropProfileResult? pendingRightDropProfile = null;
         MaximumDropProfileResult? maximumLeftDropProfile = null;
@@ -301,6 +312,7 @@ public class MeasurementParameterService : IMeasurementParameterService
             }
 
             sampleCount++;
+            representativeProfiles.Add(new MeasurementRepresentativeProfile(sampleCount, pendingRepresentativePoints));
             pendingRepresentativePoints.Clear();
             pendingLeftDropProfile = null;
             pendingRightDropProfile = null;
@@ -334,7 +346,8 @@ public class MeasurementParameterService : IMeasurementParameterService
         return new MeasurementGrindingWorkflowResult(
             sampleCount,
             summaryResults,
-            globalMaximumDropProfile);
+            globalMaximumDropProfile,
+            representativeProfiles);
     }
 
     private static Dictionary<int, DepthAccumulator> CreateDepthAccumulatorMap(IReadOnlyList<int> angles)

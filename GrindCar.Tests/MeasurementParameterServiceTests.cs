@@ -15,6 +15,28 @@ namespace GrindCar.Tests;
 public class MeasurementParameterServiceTests
 {
     [Fact]
+    public async Task WriteGrindingTimesAsync_WithUnsupportedAngles_RejectsEntireBatchBeforeConnecting()
+    {
+        var plcClient = new FakePlcClient();
+        var service = new MeasurementParameterService((ipAddress, port) => plcClient);
+        var results = new[]
+        {
+            new MeasurementGrindingTimesResult(0, 0.1, 2),
+            new MeasurementGrindingTimesResult(999, 0.1, 2),
+            new MeasurementGrindingTimesResult(-999, 0.1, 2)
+        };
+
+        InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.WriteGrindingTimesAsync("127.0.0.1", 502, results));
+
+        Assert.Contains("999", error.Message);
+        Assert.Contains("-999", error.Message);
+        Assert.Contains("整批未写入", error.Message);
+        Assert.False(plcClient.ConnectCalled);
+        Assert.Empty(plcClient.WrittenInt32Values);
+    }
+
+    [Fact]
     public async Task WriteGrindingTimesAsync_UsesConfirmedGrindingTimes()
     {
         var plcClient = new FakePlcClient();
@@ -32,12 +54,16 @@ public class MeasurementParameterServiceTests
         Assert.Equal(7, plcClient.WrittenInt32Values[expectedAddress]);
     }
 
-    [Fact]
-    public async Task RunMeasurementWorkflowAsync_TwoM60RisingEdges_CapturesTwoDevicesAndWritesM62Twice()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RunMeasurementWorkflowAsync_CompleteGroup_SnapshotsExcludeTrailingHalfGroup(bool trailingHalfGroup)
     {
         var plcClient = new FakePlcClient(
-            positionCompletedValues: new[] { false, false, false, true },
-            captureTriggerValues: new[] { true, false, true });
+            positionCompletedValues: trailingHalfGroup
+                ? new[] { false, false, false, false, false, true } : new[] { false, false, false, true },
+            captureTriggerValues: trailingHalfGroup
+                ? new[] { true, false, true, false, true } : new[] { true, false, true });
         var devices = new[]
         {
             new ConfiguredPointCloudDevice("SN-LEFT", PointCloudDeviceSide.Left),
@@ -66,9 +92,14 @@ public class MeasurementParameterServiceTests
 
         Assert.True(measurementEnded);
         Assert.Equal(1, result.SampleCount);
-        Assert.Equal(new[] { "SN-LEFT", "SN-RIGHT" }, capturedSerialNumbers);
+        Assert.Single(result.RepresentativeProfiles);
+        Assert.Equal(new[] { new RailProfilePoint(1, 1), new RailProfilePoint(2, 1) },
+            result.RepresentativeProfiles[0].Points);
+        Assert.Equal(trailingHalfGroup ? new[] { "SN-LEFT", "SN-RIGHT", "SN-LEFT" }
+            : new[] { "SN-LEFT", "SN-RIGHT" }, capturedSerialNumbers);
         Assert.Equal(1, plcClient.CountWrites(MotorParameterDefinitions.MeasurementMotionStartAddress, true));
-        Assert.Equal(2, plcClient.CountWrites(MotorParameterDefinitions.MeasurementCurrentProfileCompletedAddress, true));
+        Assert.Equal(trailingHalfGroup ? 3 : 2,
+            plcClient.CountWrites(MotorParameterDefinitions.MeasurementCurrentProfileCompletedAddress, true));
     }
 
     [Fact]
@@ -243,6 +274,8 @@ public class MeasurementParameterServiceTests
         MeasurementGrindingTimesResult zeroAngleResult =
             result.Results.Single(item => item.Angle == 0);
         Assert.Equal(2, result.SampleCount);
+        Assert.Equal(new[] { 1, 2 }, result.RepresentativeProfiles.Select(profile => profile.SampleIndex));
+        Assert.All(result.RepresentativeProfiles, profile => Assert.NotEmpty(profile.Points));
         Assert.Equal(0.2, zeroAngleResult.RegularAverageDepth, 6);
         Assert.Equal(0.4, zeroAngleResult.DefectDepth, 6);
         Assert.Equal(0.4, zeroAngleResult.FinalGrindDepth, 6);

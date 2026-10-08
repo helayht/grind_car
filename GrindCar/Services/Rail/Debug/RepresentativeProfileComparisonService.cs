@@ -154,7 +154,8 @@ public sealed class RepresentativeProfileComparisonService
         RepresentativeProfileComparisonSnapshot snapshot,
         double plotWidth,
         double plotHeight,
-        RepresentativeProfileCurveStyle curveStyle = RepresentativeProfileCurveStyle.Smooth)
+        RepresentativeProfileCurveStyle curveStyle = RepresentativeProfileCurveStyle.Smooth,
+        RepresentativeProfileBounds? commonBounds = null)
     {
         if (snapshot == null)
         {
@@ -164,6 +165,20 @@ public sealed class RepresentativeProfileComparisonService
         if (plotWidth <= PlotPadding * 2.0 || plotHeight <= PlotPadding * 2.0)
         {
             return RepresentativeProfilePlotResult.Empty;
+        }
+
+        // 测量多组共用边界，并扩展较短轴以保持横纵等比例；旧调用保持原显示。
+        if (commonBounds is RepresentativeProfileBounds bounds)
+        {
+            double scale = Math.Max(
+                Math.Max(bounds.MaxX - bounds.MinX, 1e-6) / (plotWidth - PlotPadding * 2),
+                Math.Max(bounds.MaxY - bounds.MinY, 1e-6) / (plotHeight - PlotPadding * 2));
+            double halfWidth = scale * (plotWidth - PlotPadding * 2) / 2;
+            double halfHeight = scale * (plotHeight - PlotPadding * 2) / 2;
+            double centerX = (bounds.MinX + bounds.MaxX) / 2;
+            double centerY = (bounds.MinY + bounds.MaxY) / 2;
+            snapshot = snapshot with { Bounds = new RepresentativeProfileBounds(
+                centerX - halfWidth, centerX + halfWidth, centerY - halfHeight, centerY + halfHeight) };
         }
 
         IReadOnlyList<Point> representativeScreenPoints =

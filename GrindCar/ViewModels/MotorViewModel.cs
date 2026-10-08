@@ -42,7 +42,7 @@ public class MotorViewModel : INotifyPropertyChanged
     private readonly IReadOnlyDictionary<string, double> _readScales;
     private readonly bool _usesSharedConnection;
     private readonly bool _ownsPlcConnection;
-    private readonly string? _sharedEndpointText;
+    private string? _sharedEndpointText;
 
     private CancellationTokenSource? _pollingCts;
     private Task? _pollingTask;
@@ -375,17 +375,25 @@ public class MotorViewModel : INotifyPropertyChanged
         IsConnecting = false;
     }
 
-    /// <summary>
-    /// 在视图模型销毁前停止首页定时器并释放 PLC 资源。
-    /// </summary>
+    /// <summary>取消并等待轮询退出，允许页面安全地再次启动轮询。</summary>
+    public async Task StopPollingAsync()
+    {
+        Task? pollingTask = _pollingTask;
+        StopPolling();
+        if (pollingTask != null) await pollingTask;
+        if (ReferenceEquals(_pollingTask, pollingTask)) _pollingTask = null;
+    }
+
+    /// <summary>在视图模型销毁前停止定时器并释放自有资源。</summary>
     public void Shutdown()
     {
         _dashboardTimer.Stop();
         StopPolling();
     }
 
-    public Task<bool> StartSharedPollingAsync()
+    public Task<bool> StartSharedPollingAsync(string? endpointText = null)
     {
+        if (endpointText != null) _sharedEndpointText = endpointText;
         return StartPollingAsync(string.Empty, 0, DefaultUnitId, DefaultPollIntervalMs);
     }
 
@@ -410,6 +418,7 @@ public class MotorViewModel : INotifyPropertyChanged
 
                 _uiContext.Post(_ =>
                 {
+                    if (cancellationToken.IsCancellationRequested) return;
                     _carCurrentPosition.Value = FormatScaled(parameters.CarCurrentPosition, MotorParameterDefinitions.CarCurrentPositionName);
                     _wheelLongitudinalCurrentPosition.Value = FormatScaled(parameters.WheelLongitudinalCurrentPosition, MotorParameterDefinitions.WheelLongitudinalCurrentPositionName);
                     _wheelLateralCurrentPosition.Value = FormatScaled(parameters.WheelLateralCurrentPosition, MotorParameterDefinitions.WheelLateralCurrentPositionName);

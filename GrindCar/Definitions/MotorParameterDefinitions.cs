@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using GrindCar.Models.Grinding;
 
 namespace GrindCar.Definitions;
 
@@ -148,6 +149,53 @@ public static class MotorParameterDefinitions
     public const ushort GrindingMotionStartAddress = (ushort)(32 + MAddressOffset);
     public const ushort GrindingTimesResultStartAddress = 1800;
     public const ushort GrindingTimesResultAddressStep = 2;
+
+    public const ushort GrindingRunningAddress = 66 + MAddressOffset;
+    public const ushort MeasurementRunningAddress = 65 + MAddressOffset;
+    public const ushort ProfilerMeasurementPositionAddress = 1144;
+    public const ushort ProfilerAvoidancePositionAddress = 1146;
+    public const ushort CarMeasurementSpeedAddress = 1132;
+    public const ushort BatteryLevelAddress = 2800;
+    public const ushort PressureSensor1Address = 2802;
+    public const ushort PressureSensor2Address = 2804;
+    public const string ProfilerMeasurementPositionName = "廓形仪测量位置";
+    public const string ProfilerAvoidancePositionName = "廓形仪测量回避位";
+    public const string CarMeasurementSpeedName = "小车测量行走速度";
+    public const string BatteryLevelName = "电池电量";
+    public const string PressureSensor1Name = "压力传感器1实时值";
+    public const string PressureSensor2Name = "压力传感器2实时值";
+    public const string MeasurementRunningName = "廓形测量运行标志";
+    public const string UnitPercent = "%";
+    public const string UnitNewton = "N";
+    public const double ProfilerMeasurementPositionScale = 10000.0;
+    public const double ProfilerAvoidancePositionScale = 10000.0;
+    public const double CarMeasurementSpeedScale = 1000.0;
+    public const int DashboardPollIntervalMs = 500;
+    public const int GrindingStatusPollIntervalMs = 500;
+    public static GrindingParameterDefinition GrindingAngleParameter { get; } =
+        new("Angle", "砂轮打磨角度", 1200, 10000m, UnitDegree);
+    public static IReadOnlyList<GrindingParameterDefinition> GrindingBasicParameters { get; } =
+        System.Array.AsReadOnly(new GrindingParameterDefinition[]
+        {
+            new("Start", GrindingStartPositionName, GrindingStartPositionAddress, 100000m, UnitMeter),
+            new("End", GrindingEndPositionName, GrindingEndPositionAddress, 100000m, UnitMeter),
+            new("Smooth", "打磨平滑距离", 1188, 100000m, UnitMeter, NonNegative: true),
+            new("Speed", "小车打磨行走速度", 1134, 1000m, UnitMeterPerMinute, Positive: true)
+        });
+    public static IReadOnlyList<GrindingParameterDefinition> GrindingAngleParameters { get; } =
+        System.Array.AsReadOnly(new GrindingParameterDefinition[]
+        {
+            new("Longitudinal", "纵向初始定位", 1300, 10000m, UnitMillimeter),
+            new("Lateral", "横向初始定位", 1400, 10000m, UnitMillimeter),
+            new("Torque", "目标转矩", 1700, 1m, "%", IsInt16: true, IsInteger: true, NonNegative: true),
+            new("Reposition", "再进定位距离", 1900, 10000m, UnitMillimeter, NonNegative: true),
+            new("Retreat", "进给回退距离", 2000, 10000m, UnitMillimeter, NonNegative: true),
+            new("Feed", "单次进给距离", 2100, 10000m, UnitMillimeter, NonNegative: true),
+            new("PositionPressure1", "对位压力1", 2200, 1m, "N", IsInteger: true, NonNegative: true),
+            new("PositionPressure2", "对位压力2", 2300, 1m, "N", IsInteger: true, NonNegative: true),
+            new("GrindingPressure1", "打磨压力1", 2400, 1m, "N", IsInteger: true, NonNegative: true),
+            new("GrindingPressure2", "打磨压力2", 2500, 1m, "N", IsInteger: true, NonNegative: true)
+        });
 
     // 写入参数比例
     public const double CarJogSpeedScale = 1000.0;

@@ -1,464 +1,254 @@
 <Window x:Class="GrindCar.Views.MainWindow"
-        x:Name="MainWindowRoot"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d"
-        Title="轨面打磨驾驶舱"
-        Width="1440"
-        Height="900"
-        MinWidth="1200"
-        MinHeight="760"
-        WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource WindowBackgroundBrush}">
-    <Window.Resources>
-
-        <!-- ===== 主窗口本地样式 ===== -->
-
-        <Style x:Key="PanelCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="20" />
-            <Setter Property="SnapsToDevicePixels" Value="True" />
-        </Style>
-
-        <Style x:Key="PageTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="Bahnschrift" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="22" />
-        </Style>
-
-        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="Bahnschrift" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="17" />
-        </Style>
-
-        <Style x:Key="CaptionStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
-        </Style>
-
-        <Style x:Key="ValueStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
-            <Setter Property="FontFamily" Value="Consolas" />
-            <Setter Property="FontSize" Value="42" />
-            <Setter Property="FontWeight" Value="Bold" />
-        </Style>
-
-        <Style x:Key="ThemeToggleButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-            <Setter Property="Width" Value="64" />
-            <Setter Property="Height" Value="32" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="ToolTip" Value="切换暗色/亮色主题" />
-        </Style>
-
-    </Window.Resources>
-
-    <Grid Background="{DynamicResource PageBackgroundBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <Grid Grid.Row="0" Margin="20,16,20,12">
+x:Name="MainWindowRoot"
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+mc:Ignorable="d"
+Title="轨面打磨驾驶舱"
+Width="1440"
+Height="900"
+MinWidth="900"
+MinHeight="600"
+WindowStartupLocation="CenterScreen"
+UseLayoutRounding="True"
+SnapsToDevicePixels="True"
+TextOptions.TextFormattingMode="Display"
+Background="{DynamicResource WindowBackgroundBrush}">
+<Window.Resources>
+    <!-- ===== 主窗口本地样式 ===== -->
+    <Style x:Key="PanelCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="18" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+    <Style x:Key="PageTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="22" />
+    </Style>
+    <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="17" />
+    </Style>
+    <Style x:Key="CaptionStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+    </Style>
+    <Style x:Key="ValueStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="FontFamily" Value="Consolas" />
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style x:Key="ThemeToggleButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+        <Setter Property="Width" Value="64" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="ToolTip" Value="切换暗色/亮色主题" />
+    </Style>
+</Window.Resources>
+<Grid Background="{DynamicResource PageBackgroundBrush}">
+    <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+            <Border Grid.Row="0" Margin="12,12,12,0" Style="{StaticResource PanelCardStyle}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,12">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Border Padding="10,6" CornerRadius="6" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource CaptionStyle}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.PlcConnectionStatus}" />
+                            </Border>
+                            <TextBlock Margin="14,0" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" FontFamily="Consolas" Text="{Binding DashboardTimestamp}" />
+                            <Button x:Name="ThemeToggleButton" Style="{StaticResource ThemeToggleButtonStyle}" Content="☀" Click="ThemeToggle_Click" />
+                        </StackPanel>
+                        <TextBlock Text="钢轨智能打磨小车" Style="{StaticResource PageTitleStyle}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <WrapPanel x:Name="NavigationButtons" Margin="0,0,0,-8">
+                        <Button Content="首页" Tag="Home" Click="Navigate_Click" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" />
+                        <Button  Content="PLC连接" Click="OpenPlcConnectionSettings_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" />
+                        <Button  Content="点云导出" Click="OpenPointCloudExportWindow_Click" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" />
+                        <Button  Content="点云算法验证" Tag="Validation" Click="Navigate_Click" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" />
+                        <Button  Content="代表廓形配准" Tag="Registration" Click="Navigate_Click" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" />
+                        <Button  Content="电机调试" Tag="Motor" Click="Navigate_Click" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" />
+                        <Button x:Name="OpenGrindingParametersButton" Content="打磨参数设置" Tag="Grinding" Click="Navigate_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+    <Grid Grid.Row="1" x:Name="PageArea">
+        <Grid x:Name="HomePage">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-
-            <Border Grid.Row="0" Style="{StaticResource PanelCardStyle}">
-                <Grid>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid Margin="12,0,12,12">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-
-                    <DockPanel Grid.Row="0" LastChildFill="False">
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Border Margin="0,0,10,0"
-                                    Padding="10,6"
-                                    CornerRadius="6"
-                                    Background="{DynamicResource StatusBadgeBackgroundBrush}"
-                                    BorderBrush="{DynamicResource StatusBadgeBorderBrush}"
-                                    BorderThickness="1">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource StatusOnlineBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Margin="7,0,0,0"
-                                               VerticalAlignment="Center"
-                                               Foreground="{DynamicResource PrimaryTextBrush}"
-                                               Text="{Binding ElementName=MainWindowRoot, Path=Measurement.PlcConnectionStatus}" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Padding="10,6"
-                                    CornerRadius="6"
-                                    Background="{DynamicResource TimestampBackgroundBrush}"
-                                    BorderBrush="{DynamicResource CardBorderBrush}"
-                                    BorderThickness="1">
-                                <TextBlock Foreground="{DynamicResource SecondaryTextBrush}"
-                                           FontFamily="Consolas"
-                                           Text="{Binding DashboardTimestamp}" />
-                            </Border>
-
-                            <!-- 主题切换按钮 -->
-                            <Button x:Name="ThemeToggleButton"
-                                    Style="{StaticResource ThemeToggleButtonStyle}"
-                                    Margin="10,0,0,0"
-                                    Content="☀"
-                                    Click="ThemeToggle_Click" />
-                        </StackPanel>
-                    </DockPanel>
-
-                    <WrapPanel Grid.Row="1"
-                               Margin="0,14,0,0"
-                               ItemHeight="46"
-                               ItemWidth="140"
-                               Orientation="Horizontal">
-                        <Button Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="0,0,8,8"
-                                Content="PLC连接"
-                                IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                Click="OpenPlcConnectionSettings_Click" />
-                        <Button Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="0,0,8,8"
-                                Content="点云导出"
-                                Click="OpenPointCloudExportWindow_Click" />
-                        <Button Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="0,0,8,8"
-                                Content="点云算法验证"
-                                Click="OpenPointCloudGrindDepthDebugWindow_Click" />
-                        <Button Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="0,0,8,8"
-                                Content="代表廓形配准"
-                                Click="OpenProfileRegistrationWindow_Click" />
-                        <Button Style="{StaticResource SecondaryButtonStyle}"
-                                Margin="0,0,8,8"
-                                Content="电机调试"
-                                Click="OpenMotorDebugWindow_Click" />
-                    </WrapPanel>
-                </Grid>
-            </Border>
-
-            <Grid Grid.Row="1" Margin="0,12,0,0">
+            <Grid Grid.Row="0" Margin="0,12,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-
-                <Border Grid.Column="0" Style="{StaticResource PanelCardStyle}" Margin="0,0,8,0">
+                <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,6,0" Padding="16,12">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="电源状态" Style="{StaticResource SectionTitleStyle}" />
-                        <StackPanel Grid.Row="2" Margin="0,16,0,0">
-                            <TextBlock Text="{Binding BatteryLevelText}" Style="{StaticResource ValueStyle}" />
-                            <TextBlock Margin="0,4,0,0" Text="{Binding BatteryStateText}" Foreground="{DynamicResource MutedTextBrush}" />
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="电源状态" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,6,0,0" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.Telemetry.BatteryStateText}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
                         </StackPanel>
+                        <TextBlock Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.Telemetry.BatteryLevelText}" Style="{StaticResource ValueStyle}" />
                     </Grid>
                 </Border>
-
-                <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}" Margin="8,0,0,0">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="速度状态" Style="{StaticResource SectionTitleStyle}" />
-                        <StackPanel Grid.Row="2" Margin="0,16,0,0">
-                            <TextBlock Text="{Binding CurrentSpeedText}" Style="{StaticResource ValueStyle}" />
-                            <TextBlock Margin="0,4,0,0" Text="{Binding SpeedStatus}" Foreground="{DynamicResource MutedTextBrush}" />
-                        </StackPanel>
-                    </Grid>
+                <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}" Margin="6,0,0,0" Padding="16,12">
+                    <StackPanel>
+                        <TextBlock Text="压力监测" Style="{StaticResource SectionTitleStyle}" />
+                        <UniformGrid Columns="2" Margin="0,8,0,0">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="压力传感器1" Style="{StaticResource CaptionStyle}" />
+                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" Height="30">
+                                    <TextBlock Text="{Binding ElementName=MainWindowRoot, Path=Measurement.Telemetry.Pressure1Text}" Style="{StaticResource ValueStyle}" FontSize="24" />
+                                </Viewbox>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="压力传感器2" Style="{StaticResource CaptionStyle}" />
+                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" Height="30">
+                                    <TextBlock Text="{Binding ElementName=MainWindowRoot, Path=Measurement.Telemetry.Pressure2Text}" Style="{StaticResource ValueStyle}" FontSize="24" />
+                                </Viewbox>
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
                 </Border>
             </Grid>
-
-            <Border Grid.Row="2"
-                    Margin="0,12,0,0"
-                    Style="{StaticResource PanelCardStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1*" />
-                        <ColumnDefinition Width="1*" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Row="0"
-                               Grid.ColumnSpan="2"
-                               Text="测量参数配置"
-                               Style="{StaticResource SectionTitleStyle}" />
-
-                    <StackPanel Grid.Row="1"
-                                Grid.ColumnSpan="2"
-                                Orientation="Horizontal"
-                                Margin="0,12,0,0">
-                        <TextBlock VerticalAlignment="Center"
-                                   Style="{StaticResource CaptionStyle}"
-                                   Text="轨面型号：" />
-                        <ComboBox Margin="8,0,0,0"
-                                  Width="130"
-                                  Height="30"
-                                  IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                  ItemsSource="{Binding ElementName=MainWindowRoot, Path=Measurement.ProfileTypeOptions}"
-                                  SelectedItem="{Binding ElementName=MainWindowRoot, Path=Measurement.SelectedProfileType}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,14,12,0">
-                        <TextBlock Text="测量起点位置" Style="{StaticResource CaptionStyle}" />
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="MeasurementStartPositionTextBox"
-                                     Height="34"
-                                     Padding="8,4"
-                                     VerticalContentAlignment="Center"
-                                     Foreground="{DynamicResource PrimaryTextBrush}"
-                                     Background="{DynamicResource InputBackgroundBrush}"
-                                     BorderBrush="{DynamicResource CardBorderBrush}"
-                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StartPositionText, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="m" />
-                        </Grid>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="12,14,0,0">
-                        <TextBlock Text="测量终点位置" Style="{StaticResource CaptionStyle}" />
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="MeasurementEndPositionTextBox"
-                                     Height="34"
-                                     Padding="8,4"
-                                     VerticalContentAlignment="Center"
-                                     Foreground="{DynamicResource PrimaryTextBrush}"
-                                     Background="{DynamicResource InputBackgroundBrush}"
-                                     BorderBrush="{DynamicResource CardBorderBrush}"
-                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.EndPositionText, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="m" />
-                        </Grid>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,14,12,0">
-                        <TextBlock Text="打磨起点位置" Style="{StaticResource CaptionStyle}" />
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="GrindingStartPositionTextBox"
-                                     Height="34"
-                                     Padding="8,4"
-                                     VerticalContentAlignment="Center"
-                                     Foreground="{DynamicResource PrimaryTextBrush}"
-                                     Background="{DynamicResource InputBackgroundBrush}"
-                                     BorderBrush="{DynamicResource CardBorderBrush}"
-                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.GrindingStartPositionText, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="m" />
-                        </Grid>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="3" Grid.Column="1" Margin="12,14,0,0">
-                        <TextBlock Text="打磨终点位置" Style="{StaticResource CaptionStyle}" />
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="GrindingEndPositionTextBox"
-                                     Height="34"
-                                     Padding="8,4"
-                                     VerticalContentAlignment="Center"
-                                     Foreground="{DynamicResource PrimaryTextBrush}"
-                                     Background="{DynamicResource InputBackgroundBrush}"
-                                     BorderBrush="{DynamicResource CardBorderBrush}"
-                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.GrindingEndPositionText, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="m" />
-                        </Grid>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,14,12,0">
-                        <TextBlock Text="小车运行速度" Style="{StaticResource CaptionStyle}" />
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="CarSpeedTextBox"
-                                     Height="34"
-                                     Padding="8,4"
-                                     VerticalContentAlignment="Center"
-                                     Foreground="{DynamicResource PrimaryTextBrush}"
-                                     Background="{DynamicResource InputBackgroundBrush}"
-                                     BorderBrush="{DynamicResource CardBorderBrush}"
-                                     IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                     Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CarSpeedText, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Column="1"
-                                       Margin="8,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="m/min" />
-                        </Grid>
-                    </StackPanel>
-
-                    <Grid Grid.Row="4" Grid.Column="1" Margin="12,14,0,0">
+            <Border Grid.Row="1" Style="{StaticResource PanelCardStyle}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,18">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="轨面型号" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox Width="110" Height="34" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" ItemsSource="{Binding ElementName=MainWindowRoot, Path=Measurement.ProfileTypeOptions}" SelectedItem="{Binding ElementName=MainWindowRoot, Path=Measurement.SelectedProfileType}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        <WrapPanel VerticalAlignment="Center">
+                            <TextBlock Text="测量参数配置" Style="{StaticResource SectionTitleStyle}" Margin="0,0,20,0" />
+                            <TextBlock Text="测量状态：" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ElementName=MainWindowRoot, Path=Measurement.Telemetry.MeasurementStateText}" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+                        </WrapPanel>
+                    </DockPanel>
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                            <TextBlock Text="单次测量总条数" Style="{StaticResource CaptionStyle}" />
-                            <Grid Margin="0,8,0,0">
+                        <StackPanel Margin="0,0,18,0">
+                            <TextBlock Text="测量位置" Style="{StaticResource SectionTitleStyle}" FontSize="14" Margin="0,0,0,12" />
+                            <Grid Margin="0,0,-12,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="ProfileCountTextBox"
-                                         Height="34"
-                                         Padding="8,4"
-                                         VerticalContentAlignment="Center"
-                                         Foreground="{DynamicResource PrimaryTextBrush}"
-                                         Background="{DynamicResource InputBackgroundBrush}"
-                                         BorderBrush="{DynamicResource CardBorderBrush}"
-                                         IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                         Text="{Binding ElementName=MainWindowRoot, Path=Measurement.ProfileCountText, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Column="1"
-                                           Margin="8,0,0,0"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource SecondaryTextBrush}"
-                                           Text="条" />
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,12">
+                                    <TextBlock Text="测量起点位置 (m)" Style="{StaticResource CaptionStyle}" Margin="0,0,0,6" />
+                                    <TextBox x:Name="MeasurementStartPositionTextBox" Height="34" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StartPositionText, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,12">
+                                    <TextBlock Text="测量终点位置 (m)" Style="{StaticResource CaptionStyle}" Margin="0,0,0,6" />
+                                    <TextBox x:Name="MeasurementEndPositionTextBox" Height="34" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.EndPositionText, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,12">
+                                    <TextBlock Text="廓形仪测量位置 (mm)" Style="{StaticResource CaptionStyle}" Margin="0,0,0,6" />
+                                    <TextBox  Height="34" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.ProfilerPositionText, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,12">
+                                    <TextBlock Text="廓形仪测量回避位 (mm)" Style="{StaticResource CaptionStyle}" Margin="0,0,0,6" />
+                                    <TextBox  Height="34" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.AvoidancePositionText, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
                             </Grid>
+                            <WrapPanel>
+                                <Button  Content="保存测量位置参数" Click="SaveMeasurementPositions_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" />
+                            </WrapPanel>
+                            <TextBlock Margin="0,6,0,0" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.PositionSaveStatus}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
                         </StackPanel>
-
-                        <StackPanel Grid.Column="1">
-                            <TextBlock Text="计算帧率" Style="{StaticResource CaptionStyle}" />
-                            <Border Margin="0,8,0,0"
-                                    Height="34"
-                                    Padding="8,4"
-                                    Background="{DynamicResource InputBackgroundBrush}"
-                                    BorderBrush="{DynamicResource CardBorderBrush}"
-                                    BorderThickness="1">
-                                <TextBlock VerticalAlignment="Center"
-                                           Foreground="{DynamicResource PrimaryTextBrush}"
-                                           FontFamily="Consolas"
-                                           Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CalculatedFrameRateText}" />
-                            </Border>
-                        </StackPanel>
-                    </Grid>
-
-                    <StackPanel Grid.Row="5"
-                                Grid.ColumnSpan="2"
-                                Margin="0,16,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Button x:Name="WriteMeasurementParametersButton"
-                                    MinWidth="180"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                    Content="写入测量起止点"
-                                    Click="WriteMeasurementParameters_Click" />
-                            <Button x:Name="WriteGrindingParametersButton"
-                                    Margin="10,0,0,0"
-                                    MinWidth="180"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                    Content="写入打磨起止点"
-                                    Click="WriteGrindingParameters_Click" />
-                            <Button x:Name="SavePointCloudCaptureSettingsButton"
-                                    Margin="10,0,0,0"
-                                    MinWidth="180"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                    Content="保存点云采集参数"
-                                    Click="SavePointCloudCaptureSettings_Click" />
-                            <Button x:Name="StartMeasurementMotionButton"
-                                    Margin="10,0,0,0"
-                                    MinWidth="180"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                    Content="测量运动启动"
-                                    Click="StartMeasurementMotion_Click" />
-                            <Button x:Name="StartGrindingMotionButton"
-                                    Margin="10,0,0,0"
-                                    MinWidth="180"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}"
-                                    Content="打磨运动启动"
-                                    Click="StartGrindingMotion_Click" />
-                        </StackPanel>
-                        <Border Margin="0,10,0,0"
-                                Padding="10,8"
-                                CornerRadius="6"
-                                Background="{DynamicResource InputBackgroundBrush}"
-                                BorderBrush="{DynamicResource CardBorderBrush}"
-                                BorderThickness="1">
-                            <TextBlock x:Name="MeasurementParameterStatusTextBlock"
-                                       Foreground="{DynamicResource SecondaryTextBrush}"
-                                       Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StatusMessage}"
-                                       TextWrapping="Wrap" />
+                        <Border Grid.Column="1" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0" Padding="18,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="点云采集" Style="{StaticResource SectionTitleStyle}" FontSize="14" Margin="0,0,0,12" />
+                                <Grid Margin="0,0,-12,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,12">
+                                        <TextBlock Text="小车测量行走速度 (m/min)" Style="{StaticResource CaptionStyle}" Margin="0,0,0,6" />
+                                        <TextBox x:Name="CarSpeedTextBox" Height="34" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CarSpeedText, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,12">
+                                        <TextBlock Text="单次测量总条数 (条)" Style="{StaticResource CaptionStyle}" Margin="0,0,0,6" />
+                                        <TextBox x:Name="ProfileCountTextBox" Height="34" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.ProfileCountText, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Background="{DynamicResource InputBackgroundBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,12" Height="58">
+                                    <DockPanel>
+                                        <TextBlock Text="计算帧率" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding ElementName=MainWindowRoot, Path=Measurement.CalculatedFrameRateText}" FontFamily="Consolas" FontSize="20" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+                                <WrapPanel>
+                                    <Button x:Name="SavePointCloudCaptureSettingsButton" Content="保存点云采集参数" Click="SavePointCloudCaptureSettings_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" />
+                                </WrapPanel>
+                                <TextBlock Text="保存共用速度和总条数；速度同时用于PLC行走与帧率计算。" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                            </StackPanel>
                         </Border>
-                    </StackPanel>
-                </Grid>
+                    </Grid>
+                    <Border BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Margin="0,16,0,0" Padding="0,14,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <WrapPanel>
+                                    <Button x:Name="WriteMeasurementParametersButton" Content="写入测量参数" Click="WriteMeasurementParameters_Click" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanWriteMeasurementParameters}" />
+                                </WrapPanel>
+                                <TextBlock Text="" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Top">
+                                <Button x:Name="StartMeasurementMotionButton" Content="测量运动启动" Click="StartMeasurementMotion_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" />
+                                <Button x:Name="StartGrindingMotionButton" Content="打磨运动启动" Click="StartGrindingMotion_Click" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,8" IsEnabled="{Binding ElementName=MainWindowRoot, Path=Measurement.CanOperate}" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                    <Border Margin="0,12,0,0" Padding="10,8" CornerRadius="6" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                        <TextBlock x:Name="MeasurementParameterStatusTextBlock" Foreground="{DynamicResource SecondaryTextBrush}" Text="{Binding ElementName=MainWindowRoot, Path=Measurement.StatusMessage}" TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
             </Border>
+                </Grid>
+            </ScrollViewer>
+            <TextBlock Grid.Row="1" Margin="12,0,12,10" Text="实时数据在连接PLC后刷新；测量状态未知或运行中时禁止写入测量参数。" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
         </Grid>
-
-        <Border Grid.Row="1"
-                Margin="20,0,20,16"
-                Padding="10,8"
-                CornerRadius="6"
-                Background="{DynamicResource StatusBarBackgroundBrush}"
-                BorderBrush="{DynamicResource StatusBarBorderBrush}"
-                BorderThickness="1">
-            <!-- <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" -->
-            <!--            Text="提示：如需接入实时速度/电量，请先在 PLC 协议中补充对应只读地址并同步到参数定义。" -->
-            <!--            TextWrapping="Wrap" /> -->
-        </Border>
+        <ContentControl x:Name="PageHost" Visibility="Collapsed" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
     </Grid>
+</Grid>
 </Window>

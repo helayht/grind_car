@@ -3,6 +3,7 @@ using System.Windows;
 using GrindCar.Models.Rail;
 using GrindCar.Services.Rail.Debug;
 using GrindCar.ViewModels;
+using GrindCar.Services.Measurement;
 
 namespace GrindCar.Views;
 
@@ -12,6 +13,19 @@ namespace GrindCar.Views;
 public partial class RepresentativeProfileComparisonWindow : Window
 {
     private readonly RepresentativeProfileComparisonViewModel _viewModel;
+
+    /// <summary>显示本次测量各完整组的代表廓形。</summary>
+    public RepresentativeProfileComparisonWindow(IReadOnlyList<MeasurementRepresentativeProfile> profiles)
+    {
+        InitializeComponent();
+        Title = "测量代表廓形与标准廓形对比";
+        _viewModel = new RepresentativeProfileComparisonViewModel(profiles);
+        DataContext = _viewModel;
+        GrindCar.Infrastructure.WindowLayout.FitToWorkArea(this);
+        Loaded += RepresentativeProfileComparisonWindow_Loaded;
+    }
+
+    public bool HasDrawableProfiles => _viewModel.HasDrawableProfiles;
 
     /// <summary>
     /// 初始化代表轨面与标准轨面对比窗口。

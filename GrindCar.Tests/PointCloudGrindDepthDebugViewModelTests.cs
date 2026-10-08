@@ -16,6 +16,41 @@ namespace GrindCar.Tests;
 public class PointCloudGrindDepthDebugViewModelTests
 {
     [Fact]
+    public void ToMeasurementResult_SourceChanges_PreservesSnapshotAndRoundsUpTimes()
+    {
+        var points = new List<RailProfilePoint> { new(0, 1), new(1, 2) };
+        var results = new List<CombinedGrindDepthResult> { new(0, 0.02, 0.051, 0.051) };
+        var output = new PointCloudGrindDepthDebugCalculationOutput(
+            0, 1, 0, 1, results, points, null, null);
+
+        var measurementResult = output.ToMeasurementResult();
+        points.Clear();
+        results.Clear();
+
+        Assert.Equal(2, Assert.Single(measurementResult.RepresentativeProfiles).Points.Count);
+        Assert.Equal(2, Assert.Single(measurementResult.Results).GrindingTimes);
+        Assert.Equal(0.051, measurementResult.Results[0].FinalGrindDepth);
+    }
+
+    [Fact]
+    public async Task CalculateAsync_WhenCalculationFails_ReleasesBusyStateAndClearsResults()
+    {
+        var viewModel = new PointCloudGrindDepthDebugViewModel(
+            new PointCloudGrindDepthDebugWorkflowService(new FakeProfileService(),
+                (angles, points) => throw new InvalidOperationException("模拟计算失败")));
+        viewModel.SetLeftFilePath("left.csv");
+        viewModel.SetRightFilePath("right.csv");
+        viewModel.AnglesInput = "0";
+
+        await Assert.ThrowsAnyAsync<Exception>(() => viewModel.CalculateAsync());
+
+        Assert.False(viewModel.IsBusy);
+        Assert.True(viewModel.CanCalculate);
+        Assert.Empty(viewModel.Results);
+        Assert.Empty(viewModel.LatestRepresentativePoints);
+    }
+
+    [Fact]
     public void NewViewModel_WithoutFiles_CannotCalculate()
     {
         var viewModel = new PointCloudGrindDepthDebugViewModel(
@@ -39,10 +74,25 @@ public class PointCloudGrindDepthDebugViewModelTests
         viewModel.SetRightFilePath("right.csv");
         viewModel.AnglesInput = "0,10";
 
-        IReadOnlyList<RailProfilePoint> representativePoints = await viewModel.CalculateAsync();
+        PointCloudGrindDepthDebugCalculationOutput output = await viewModel.CalculateAsync();
 
         Assert.Equal(2, viewModel.Results.Count);
-        Assert.Equal(4, representativePoints.Count);
+        Assert.Equal(4, output.RepresentativePoints.Count);
+        var measurementResult = output.ToMeasurementResult();
+        Assert.Equal(1, measurementResult.SampleCount);
+        Assert.Null(measurementResult.MaximumDropProfile);
+        Assert.Equal(output.RepresentativePoints, Assert.Single(measurementResult.RepresentativeProfiles).Points);
+        Assert.Equal(1, measurementResult.RepresentativeProfiles[0].SampleIndex);
+        Assert.Equal(output.Results.Count, measurementResult.Results.Count);
+        for (int index = 0; index < output.Results.Count; index++)
+        {
+            Assert.Equal(output.Results[index].Angle, measurementResult.Results[index].Angle);
+            Assert.Equal(output.Results[index].RegularDepth, measurementResult.Results[index].RegularAverageDepth);
+            Assert.Equal(output.Results[index].DefectDepth, measurementResult.Results[index].DefectDepth);
+            Assert.Equal(output.Results[index].FinalDepth, measurementResult.Results[index].FinalGrindDepth);
+        }
+        Assert.Equal(0, measurementResult.Results[0].GrindingTimes);
+        Assert.Equal(2, measurementResult.Results[1].GrindingTimes);
         Assert.Equal(4, viewModel.LatestRepresentativePoints.Count);
         Assert.Contains("计算完成", viewModel.StatusMessage);
         Assert.False(viewModel.CanViewMaximumDropProfile);
@@ -94,7 +144,13 @@ public class PointCloudGrindDepthDebugViewModelTests
         viewModel.SetRightFilePath("right.csv");
         viewModel.AnglesInput = "0";
 
-        await viewModel.CalculateAsync();
+        PointCloudGrindDepthDebugCalculationOutput output = await viewModel.CalculateAsync();
+        var measurementResult = output.ToMeasurementResult();
+        Assert.Same(output.RightMaximumDropProfile, measurementResult.MaximumDropProfile);
+        Assert.Equal(0.2, measurementResult.Results[0].RegularAverageDepth);
+        Assert.Equal(0.5, measurementResult.Results[0].DefectDepth);
+        Assert.Equal(0.5, measurementResult.Results[0].FinalGrindDepth);
+        Assert.Equal(10, measurementResult.Results[0].GrindingTimes);
 
         Assert.True(viewModel.CanViewMaximumDropProfile);
         Assert.NotNull(viewModel.LatestLeftMaximumDropProfile);

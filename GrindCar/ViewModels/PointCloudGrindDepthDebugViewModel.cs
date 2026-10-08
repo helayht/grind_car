@@ -220,7 +220,7 @@ public class PointCloudGrindDepthDebugViewModel : INotifyPropertyChanged
         StatusMessage = $"已选择 Right 原始点云: {Path.GetFileName(filePath)}";
     }
 
-    public async Task<IReadOnlyList<RailProfilePoint>> CalculateAsync()
+    public async Task<PointCloudGrindDepthDebugCalculationOutput> CalculateAsync()
     {
         IReadOnlyList<int> angles = GrindDepthAngleParser.ParseAngles(AnglesInput);
 
@@ -266,7 +266,7 @@ public class PointCloudGrindDepthDebugViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(LatestLeftMaximumDropProfileSegments));
             OnPropertyChanged(nameof(LatestRightMaximumDropProfileSegments));
             OnPropertyChanged(nameof(CanViewMaximumDropProfile));
-            return _latestRepresentativePoints;
+            return output;
         }
         catch
         {

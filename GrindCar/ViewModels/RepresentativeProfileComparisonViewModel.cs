@@ -13,7 +13,7 @@ namespace GrindCar.ViewModels;
 /// <summary>
 /// 代表轨面与标准轨面对比窗口 ViewModel。
 /// </summary>
-public sealed class RepresentativeProfileComparisonViewModel : INotifyPropertyChanged
+public sealed partial class RepresentativeProfileComparisonViewModel : INotifyPropertyChanged
 {
     private readonly RepresentativeProfileComparisonService _comparisonService = new();
     private readonly RepresentativeProfileComparisonSnapshot? _snapshot;
@@ -230,6 +230,11 @@ public sealed class RepresentativeProfileComparisonViewModel : INotifyPropertyCh
     /// <param name="plotHeight">绘图区高度。</param>
     public void UpdatePlot(double plotWidth, double plotHeight)
     {
+        if (IsMeasurementComparison)
+        {
+            UpdateMeasurementPlot(plotWidth, plotHeight);
+            return;
+        }
         if (_maximumDropSnapshot != null)
         {
             UpdateMaximumDropPlot(plotWidth, plotHeight);

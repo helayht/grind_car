@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System;
+using System.Linq;
 using GrindCar.Models.Rail;
 
 namespace GrindCar.Services.Measurement;
@@ -18,14 +20,19 @@ public sealed record MeasurementGrindingWorkflowResult
     public MeasurementGrindingWorkflowResult(
         int sampleCount,
         IReadOnlyList<MeasurementGrindingTimesResult> results,
-        MaximumDropProfileResult? maximumDropProfile)
+        MaximumDropProfileResult? maximumDropProfile,
+        IReadOnlyList<MeasurementRepresentativeProfile>? representativeProfiles = null)
     {
         SampleCount = sampleCount;
         Results = results;
         MaximumDropProfile = maximumDropProfile;
+        RepresentativeProfiles = Array.AsReadOnly(
+            (representativeProfiles ?? Array.Empty<MeasurementRepresentativeProfile>()).ToArray());
     }
 
     public int SampleCount { get; }
+
+    public IReadOnlyList<MeasurementRepresentativeProfile> RepresentativeProfiles { get; }
 
     public IReadOnlyList<MeasurementGrindingTimesResult> Results { get; }
 

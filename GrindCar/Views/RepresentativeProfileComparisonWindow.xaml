@@ -20,107 +20,20 @@
 
     </Window.Resources>
 
-    <Grid Margin="18">
+    <Grid Margin="18" Background="{DynamicResource WindowBackgroundBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-
-        <Border Grid.Row="0"
-                Style="{StaticResource CardBorderStyle}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel>
-                    <TextBlock FontSize="24"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource PrimaryTextBrush}"
-                               Text="{Binding HeaderText}" />
-                    <TextBlock Margin="0,6,0,0"
-                               Foreground="{DynamicResource MutedTextBrush}"
-                               Text="{Binding CurveDescriptionText}" />
-                    <StackPanel Margin="0,10,0,0"
-                                Orientation="Horizontal"
-                                Visibility="{Binding MaximumDropLegendVisibility}">
-                        <Ellipse Width="10"
-                                 Height="10"
-                                 Margin="0,0,6,0"
-                                 VerticalAlignment="Center"
-                                 Fill="{DynamicResource LeftBrush}" />
-                        <TextBlock Margin="0,0,20,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource LeftBrush}"
-                                   Text="{Binding LeftStatusText}" />
-                        <Ellipse Width="10"
-                                 Height="10"
-                                 Margin="0,0,6,0"
-                                 VerticalAlignment="Center"
-                                 Fill="{DynamicResource RightBrush}" />
-                        <TextBlock VerticalAlignment="Center"
-                                   Foreground="{DynamicResource RightBrush}"
-                                   Text="{Binding RightStatusText}" />
-                    </StackPanel>
-                </StackPanel>
-
-                <Button Grid.Column="1"
-                        Width="88"
-                        Height="34"
-                        Content="关闭"
-                        Click="Close_Click" />
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="1"
-                Margin="0,14,0,14"
-                Style="{StaticResource CardBorderStyle}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel>
-                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
-                               Text="{Binding PointCountLabelText}" />
-                    <TextBlock
-                               Margin="0,8,0,0"
-                               FontSize="28"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource RepresentativeBrush}"
-                               Text="{Binding PointCountText}" />
-                </StackPanel>
-
-                <StackPanel Grid.Column="1">
-                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
-                               Text="横向范围" />
-                    <TextBlock
-                               Margin="0,8,0,0"
-                               FontSize="28"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource PrimaryTextBrush}"
-                               Text="{Binding XRangeText}" />
-                </StackPanel>
-
-                <StackPanel Grid.Column="2">
-                    <TextBlock Foreground="{DynamicResource MutedTextBrush}"
-                               Text="高度范围" />
-                    <TextBlock
-                               Margin="0,8,0,0"
-                               FontSize="28"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource StandardBrush}"
-                               Text="{Binding YRangeText}" />
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="2"
-                Style="{StaticResource CardBorderStyle}">
+        <WrapPanel Margin="0,0,0,10" Visibility="{Binding MeasurementControlsVisibility}">
+            <ComboBox Width="130" Margin="0,0,20,0" MinHeight="34"
+                      Visibility="{Binding ProfileSelectorVisibility}"
+                      ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                      DisplayMemberPath="DisplayName" />
+            <TextBlock Text="━ 代表廓形" Foreground="{DynamicResource RepresentativeBrush}" VerticalAlignment="Center" Margin="0,0,20,0" />
+            <TextBlock Text="━ 标准廓形" Foreground="{DynamicResource StandardBrush}" VerticalAlignment="Center" />
+        </WrapPanel>
+        <Border Grid.Row="1" Style="{StaticResource CardBorderStyle}">
             <Grid>
                 <Canvas x:Name="PlotCanvas"
                         Background="{DynamicResource CanvasBackgroundBrush}"
@@ -273,6 +186,9 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </Canvas>
+                <TextBlock Text="{Binding PlotError}" TextWrapping="Wrap" Margin="12"
+                           Foreground="{DynamicResource PrimaryTextBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
             </Grid>
         </Border>
     </Grid>

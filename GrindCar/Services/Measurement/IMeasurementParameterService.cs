@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using GrindCar.Models.Measurement;
 
 namespace GrindCar.Services.Measurement;
 
@@ -10,6 +11,7 @@ namespace GrindCar.Services.Measurement;
 /// </summary>
 public interface IMeasurementParameterService
 {
+    Task WriteMeasurementParametersAsync(string ipAddress, int port, MeasurementParameters parameters);
     Task WriteMeasurementRangeAsync(string ipAddress, int port, double startPosition, double endPosition);
     Task WriteGrindingRangeAsync(string ipAddress, int port, double startPosition, double endPosition);
 

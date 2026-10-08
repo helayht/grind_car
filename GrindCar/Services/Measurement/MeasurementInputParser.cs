@@ -48,6 +48,8 @@ public static class MeasurementInputParser
 
     public static int ToScaledInt32(double value, double scale, string parameterName)
     {
+        if (!double.IsFinite(value) || !double.IsFinite(scale))
+            throw new InvalidOperationException($"{parameterName}必须是有限数值。");
         double scaled = value * scale;
         if (scaled > int.MaxValue || scaled < int.MinValue)
         {
@@ -65,12 +67,12 @@ public static class MeasurementInputParser
         }
 
         string text = rawValue.Trim();
-        if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value))
+        if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out double value) && double.IsFinite(value))
         {
             return value;
         }
 
-        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && double.IsFinite(value))
         {
             return value;
         }

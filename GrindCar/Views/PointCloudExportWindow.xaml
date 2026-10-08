@@ -36,7 +36,7 @@
 
             <ComboBox x:Name="DeviceComboBox"
                       Grid.Column="1"
-                      Height="32"
+                      Height="34"
                       Margin="0,0,12,0"
                       IsEnabled="{Binding CanInteract}"
                       ItemsSource="{Binding Devices}"
@@ -44,7 +44,6 @@
                       DisplayMemberPath="DisplayName" />
 
             <Button Grid.Column="2"
-                    Height="32"
                     IsEnabled="{Binding CanInteract}"
                     Content="刷新设备"
                     Click="RefreshDevices_Click" />
@@ -64,7 +63,7 @@
 
             <ComboBox x:Name="FormatComboBox"
                       Grid.Column="1"
-                      Height="32"
+                      Height="34"
                       IsEnabled="{Binding CanInteract}"
                       SelectedValuePath="Tag"
                       SelectedValue="{Binding SelectedExportFormat}"
@@ -89,7 +88,7 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBox x:Name="OutputPathTextBox"
-                         Height="32"
+                         Height="34"
                          VerticalContentAlignment="Center"
                          IsEnabled="{Binding CanInteract}"
                          IsReadOnly="True"
@@ -98,7 +97,6 @@
 
                 <Button Grid.Column="1"
                         Margin="12,0,0,0"
-                        Height="32"
                         IsEnabled="{Binding CanInteract}"
                         Content="选择路径"
                         Click="ChooseOutputPath_Click" />
@@ -123,13 +121,11 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right">
             <Button Width="96"
-                    Height="34"
                     Margin="0,0,10,0"
                     Content="关闭"
                     Click="Close_Click" />
             <Button x:Name="ExportButton"
                     Width="120"
-                    Height="34"
                     IsEnabled="{Binding CanInteract}"
                     Content="开始导出"
                     Click="Export_Click" />

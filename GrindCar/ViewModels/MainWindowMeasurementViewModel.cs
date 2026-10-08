@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using GrindCar.Definitions;
 using GrindCar.Models.PointCloud;
+using GrindCar.Models.Measurement;
 using GrindCar.Models.Rail;
 using GrindCar.Services;
 using GrindCar.Services.Measurement;
@@ -17,21 +18,28 @@ namespace GrindCar.ViewModels;
 /// <summary>
 /// 主窗口测量参数区域 ViewModel。
 /// </summary>
-public class MainWindowMeasurementViewModel : INotifyPropertyChanged
+public class MainWindowMeasurementViewModel : INotifyPropertyChanged, IDisposable
 {
-    private const string CarSpeedParameterName = "小车运行速度";
+    private const string CarSpeedParameterName = MotorParameterDefinitions.CarMeasurementSpeedName;
     private const string ProfileCountParameterName = "单次测量总条数";
 
     private readonly IMeasurementParameterService _measurementParameterService;
     private readonly SharedPlcConnectionService _plcConnection;
     private readonly PointCloudCaptureSettingsStore _pointCloudCaptureSettingsStore;
+    private readonly MeasurementPositionSettingsStore _positionSettingsStore;
+    public DashboardTelemetryViewModel Telemetry { get; }
+    private string _profilerPositionText = string.Empty;
+    private string _avoidancePositionText = string.Empty;
+    private string _positionSaveStatus = "测量位置参数尚未保存。";
+    private bool _workflowActive;
+    public string PositionSaveStatus { get => _positionSaveStatus; private set { _positionSaveStatus = value; OnPropertyChanged(); } }
+    public string ProfilerPositionText { get => _profilerPositionText; set { _profilerPositionText = value; OnPropertyChanged(); PositionSaveStatus = "测量位置参数有未保存修改。"; } }
+    public string AvoidancePositionText { get => _avoidancePositionText; set { _avoidancePositionText = value; OnPropertyChanged(); PositionSaveStatus = "测量位置参数有未保存修改。"; } }
 
     private string _plcIpAddress;
     private int _plcPort;
     private string _startPositionText = string.Empty;
     private string _endPositionText = string.Empty;
-    private string _grindingStartPositionText = string.Empty;
-    private string _grindingEndPositionText = string.Empty;
     private string _carSpeedText = string.Empty;
     private string _profileCountText = string.Empty;
     private string _statusMessage = "请填写参数后写入。";
@@ -67,15 +75,33 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
         SharedPlcConnectionService plcConnection,
         string defaultIpAddress,
         int defaultPort,
-        PointCloudCaptureSettingsStore? pointCloudCaptureSettingsStore = null)
+        PointCloudCaptureSettingsStore? pointCloudCaptureSettingsStore = null,
+        MeasurementPositionSettingsStore? positionSettingsStore = null,
+        DashboardTelemetryViewModel? telemetry = null)
     {
         _measurementParameterService = measurementParameterService ?? throw new ArgumentNullException(nameof(measurementParameterService));
         _plcConnection = plcConnection ?? throw new ArgumentNullException(nameof(plcConnection));
         _pointCloudCaptureSettingsStore = pointCloudCaptureSettingsStore ?? new PointCloudCaptureSettingsStore();
+        _positionSettingsStore = positionSettingsStore ?? new MeasurementPositionSettingsStore();
+        Telemetry = telemetry ?? new DashboardTelemetryViewModel(plcConnection);
+        Telemetry.PropertyChanged += TelemetryChanged;
         _plcIpAddress = defaultIpAddress;
         _plcPort = defaultPort;
         _plcConnection.PropertyChanged += PlcConnection_PropertyChanged;
         LoadPointCloudCaptureSettings();
+        try
+        {
+            MeasurementPositions? positions = _positionSettingsStore.Load();
+            if (positions != null)
+            {
+                _startPositionText = positions.Start.ToString("R", CultureInfo.CurrentCulture);
+                _endPositionText = positions.End.ToString("R", CultureInfo.CurrentCulture);
+                _profilerPositionText = positions.ProfilerPosition.ToString("R", CultureInfo.CurrentCulture);
+                _avoidancePositionText = positions.AvoidancePosition.ToString("R", CultureInfo.CurrentCulture);
+                PositionSaveStatus = "已恢复本地测量位置参数，未写入PLC。";
+            }
+        }
+        catch (Exception ex) { PositionSaveStatus = ex.Message; }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -101,6 +127,7 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
             }
 
             _startPositionText = value;
+            PositionSaveStatus = "测量位置参数有未保存修改。";
             OnPropertyChanged();
         }
     }
@@ -116,39 +143,11 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
             }
 
             _endPositionText = value;
+            PositionSaveStatus = "测量位置参数有未保存修改。";
             OnPropertyChanged();
         }
     }
 
-    public string GrindingStartPositionText
-    {
-        get => _grindingStartPositionText;
-        set
-        {
-            if (_grindingStartPositionText == value)
-            {
-                return;
-            }
-
-            _grindingStartPositionText = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string GrindingEndPositionText
-    {
-        get => _grindingEndPositionText;
-        set
-        {
-            if (_grindingEndPositionText == value)
-            {
-                return;
-            }
-
-            _grindingEndPositionText = value;
-            OnPropertyChanged();
-        }
-    }
 
     public string CarSpeedText
     {
@@ -226,10 +225,27 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
             _isBusy = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanOperate));
+            OnPropertyChanged(nameof(CanWriteMeasurementParameters));
         }
     }
 
-    public bool CanOperate => !IsBusy;
+    private bool _grindingParametersBusy;
+    public bool CanOperate => !IsBusy && !_grindingParametersBusy && !_workflowActive;
+    public bool CanWriteMeasurementParameters => CanOperate && _plcConnection.IsConnected && Telemetry.MeasurementRunning == false;
+
+    public void SetWorkflowActive(bool active)
+    {
+        _workflowActive = active;
+        OnPropertyChanged(nameof(CanOperate));
+        OnPropertyChanged(nameof(CanWriteMeasurementParameters));
+    }
+
+    public void SetGrindingParametersBusy(bool busy)
+    {
+        _grindingParametersBusy = busy;
+        OnPropertyChanged(nameof(CanOperate));
+        OnPropertyChanged(nameof(CanWriteMeasurementParameters));
+    }
 
     public async Task ConnectPlcAsync(string ipAddress, int port)
     {
@@ -251,25 +267,22 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 
     public async Task WriteMeasurementParametersAsync()
     {
-        double startPosition = MeasurementInputParser.ParsePosition(
-            StartPositionText,
-            MotorParameterDefinitions.MeasurementStartPositionName);
-        double endPosition = MeasurementInputParser.ParsePosition(
-            EndPositionText,
-            MotorParameterDefinitions.MeasurementEndPositionName);
+        if (!CanWriteMeasurementParameters)
+            throw new InvalidOperationException("请连接PLC并确认测量已停止，等待当前操作完成后写入。");
+        var parameters = new MeasurementParameters(CreatePositions(),
+            MeasurementInputParser.ParsePositiveDouble(CarSpeedText, CarSpeedParameterName));
 
         try
         {
             IsBusy = true;
             StatusMessage = "正在写入测量参数...";
 
-            await _measurementParameterService.WriteMeasurementRangeAsync(
+            await _measurementParameterService.WriteMeasurementParametersAsync(
                 _plcIpAddress,
                 _plcPort,
-                startPosition,
-                endPosition).ConfigureAwait(true);
+                parameters).ConfigureAwait(true);
 
-            StatusMessage = $"写入成功：起点 {startPosition.ToString("0.###", CultureInfo.CurrentCulture)}m，终点 {endPosition.ToString("0.###", CultureInfo.CurrentCulture)}m";
+            StatusMessage = "五项测量参数写入成功（起止点、测量位置、回避位、测量行走速度）。";
         }
         finally
         {
@@ -285,33 +298,18 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
             $"点云采集参数已保存：速度 {settings.SpeedMetersPerMinute.ToString("0.###", CultureInfo.CurrentCulture)} m/min，单次 {settings.ProfileCount.ToString(CultureInfo.CurrentCulture)} 条，帧率 {settings.FrameRateHz.ToString("0.###", CultureInfo.CurrentCulture)} Hz";
     }
 
-    public async Task WriteGrindingParametersAsync()
+    private MeasurementPositions CreatePositions() => new(
+        MeasurementInputParser.ParsePosition(StartPositionText, MotorParameterDefinitions.MeasurementStartPositionName),
+        MeasurementInputParser.ParsePosition(EndPositionText, MotorParameterDefinitions.MeasurementEndPositionName),
+        MeasurementInputParser.ParsePosition(ProfilerPositionText, MotorParameterDefinitions.ProfilerMeasurementPositionName),
+        MeasurementInputParser.ParsePosition(AvoidancePositionText, MotorParameterDefinitions.ProfilerAvoidancePositionName));
+
+    public void SaveMeasurementPositions()
     {
-        double startPosition = MeasurementInputParser.ParsePosition(
-            GrindingStartPositionText,
-            MotorParameterDefinitions.GrindingStartPositionName);
-        double endPosition = MeasurementInputParser.ParsePosition(
-            GrindingEndPositionText,
-            MotorParameterDefinitions.GrindingEndPositionName);
-
-        try
-        {
-            IsBusy = true;
-            StatusMessage = "正在写入打磨参数...";
-
-            await _measurementParameterService.WriteGrindingRangeAsync(
-                _plcIpAddress,
-                _plcPort,
-                startPosition,
-                endPosition).ConfigureAwait(true);
-
-            StatusMessage = $"写入成功：打磨起点 {startPosition.ToString("0.###", CultureInfo.CurrentCulture)}m，打磨终点 {endPosition.ToString("0.###", CultureInfo.CurrentCulture)}m";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        try { _positionSettingsStore.Save(CreatePositions()); PositionSaveStatus = "测量位置参数已保存到本地，未写入PLC。"; }
+        catch (Exception ex) { PositionSaveStatus = $"保存失败：{ex.Message}"; }
     }
+
 
     public async Task<MeasurementGrindingWorkflowResult> StartMeasurementMotionAsync()
     {
@@ -443,10 +441,20 @@ public class MainWindowMeasurementViewModel : INotifyPropertyChanged
 
     private void PlcConnection_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(CanWriteMeasurementParameters));
         if (e.PropertyName == nameof(SharedPlcConnectionService.ConnectionStatus))
         {
             OnPropertyChanged(nameof(PlcConnectionStatus));
         }
+    }
+
+    private void TelemetryChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(nameof(CanWriteMeasurementParameters));
+
+    public void Dispose()
+    {
+        Telemetry.PropertyChanged -= TelemetryChanged;
+        Telemetry.Dispose();
+        _plcConnection.PropertyChanged -= PlcConnection_PropertyChanged;
     }
 
     private void NotifyEndpointChanged()
