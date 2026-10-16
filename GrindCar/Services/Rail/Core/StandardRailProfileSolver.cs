@@ -413,24 +413,15 @@ public static class StandardRailProfileSolver
         // 用 QuickSelect 找到第 (count - topCount) 小的元素，
         // 则该元素及之后的所有元素即为前 topCount 个最大值。
         int thresholdIndex = count - topCount;
-        double threshold = QuickSelect.SelectKthSmallest(candidates, thresholdIndex);
+        QuickSelect.SelectKthSmallest(candidates, thresholdIndex);
 
         double sum = 0.0;
-        int included = 0;
-        for (int index = 0; index < count; index++)
+        for (int index = thresholdIndex; index < count; index++)
         {
-            if (candidates[index] >= threshold)
-            {
-                sum += candidates[index];
-                included++;
-                if (included >= topCount)
-                {
-                    break;
-                }
-            }
+            sum += candidates[index];
         }
 
-        return sum / included;
+        return sum / topCount;
     }
 
     private static void ValidateNormalAngle(double angleRadians)

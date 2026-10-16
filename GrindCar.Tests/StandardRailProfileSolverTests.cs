@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using GrindCar.Models.Rail;
 using GrindCar.Services;
 using GrindCar.Services.Rail.Core;
@@ -8,6 +9,82 @@ namespace GrindCar.Tests;
 
 public class StandardRailProfileSolverTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(199)]
+    [InlineData(399)]
+    public void GetRepresentativeB_RepeatedThreshold_ReturnsLargestTwoAverage(int maximumIndex)
+    {
+        const int pointCount = 400;
+        RailProfilePoint[] points = Enumerable.Range(0, pointCount)
+            .Select(index => new RailProfilePoint(0.0, index == maximumIndex ? 2.0 : 1.0))
+            .ToArray();
+
+        double result = StandardRailProfileSolver.GetRepresentativeB(0.0, points);
+
+        Assert.Equal(1.5, result, 10);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(199)]
+    [InlineData(399)]
+    public void GetRepresentativeNormalOffset_RepeatedThreshold_ReturnsLargestTwoAverage(int maximumIndex)
+    {
+        const int pointCount = 400;
+        RailProfilePoint[] points = Enumerable.Range(0, pointCount)
+            .Select(index => new RailProfilePoint(0.0, index == maximumIndex ? 2.0 : 1.0))
+            .ToArray();
+
+        double result = StandardRailProfileSolver.GetRepresentativeNormalOffset(0.0, points);
+
+        Assert.Equal(1.5, result, 10);
+    }
+
+    [Theory]
+    [InlineData(399, 1)]
+    [InlineData(400, 1)]
+    [InlineData(600, 1)]
+    [InlineData(600, 2)]
+    [InlineData(400, 0)]
+    [InlineData(600, 0)]
+    public void RepresentativeSupport_RepeatedCandidates_MatchesSortedLargestAverage(
+        int pointCount,
+        int largerPointCount)
+    {
+        const int candidatesPerSelectedPoint = 200;
+        RailProfilePoint[] points = Enumerable.Range(0, pointCount)
+            .Select(index => new RailProfilePoint(0.0,
+                index < largerPointCount ? 2.0 + index : 1.0))
+            .ToArray();
+        int selectedCount = Math.Max(1, pointCount / candidatesPerSelectedPoint);
+        double expected = points.Select(point => point.Y)
+            .OrderByDescending(value => value).Take(selectedCount).Average();
+
+        Assert.Equal(expected, StandardRailProfileSolver.GetRepresentativeB(0.0, points), 10);
+        Assert.Equal(expected, StandardRailProfileSolver.GetRepresentativeNormalOffset(0.0, points), 10);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CalculateGrindDepths_RepeatedThreshold_ReturnsCorrectDepth(bool defectProfile)
+    {
+        const int pointCount = 400;
+        const int angle = 0;
+        double standardOffset = StandardRailProfileSolver.SolveNormalOffset(0.0);
+        RailProfilePoint[] points = Enumerable.Range(0, pointCount)
+            .Select(index => new RailProfilePoint(0.0,
+                standardOffset + (index == pointCount - 1 ? 2.0 : 1.0)))
+            .ToArray();
+
+        double depth = defectProfile
+            ? RailSurfaceService.CalculateDefectGrindDepths(new[] { angle }, points)[0].GrindDepth
+            : RailSurfaceService.CalculateGrindDepths(new[] { angle }, points).Results[0].GrindDepth;
+
+        Assert.Equal(1.5, depth, 10);
+    }
+
     [Theory]
     [InlineData(RailProfileType.Kg60, -14.1291671483623)]
     [InlineData(RailProfileType.Kg50, -37.84)]
