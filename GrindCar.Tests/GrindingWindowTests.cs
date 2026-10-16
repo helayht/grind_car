@@ -12,6 +12,7 @@ using System.Windows.Threading;
 using GrindCar.Services;
 using GrindCar.Services.Grinding;
 using GrindCar.Services.Measurement;
+using GrindCar.Services.Rail.Core;
 using GrindCar.Models.Grinding;
 using GrindCar.Models.Rail;
 using GrindCar.ViewModels;
@@ -20,6 +21,12 @@ using Xunit;
 
 namespace GrindCar.Tests;
 
+[CollectionDefinition(nameof(GrindingWindowTests), DisableParallelization = true)]
+public sealed class GrindingWindowTestCollection
+{
+}
+
+[Collection(nameof(GrindingWindowTests))]
 public partial class GrindingWindowTests
 {
     [Fact]
@@ -140,6 +147,7 @@ public partial class GrindingWindowTests
             }
         }
         VerifyDashboardOfflineEntry(dashboard);
+        VerifyRegistrationProfileIsolation(dashboard);
         VerifyNavigation(dashboard, application);
         VerifyMotorLifecycle();
         VerifyDialogButtons(application);
@@ -147,6 +155,84 @@ public partial class GrindingWindowTests
         dashboard.Close();
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         application.Shutdown();
+    }
+
+    private static void VerifyRegistrationProfileIsolation(MainWindow dashboard)
+    {
+        var host = (ContentControl)dashboard.FindName("PageHost");
+        RailProfileType originalProfile = dashboard.Measurement.SelectedProfileType;
+        string originalDirectory = Environment.CurrentDirectory;
+        string testDirectory = Path.Combine(Path.GetTempPath(), "grindcar-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(testDirectory);
+        try
+        {
+            // 使用独立配置目录，避免测试写入开发环境已有的配准文件。
+            Environment.CurrentDirectory = testDirectory;
+            var store60 = new ProfileRegistrationSettingsStore(Path.Combine(testDirectory, "point-cloud-profile-registration-60kg.json"));
+            var store50 = new ProfileRegistrationSettingsStore(Path.Combine(testDirectory, "point-cloud-profile-registration-50kg.json"));
+            store60.Save(new ProfileRegistrationSettings
+            {
+                Left = new ProfileRegistrationParameters(6, 0, 0),
+                Right = new ProfileRegistrationParameters(-6, 0, 0)
+            });
+            store50.Save(new ProfileRegistrationSettings
+            {
+                Left = new ProfileRegistrationParameters(5, 0, 0),
+                Right = new ProfileRegistrationParameters(-5, 0, 0)
+            });
+            Await(dashboard.NavigateAsync(MainPage.Home));
+            dashboard.Measurement.SelectedProfileType = RailProfileType.Kg60;
+            Await(dashboard.NavigateAsync(MainPage.Registration));
+            var view60 = Assert.IsType<ProfileRegistrationView>(host.Content);
+            var model60 = Assert.IsType<ProfileRegistrationViewModel>(view60.DataContext);
+            Assert.Equal(6, model60.AppliedLeftDx);
+            model60.PendingLeftDx = 12;
+            model60.PendingRightDx = -12;
+            model60.ApplyPendingParameters();
+            model60.SaveSettings();
+            Assert.Equal(12, store60.LoadRequired().Left!.Dx);
+            Assert.Equal(5, store50.LoadRequired().Left!.Dx);
+
+            Await(dashboard.NavigateAsync(MainPage.Home));
+            dashboard.Measurement.SelectedProfileType = RailProfileType.Kg50;
+            Await(dashboard.NavigateAsync(MainPage.Registration));
+            var view50 = Assert.IsType<ProfileRegistrationView>(host.Content);
+            Assert.NotSame(view60, view50);
+            var model50 = Assert.IsType<ProfileRegistrationViewModel>(view50.DataContext);
+            Assert.Equal(5, model50.AppliedLeftDx);
+            model50.PendingLeftDx = 24;
+            model50.PendingRightDx = -24;
+            model50.ApplyPendingParameters();
+            model50.SaveSettings();
+            string saved50 = File.ReadAllText(store50.ConfigurationFilePath);
+            // 即使全局已切至 50 kg/m，旧页面也只能保存到自身的 60 kg/m 文件。
+            model60.SaveSettings();
+            Assert.Equal(saved50, File.ReadAllText(store50.ConfigurationFilePath));
+            Assert.Equal(12, store60.LoadRequired().Left!.Dx);
+            Assert.Equal(24, store50.LoadRequired().Left!.Dx);
+
+            foreach (RailProfileType profile in new[] { RailProfileType.Kg60, RailProfileType.Kg50 })
+            {
+                Await(dashboard.NavigateAsync(MainPage.Home));
+                dashboard.Measurement.SelectedProfileType = profile;
+                Await(dashboard.NavigateAsync(MainPage.Registration));
+                bool is60 = profile == RailProfileType.Kg60;
+                Assert.Same(is60 ? view60 : view50, host.Content);
+                var model = Assert.IsType<ProfileRegistrationViewModel>(((UserControl)host.Content).DataContext);
+                Assert.Equal(is60 ? 12 : 24, model.AppliedLeftDx);
+                Assert.Equal(is60 ? -12 : -24, model.AppliedRightDx);
+                model.SaveSettings();
+                Assert.Equal(12, store60.LoadRequired().Left!.Dx);
+                Assert.Equal(24, store50.LoadRequired().Left!.Dx);
+            }
+        }
+        finally
+        {
+            Await(dashboard.NavigateAsync(MainPage.Home));
+            dashboard.Measurement.SelectedProfileType = originalProfile;
+            Environment.CurrentDirectory = originalDirectory;
+            Directory.Delete(testDirectory, recursive: true);
+        }
     }
 
     private static void Await(Task task)

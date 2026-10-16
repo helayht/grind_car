@@ -89,7 +89,8 @@ public partial class MainWindow : Window
     {
         _measurementViewModel.MeasurementEnded -= MeasurementViewModel_MeasurementEnded;
         if (_validationView != null) _validationView.ReturnHomeRequested -= ReturnHomeRequested;
-        if (_registrationView != null) _registrationView.ReturnHomeRequested -= ReturnHomeRequested;
+        foreach (ProfileRegistrationView view in _registrationViews.Values)
+            view.ReturnHomeRequested -= ReturnHomeRequested;
         _motorView?.Dispose();
         _viewModel.Shutdown();
         _grindingViewModel.Dispose();

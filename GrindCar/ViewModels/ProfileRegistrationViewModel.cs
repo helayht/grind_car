@@ -95,7 +95,9 @@ public sealed class ProfileRegistrationViewModel : INotifyPropertyChanged
         ProfileRegistrationSettingsStore settingsStore,
         ProfileRegistrationTransformService transformService)
     {
-        _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
+        if (settingsStore == null) throw new ArgumentNullException(nameof(settingsStore));
+        // 页面状态属于创建时的轨型，保存路径不能随后续全局轨型切换而改变。
+        _settingsStore = new ProfileRegistrationSettingsStore(settingsStore.ResolveConfigurationFilePath());
         _transformService = transformService ?? throw new ArgumentNullException(nameof(transformService));
         _profileService = new PointCloudRepresentativeProfileService(_settingsStore, _transformService);
         LoadExistingSettingsIfAvailable();

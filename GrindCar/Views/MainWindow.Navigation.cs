@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using GrindCar.Models.Rail;
 
 namespace GrindCar.Views;
 
@@ -19,7 +21,7 @@ public partial class MainWindow
     private MotorDebugView? _motorView;
     private GrindingParametersView? _grindingView;
     private PointCloudGrindDepthDebugView? _validationView;
-    private ProfileRegistrationView? _registrationView;
+    private readonly Dictionary<RailProfileType, ProfileRegistrationView> _registrationViews = new();
     private bool _navigating;
 
     public MainPage CurrentPage { get; private set; } = MainPage.Home;
@@ -93,12 +95,14 @@ public partial class MainWindow
                 }
                 return _validationView;
             case MainPage.Registration:
-                if (_registrationView == null)
+                RailProfileType profileType = Measurement.SelectedProfileType;
+                if (!_registrationViews.TryGetValue(profileType, out ProfileRegistrationView? registrationView))
                 {
-                    _registrationView = new ProfileRegistrationView();
-                    _registrationView.ReturnHomeRequested += ReturnHomeRequested;
+                    registrationView = new ProfileRegistrationView();
+                    registrationView.ReturnHomeRequested += ReturnHomeRequested;
+                    _registrationViews.Add(profileType, registrationView);
                 }
-                return _registrationView;
+                return registrationView;
             default:
                 throw new ArgumentOutOfRangeException(nameof(page));
         }
