@@ -9,11 +9,12 @@ public static class MotorInputParser
 {
     public static bool TryParseNumber(string input, out double value)
     {
-        if (double.TryParse(input, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
+        if (double.TryParse(input, NumberStyles.Float, CultureInfo.CurrentCulture, out value) ||
+            double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
         {
-            return true;
+            return double.IsFinite(value);
         }
 
-        return double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+        return false;
     }
 }

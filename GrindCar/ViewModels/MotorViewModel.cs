@@ -559,13 +559,13 @@ public class MotorViewModel : INotifyPropertyChanged
                     }
 
                     double int32Raw = int32Value * spec.Scale;
-                    if (int32Raw > int.MaxValue || int32Raw < int.MinValue)
+                    if (!double.IsFinite(int32Raw) || int32Raw > int.MaxValue || int32Raw < int.MinValue)
                     {
                         PostStatus("数值超出 Int32 范围");
                         return;
                     }
 
-                    _plc.WriteInt32(spec.Address, (int)Math.Round(int32Raw));
+                    _plc.WriteInt32(spec.Address, checked((int)Math.Round(int32Raw)));
                     _uiContext.Post(_ =>
                     {
                         ConnectionStatus = $"写入成功: {item.Name}";
@@ -588,13 +588,13 @@ public class MotorViewModel : INotifyPropertyChanged
                     }
 
                     double int16Raw = int16Value * spec.Scale;
-                    if (int16Raw > short.MaxValue || int16Raw < short.MinValue)
+                    if (!double.IsFinite(int16Raw) || int16Raw > short.MaxValue || int16Raw < short.MinValue)
                     {
                         PostStatus("数值超出 Int16 范围");
                         return;
                     }
 
-                    _plc.WriteInt16(spec.Address, (short)Math.Round(int16Raw));
+                    _plc.WriteInt16(spec.Address, checked((short)Math.Round(int16Raw)));
                     _uiContext.Post(_ =>
                     {
                         ConnectionStatus = $"写入成功: {item.Name}";
