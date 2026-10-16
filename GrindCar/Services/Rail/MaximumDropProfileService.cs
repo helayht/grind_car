@@ -85,7 +85,7 @@ public sealed class MaximumDropProfileService
         ProfileRegistrationParameters parameters = preparedData.RegistrationParameters;
 
         MaximumDropProfileResult? bestResult = null;
-        bool hasAnalyzableSection = false;
+        bool hasUsableSection = false;
         bool hasOverLimitDrop = false;
         for (int sectionIndex = 0; sectionIndex < preparedData.Sections.Count; sectionIndex++)
         {
@@ -100,13 +100,13 @@ public sealed class MaximumDropProfileService
                 continue;
             }
 
-            hasAnalyzableSection = true;
             if (status == SectionAnalysisStatus.ExceedsMaximumDepth)
             {
                 hasOverLimitDrop = true;
                 continue;
             }
 
+            hasUsableSection = true;
             if (status == SectionAnalysisStatus.NoDownwardDrop)
             {
                 continue;
@@ -123,15 +123,15 @@ public sealed class MaximumDropProfileService
             return bestResult;
         }
 
+        if (hasUsableSection)
+        {
+            return null;
+        }
+
         if (hasOverLimitDrop)
         {
             throw new RepresentativeProfileExtractionException(
                 $"{side} 点云中的向下掉块深度均大于 {MaximumAllowedDropDepth} mm，已判定为异常数据。");
-        }
-
-        if (hasAnalyzableSection)
-        {
-            return null;
         }
 
         throw new RepresentativeProfileExtractionException(

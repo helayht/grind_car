@@ -106,6 +106,37 @@ public class PointCloudProfileAnalysisServiceTests
         Assert.Null(result.MaximumDropProfile);
     }
 
+    [Theory]
+    [InlineData(PointCloudDeviceSide.Left)]
+    [InlineData(PointCloudDeviceSide.Right)]
+    public void AnalyzePoints_HealthyAndOverLimitSections_PreservesRepresentativeProfile(
+        PointCloudDeviceSide side)
+    {
+        CreateAnalysisService(
+            out PointCloudProfileAnalysisService analysisService,
+            out CountingPreprocessor countingPreprocessor,
+            out _);
+        List<PointCloudPoint3D> points = BuildPointCloud();
+        for (int index = 0; index < points.Count; index++)
+        {
+            PointCloudPoint3D point = points[index];
+            const double overLimitResidual = -4.0;
+            double residual = point.Y == 4.0 && point.X >= -1.0 && point.X <= 1.0
+                ? overLimitResidual : 0.0;
+            points[index] = new PointCloudPoint3D(
+                point.X, point.Y, StandardRailProfileSolver.RailSurfaceFun(point.X) + residual);
+        }
+
+        PointCloudProfileAnalysisResult result = analysisService.AnalyzePoints(points, side);
+
+        Assert.Equal(1, countingPreprocessor.CallCount);
+        Assert.NotEmpty(result.ExtractionResult.ProfilePoints);
+        Assert.Null(result.MaximumDropProfile);
+        GrindDepthCalculationResult depths = RailSurfaceService.CalculateGrindDepths(
+            new[] { 0 }, result.ExtractionResult.ProfilePoints);
+        Assert.True(double.IsFinite(Assert.Single(depths.Results).GrindDepth));
+    }
+
     private static void CreateAnalysisService(
         out PointCloudProfileAnalysisService analysisService,
         out CountingPreprocessor countingPreprocessor,

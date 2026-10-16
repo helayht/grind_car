@@ -603,6 +603,48 @@ public class MaximumDropProfileServiceTests
         Assert.Equal(2.0, result.MaximumDropDepth, 6);
     }
 
+    [Theory]
+    [InlineData(PointCloudDeviceSide.Left, false, 0.0)]
+    [InlineData(PointCloudDeviceSide.Left, true, 0.0)]
+    [InlineData(PointCloudDeviceSide.Right, false, 0.0)]
+    [InlineData(PointCloudDeviceSide.Right, true, 0.0)]
+    [InlineData(PointCloudDeviceSide.Left, false, 1.0)]
+    [InlineData(PointCloudDeviceSide.Left, true, 1.0)]
+    [InlineData(PointCloudDeviceSide.Right, false, 1.0)]
+    [InlineData(PointCloudDeviceSide.Right, true, 1.0)]
+    public void AnalyzePoints_HealthyAndOverLimitSections_ReturnsNoDropProfile(
+        PointCloudDeviceSide side,
+        bool overLimitFirst,
+        double healthyResidual)
+    {
+        MaximumDropProfileService service = CreateService();
+        const double overLimitResidual = -4.0;
+        double overLimitY = overLimitFirst ? 1.0 : 2.0;
+        double healthyY = overLimitFirst ? 2.0 : 1.0;
+        IReadOnlyList<PointCloudPoint3D> points = BuildPointCloud(
+            (overLimitY, x => x >= -1.0 && x <= 1.0 ? overLimitResidual : 0.0),
+            (healthyY, _ => healthyResidual));
+
+        MaximumDropProfileResult? result = service.AnalyzePoints(points, side);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void AnalyzePoints_OverLimitAndInsufficientSections_StillThrows()
+    {
+        MaximumDropProfileService service = CreateService();
+        double minimumHeight = StandardRailProfileSolver.GetMinimumProfileHeight();
+        IReadOnlyList<PointCloudPoint3D> points = BuildPointCloud(
+            (1.0, x => x >= -1.0 && x <= 1.0 ? -4.0 : 0.0),
+            (2.0, x => minimumHeight - StandardRailProfileSolver.RailSurfaceFun(x) - 1.0));
+
+        RepresentativeProfileExtractionException exception = Assert.Throws<RepresentativeProfileExtractionException>(
+            () => service.AnalyzePoints(points, PointCloudDeviceSide.Left));
+
+        Assert.Contains("均大于 3", exception.Message);
+    }
+
     [Fact]
     public void AnalyzePoints_DropDepthAboveMaximumAllowed_IsExcluded()
     {
